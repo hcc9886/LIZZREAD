@@ -12,6 +12,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LIZZREAD · 线上图书馆</title>
+<meta name="theme-color" content="#2F5D50">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 /* ---------- 全局变量（默认 纯白 主题） ---------- */
 :root{
@@ -195,6 +198,15 @@ body.no-zh .sent .zh{display:none}
 .vdet{flex-basis:100%;border-top:1px dashed var(--border);margin-top:8px;
   padding-top:8px;font-size:13px;color:var(--text);cursor:default}
 .vdet .dim{color:var(--muted)}
+/* M2：词族熟练度正文高亮（陌生=红点线，学习中=琥珀实线，已掌握=不高亮） */
+.w.st0{background:rgba(220,80,60,.12);border-bottom:1.5px dotted rgba(200,60,40,.55)}
+.w.st1{background:rgba(230,160,30,.16);border-bottom:1.5px solid rgba(220,140,20,.6)}
+.defen{cursor:pointer}
+.defen:hover{text-decoration:underline}
+/* 划选弹层（查首词 / 整段翻译 / 朗读） */
+#selpop{display:none;position:absolute;z-index:80;background:var(--surface);
+  border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.2);
+  padding:10px 12px;max-width:300px}
 .rec-banner{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   padding:12px 18px;font-size:15px;margin-bottom:14px;text-align:center}
 .iconbtn{background:none;border:1px solid var(--border);border-radius:8px;
@@ -315,10 +327,22 @@ body.no-zh .sent .zh{display:none}
   <div class="d dim" id="shEn">查询中…</div>
   <div class="sec-t">🎨 颜色标记</div>
   <div class="mrow" id="shMarks"></div>
+  <div class="sec-t">🎯 词汇状态（词族三态：查词越多越熟，自动升级）</div>
+  <div class="mrow" id="shState"></div>
+  <div class="d dim" id="shLookup" style="font-size:12px"></div>
   <div class="row" style="margin-top:14px">
     <button class="btn small" id="shAdd">＋ 加入生词本</button>
     <button class="btn ghost small" onclick="speakWord()">🔊 朗读</button>
     <a class="btn ghost small" id="shMore" target="_blank" rel="noopener">更多释义 ↗</a>
+  </div>
+</div>
+<div id="selpop">
+  <div id="selpopTxt" style="font-size:13px;font-weight:600;word-break:break-word"></div>
+  <div id="selpopOut" class="dim" style="font-size:13px;margin-top:4px;word-break:break-word"></div>
+  <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+    <button class="btn ghost small" onclick="selWord()">🔍 查首词</button>
+    <button class="btn ghost small" onclick="selTranslate()">🌐 整段翻译</button>
+    <button class="btn ghost small" onclick="selSpeak()">🔊 朗读</button>
   </div>
 </div>
 
@@ -717,7 +741,10 @@ const store = {
   get mode(){ return localStorage.getItem(pk("mode")) || "sent"; },
   set mode(v){ localStorage.setItem(pk("mode"), v); },
   get bg(){ return localStorage.getItem(pk("bg")) || "white"; },
-  set bg(v){ localStorage.setItem(pk("bg"), v); }
+  set bg(v){ localStorage.setItem(pk("bg"), v); },
+  /* M2 词族状态机：{词根:{st:0陌生/1学习中/2已掌握/-1忽略, n:查词次数, w:表层词}} */
+  get wstates(){ try{ return JSON.parse(localStorage.getItem(pk("wstates"))||"{}"); }catch(e){ return {}; } },
+  set wstates(v){ localStorage.setItem(pk("wstates"), JSON.stringify(v)); }
 };
 let testQ = 0, testAns = [];   // 测试进度
 let curBook = null;            // 当前阅读的书
@@ -891,11 +918,14 @@ function openReader(id){
     { id, t:(store.imports.find(x=>x.id===id)||{t:"导入书籍"}).t };
   const sents = getSents(id);   // 内置书 = 样章；导入书 = 全文分句
   const bm = getBookMarks(id);
+  const ws = wordStates();   // M2 词族状态（用于正文高亮）
   /* 英文按单词切片包 span（si 为所在句序号，词标记在两种模式下都生效） */
   const wordSpans = (s,i)=> s.en.replace(/[A-Za-z'’-]+/g, m=>{
     const low = m.toLowerCase();
     const mk = bm.w[i+":"+low];
-    return `<span class="w ${mk?("mk"+mk):""}" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
+    const fs = ws[stemOf(low)];
+    const stc = fs ? (fs.st===0 ? "st0" : fs.st===1 ? "st1" : "") : "";
+    return `<span class="w ${stc} ${mk?("mk"+mk):""}" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
   });
   /* 中文行：内置书为人工译文；导入书未翻译时显示「机翻」按钮 */
   const zhBlock = (key, list)=>{
@@ -1000,6 +1030,10 @@ function wordClick(e){
   lastCtxZh = localZh;
   const low = sheetWord.toLowerCase().replace(/[^a-z'-]/g,"");
   const d = DICT[low];
+  /* M2：记录查词次数并自动升级熟练度（跨阈值时刷新正文高亮） */
+  const stBefore = (wordStates()[stemOf(low)]||{}).st;
+  const fsNow = recordLookup(low);
+  if(stBefore !== undefined && fsNow.st !== stBefore) openReader(curBook.id);
   document.getElementById("shWord").textContent = sheetWord;
   /* 平时常用义：本地词典优先 */
   document.getElementById("shDef").textContent =
@@ -1017,6 +1051,7 @@ function wordClick(e){
   addBtn.disabled = store.vocab.some(v=>v.w===low);
   addBtn.textContent = addBtn.disabled ? "✓ 已在生词本" : "＋ 加入生词本";
   addBtn.onclick = ()=>addVocab(low);
+  renderStateRow(low);
   document.getElementById("shMore").href = "https://dict.youdao.com/w/"+encodeURIComponent(low);
   /* 颜色标记行：当前词的颜色高亮 */
   const bm = getBookMarks(curBook.id);
@@ -1177,6 +1212,76 @@ function delImport(id){
   delete impCache[id];
   go("library");
 }
+/* =====================================================
+  M2：词族状态机（近似词根归并 + 三态 + 查词自动升级）
+  st: 0=陌生 1=学习中 2=已掌握 -1=忽略；n=查词次数
+  正文高亮：陌生=红点线 / 学习中=琥珀实线 / 已掌握与忽略=不高亮
+  标记一个 = 标记整族（同一词根的变形共用一条状态记录）
+===================================================== */
+let _ws = null;
+function wordStates(){ if(_ws===null) _ws = store.wstates; return _ws; }
+function saveWS(){ store.wstates = _ws; }
+/* 常见不规则动词/名词词形 → 词根 */
+const IRREG = {went:"go",gone:"go",was:"be",were:"be",been:"be",am:"be",is:"be",are:"be",
+ had:"have",has:"have",did:"do",does:"do",made:"make",said:"say",saw:"see",seen:"see",
+ took:"take",taken:"take",came:"come",got:"get",gotten:"get",gave:"give",given:"give",
+ found:"find",knew:"know",known:"know",thought:"think",felt:"feel",left:"leave",
+ kept:"keep",held:"hold",brought:"bring",began:"begin",begun:"begin",grew:"grow",
+ spoke:"speak",spoken:"speak",broke:"break",broken:"break",chose:"choose",chosen:"choose",
+ drove:"drive",driven:"drive",ate:"eat",eaten:"eat",fell:"fall",fallen:"fall",
+ heard:"hear",lost:"lose",met:"meet",paid:"pay",ran:"run",rose:"rise",risen:"rise",
+ sat:"sit",slept:"sleep",stood:"stand",understood:"understand",told:"tell",
+ wore:"wear",worn:"wear",won:"win",wrote:"write",written:"write",better:"good",
+ best:"good",worse:"bad",worst:"bad",children:"child",men:"man",women:"woman",
+ feet:"foot",teeth:"tooth",mice:"mouse",people:"person"};
+/* 近似词根：规则后缀剥离（同族词归并到同一 key，允许个别误差） */
+function stemOf(w){
+  w = w.toLowerCase();
+  if(IRREG[w]) return IRREG[w];
+  const suf = [["ies","y",5],["ied","y",5],["sses","ss",6],["ves","f",5],
+    ["es","",4],["ed","",4],["ing","",5],["ly","",4],["er","",4],["est","",5],["s","",3]];
+  for(const [a,b,min] of suf){
+    if(w.length > min && w.endsWith(a)) return w.slice(0, -a.length) + b;
+  }
+  return w;
+}
+/* 点词时调用：累计查词次数，达阈值自动升级（忽略词除外） */
+function recordLookup(low){
+  const ws = wordStates(); const stem = stemOf(low);
+  const fs = ws[stem] || (ws[stem] = {st:null, n:0, w:low});
+  fs.n++; fs.w = low;
+  if(fs.st !== -1){
+    if(fs.n >= 6 && fs.st !== 2) fs.st = 2;             // 查满 6 次 → 已掌握
+    else if(fs.n >= 3 && (fs.st===null || fs.st===0)) fs.st = 1;  // 满 3 次 → 学习中
+  }
+  saveWS();
+  return fs;
+}
+/* 词卡状态行：四态按钮 + 查词次数说明 */
+function renderStateRow(low){
+  const row = document.getElementById("shState");
+  if(!row) return;
+  const stem = stemOf(low);
+  const fs = wordStates()[stem];
+  const st = fs ? fs.st : null, n = fs ? fs.n : 0;
+  row.innerHTML = [[0,"陌生"],[1,"学习中"],[2,"已掌握"],[-1,"忽略"]].map(([v,l])=>
+    `<button class="mdot" style="width:auto;padding:4px 10px;background:none;
+      border:1px solid ${st===v?"var(--brand)":"var(--border)"};
+      color:${st===v?"var(--brand)":"var(--muted)"};font-size:12px"
+      onclick="setWordState('${low}',${v})">${st===v?"● ":""}${l}</button>`).join("");
+  document.getElementById("shLookup").textContent =
+    `已查 ${n} 次 · 词族【${stem}*】 · 满 3 次自动升「学习中」，满 6 次自动「已掌握」`;
+}
+/* 手动切换状态：刷新正文高亮与状态行 */
+function setWordState(low, st){
+  const ws = wordStates(); const stem = stemOf(low);
+  const fs = ws[stem] || (ws[stem] = {st:null, n:0, w:low});
+  fs.st = st; fs.w = low;
+  saveWS();
+  if(curBook) openReader(curBook.id);
+  renderStateRow(low);
+}
+
 /* 英英区改为富文本：音标 + 读法按钮 + 分词性释义 + 常用场景例句 */
 async function fetchDict(word){
   const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(word));
@@ -1198,6 +1303,20 @@ async function fetchDict(word){
     }
   }
   return html || "（暂无英英释义）";
+}
+
+/* 生词模式里的英文释义可点击 → 即时机翻出中文（点击处弹出） */
+async function transDef(el){
+  if(el.dataset.done) return;
+  const en = el.dataset.en || el.textContent;
+  const tip = document.createElement("span");
+  tip.className = "dim"; tip.textContent = " ⏳";
+  el.appendChild(tip);
+  try{
+    const t = await mtFetch(en);
+    tip.textContent = " → " + t;
+    el.dataset.done = "1";
+  }catch(e){ tip.textContent = " 翻译失败"; }
 }
 
 /* TTS 朗读（浏览器自带语音合成） */
@@ -1412,7 +1531,9 @@ function renderSReview(){
     </div>`).join("");
   el.innerHTML = head +
     `<h2 class="sec">全部生词（${v.length}）· 点开查看详细释义与出处</h2>` +
-    (v.length ? `<div class="vlist">${list}</div>` : "");
+    (v.length ? `<div class="vlist">${list}</div>` : "") +
+    `<div id="wsmgr"></div>`;
+  renderWSMgr();
 }
 /* 复习卡片内展开详细释义（不重排整个页面） */
 function renderSReviewKeep(){ /* 详情直接插入卡片下方，无需刷新 */ }
@@ -1441,9 +1562,12 @@ function toggleVDetInner(el, i){
     <button class="iconbtn" onclick="event.stopPropagation();speakText('${x.w.replace(/'/g,"\\'")}')">播放</button></p>`;
   if(x.m) h += `<p><b>常用义：</b>${x.m}</p>`;
   if(x.defs && x.defs.length){
-    h += `<p><b>英英详解（多义项）：</b></p>` + x.defs.map(d=>
-      `<p style="margin:2px 0 2px 12px;color:var(--text)">[${d.pos}] ${d.en}` +
-      (d.ex ? `<br><span class="dim">常用于：${d.ex}</span>` : "") + `</p>`).join("");
+    h += `<p><b>英英详解（点击英文即可出中文）：</b></p>` + x.defs.map(d=>{
+      const esc = (d.en||"").replace(/"/g,"&quot;");
+      return `<p style="margin:2px 0 2px 12px;color:var(--text)">` +
+        `<span class="defen" data-en="${esc}" onclick="event.stopPropagation();transDef(this)">[${d.pos}] ${d.en}</span>` +
+        (d.ex ? `<br><span class="dim">常用于：${d.ex}</span>` : "") + `</p>`;
+    }).join("");
   }
   if(x.sent) h += `<p><b>收藏时的原句（哪一块）：</b>${x.sent}` +
     (x.ctx ? `<br><span class="dim">语境中文：${x.ctx}</span>` : "") + `</p>`;
@@ -1460,12 +1584,164 @@ function delVocab2(i){
 }
 
 /* =====================================================
+  M2：词库管理页（筛选/搜索/批量/导出导入/预设词表）
+===================================================== */
+let wsf = "all", wsk = "";
+const PRESETS = {
+  cet4:{name:"CET-4 高频核心", words:["ability","abandon","absorb","academic","accelerate","access","accompany","accomplish","account","accurate","achieve","acquire","adapt","adequate","adjust","admire","adopt","advance","advantage","advocate","affair","affect","afford","aggressive","agriculture","alarm","ambition","analyze","ancestor","ancient","annual","anxiety","apparent","appeal","appetite","apply","appoint","appreciate","approach","approve","arbitrary","argue","arise","arrange","arrest","artificial","assemble","assess","assign","assist","associate","assume","assure","attach","attain","attitude","author","automatic","available","awareness","bargain","barrier","bearing","behave","belong","benefit","betray","billion","bind","boundary","breed","burst","capacity","category","cease","challenge","character","charge","chase","cherish","circumstance","cite","civilize","claim","classify","climate","collapse","combine","comment","commercial","commit","communicate","community","compare","compensate","compete","complain","complex","comprise","compromise","concentrate","concept","conclude","condemn","conduct","confine","confirm","conflict","conquer","conscious","consent","consequence","conservative","considerable","consist","constant","constitute","consult","consume","contact","contemporary","contend","contract","contrary","contrast","contribute","controversy","convention","convert","convince","cooperate","coordinate","correspond","counsel","crisis","critical","crucial","cultivate","current","deceive","declare","decline","dedicate","deem","defeat","defend","define","definite","delicate","deliver","demand","demonstrate","denial","dense","deposit","depress","derive","deserve","desirable","despair","detect","deteriorate","determine","devise","devote","diagnose","differ","diminish","discard","discipline","discourse","discrete","dismiss","dispatch","displace","dispose","dissent","distinct","distribute","diverse","domain","dominate","donate","dramatic","dynamic","economic","elaborate","elicit","eligible","embark","embrace","emerge","emigrate","emission","emphasize","empirical","employ","endeavor","enhance","enormous","ensure","enterprise","enthusiasm","entitle","environment","equip","equivalent","erode","essential","establish","estimate","evaluate","evident","evolve","exaggerate","exceed","excellent","exchange","exclude","execute","exhaust","exhibit","expand","explicit","expose","extent","external","extract","fabric","facility","factor","faculty","famine","fashion","feasible","flourish","forbid","formulate","foster","foundation","framework","frequency","friction","fundamental","generate","genuine","geography","glimpse","gloomy","govern","grant","guarantee","guidance","halt","harmony","hazard","hemisphere","hesitate","hierarchy","highlight","horizon","hostile","humble","hypothesis","identical","ideology","ignorance","illustrate","imitate","immense","implement","implication","impose","impress","incline","incredible","independence","indicate","indifferent","individual","industrial","inevitable","inflation","influence","inherent","initial","initiative","innovative","insight","insist","inspect","inspire","instance","institute","integrate","intellect","intense","interfere","internal","interpret","intervene","intimate","invade","invest","investigate","involve","isolate","item","justify","launch","legislation","legitimate","liberal","likelihood","literature","lobby","location","maintain","manual","manufacture","margin","marvel","mediate","medium","memorial","mercy","merge","merit","methodology","militant","mineral","minimize","minimum","minister","moderate","modify","momentum","monitor","monopoly","moreover","motivate","municipal","mutual","navigate","necessity","negative","negotiate","nerve","neutral","nominate","norm","notion","novel","nuclear","nurture","obligation","obscure","observe","obstacle","obtain","occasion","occupy","occurrence","offend","omit","onwards","opaque","operator","opponent","oppose","opt","optimize","orbit","orient","origin","originate","ornament","outcome","outline","output","overall","overcome","overlap","overlook","overseas","overwhelm","ownership","paradox","parallel","parliament","participate","particle","partnership","passion","passive","patent","patience","patriot","penalty","pending","pension","perceive","permanently","permission","perpetual","persist","perspective","persuade","phenomenon","philosophy","physical","plausible","platform","plenty","policy","politic","pollute","portion","portray","position","positive","possess","potential","poverty","practical","precede","precise","predict","predominant","preliminary","premise","prescribe","preserve","preside","pressure","prestige","presumably","prevail","previous","primary","prime","primitive","principal","principle","prior","priority","privilege","procedure","proceed","proclaim","profound","prohibit","project","prominent","promote","prompt","proof","proportion","proposal","prospect","prosperous","provoke","publication","pursue","qualify","quantity","quarter","radical","radius","random","rapid","ratio","rational","react","realm","rebel","recall","receipt","recipe","recognition","recommend","recover","recruit","refine","reflect","reform","refuge","refuse","region","register","regulate","reign","reinforce","reject","relate","relative","release","relevant","reluctance","rely","remark","remedy","render","renew","renowned","repay","repeal","reproduce","reputation","resemble","reserve","reside","resign","resist","resolve","resource","respective","respond","restore","restrain","restrict","resume","retain","retreat","retrieve","reveal","revenue","reverse","revive","rigid","rival","robust","rural","sacrifice","salient","sample","satisfy","scarce","scheme","scrutiny","secondary","sector","secure","segment","seize","sensitive","sequence","session","settle","severe","shelter","shrug","significant","simulate","simultaneous","sincere","singular","site","skeptical","solemn","solid","solitary","sophisticated","sovereign","specify","sphere","spontaneous","stability","stagnant","statistics","status","statute","steep","stimulate","stipulate","strain","strategy","subordinate","subsidy","substance","substantial","substitute","subtle","succeed","sufficient","summit","summon","superficial","superior","supplement","suppress","supreme","surge","surpass","surplus","survey","survive","suspect","suspend","sustain","symbol","sympathy","syndrome","synthesize","tackle","tamper","tariff","temper","temporary","tenant","tentative","terminate","terrace","territory","testify","texture","thereby","thrive","tolerate","torture","toxic","trace","tradition","tragic","transfer","transform","transient","transmit","transparent","transplant","trigger","triumph","turbulent","ultimate","unanimous","undergo","underlie","undermine","undertake","uneven","uniform","unify","unprecedented","upright","urban","urge","utilize","utterance","vacant","vague","valid","vanish","variable","verify","versatile","vessel","veteran","viable","vibrate","victim","vigorous","violate","virtual","visa","visual","vital","volatile","volume","voluntary","vulnerable","warrant","welfare","whereas","witness","wretched","yield"]},
+  cet6:{name:"CET-6 高频核心", words:["abolish","abundance","academy","accession","acupuncture","adhere","adjacent","administer","adolescent","advent","aerial","aesthetic","affiliate","aggravate","agitate","ailment","alleviate","allocate","alternately","altruistic","ambiguity","amend","analogy","anonymous","apparatus","articulate","ascertain","aspiration","assault","assert","asset","assimilate","attorney","audit","authentic","authoritative","authorize","autonomous","avert","barren","betrayal","bewilder","bias","bleak","blunder","boost","boycott","breach","brisk","bulletin","bureaucracy","cadre","calamity","campaign","candid","capable","caption","carcass","casualty","catastrophe","cater","celebrity","census","certify","champion","chaos","characterize","charity","chronic","circulate","civic","clarity","cluster","coincide","collaborate","collide","commence","commodity","compatible","compensate","competence","compile","complement","compliance","complication","comply","component","compound","comprise","compulsory","concede","conceive","condense","confidential","conform","confront","congestion","consecutive","consensus","consolidate","conspicuous","constrain","consultant","contamination","contemplate","contempt","contradict","converge","cordial","correlate","corrode","corrupt","cosmic","counterpart","courtesy","criterion","crude","cultivate","cumulative","curb","curriculum","dazzle","deceive","decent","decisive","deduce","deficiency","deficit","degrade","deity","deliberately","delusion","denote","deprive","derivative","designate","deteriorate","deviate","devotion","diagnose","differentiate","diffuse","dilemma","dilettante","diligent","dilute","dimension","diminish","discern","disclose","discrepancy","disguise","dismay","dispatch","disperse","displace","disposition","disrupt","dissipate","distort","diverge","divert","domain","donate","doom","drastic","dubious","duplicate","dwell","eccentric","eclipse","efficiency","eject","elaborate","elapse","elevate","elicit","eligible","eloquent","emancipate","embark","embassy","embody","eminent","empirical","enact","enclosure","endeavor","endow","endurance","engagement","engulf","enhance","enrich","enroll","entail","enthusiastic","entreat","entwine","envisage","epidemic","equator","erosion","escalate","escort","essence","estate","eternal","evacuate","evaporate","evoke","exaggerate","exert","exile","exotic","expedition","expire","explicit","extravagant","fabricate","facet","facilitate","faction","fake","fascinate","fasten","fatalistic","fatigue","faulty","feasible","federation","feeble","fertile","flaw","flexible","fling","forbid","forestry","formidable","formulate","fortify","fossil","foster","fraud","friction","furious","gamble","gasp","gauge","generalize","genetics","gigantic","glimpse","gorgeous","grieve","grim","grope","haul","haunt","hazard","heave","hemisphere","herb","heredity","hesitate","hijack","hinder","hitherto","homogeneous","hospitality","hostile","humiliate","hypothesis","ideology","ignite","illuminate","illusion","imitate","immense","impartial","imperative","implement","impulse","incidence","inclination","indignation","induce","indulge","infectious","infer","infinite","inflate","infrastructure","inherent","inherit","inhibit","initiate","inject","inland","innovation","insane","inspiration","installment","instantaneous","instinct","insulate","intact","integral","integrate","integrity","intellect","intensify","interact","intercourse","interface","interim","intermediary","internalize","interplay","intersect","intimate","intricate","intrigue","intuition","invalid","inventory","invert","irritate","junction","junk","jury","kidnap","latent","latitude","legislation","legitimate","leisure","liability","liable","linkage","litter","lively","locomotive","lounge","lubricate","luminous","lunar","magnify","magnitude","maintenance","maneuver","manifest","manipulate","manuscript","marble","margin","masculine","meditate","melancholy","melody","memorize","menace","mercy","merge","merit","mesh","metabolism","migrate","militant","mingle","minimize","miraculous","mischief","misery","mission","mobility","molecule","momentum","monopoly","morale","mortgage","motivate","municipal","murder","muscular","mutual","naive","navigation","necessitate","negotiate","neutralize","nourish","novel","nuisance","numb","nutrition","oblige","obscure","obsession","obsolete","obstacle","odds","offset","ominous","omit","opaque","optimal","orbit","ordeal","orientation","originate","oscillate","oust","outbreak","outfit","outlet","outrage","output","overhead","overlap","overthrow","overwhelm","oxide","ozone","pact","pamphlet","paradox","parallel","paralyze","parameter","parasite","partiality","patent","pathetic","patriot","patron","peer","penalty","pendant","penetrate","perceive","peril","periodical","perish","permanent","permeate","perpetual","perplex","persecute","perseverance","persist","personnel","perspective","pervade","petition","petty","phase","phenomenon","pier","pilgrim","plausible","plead","pledge","plunge","poison","ponder","portable","portray","postulate","potent","pottery","practicable","preach","precaution","precipitate","preclude","predecessor","predominant","premature","premier","premise","preside","prestige","presumably","prevail","prevalent","prey","priest","prime","primarily","primitive","privately","probe","procedure","proclaim","prodigy","productive","profess","proficiency","profile","prohibit","prolong","prominent","promising","prompt","propel","prophet","proposition","prose","prospect","prosper","protest","proverb","provoke","prudent","publication","punctual","puppet","purely","pursuit","qualification","qualitative","quantify","quantitative","quarterly","queer","quench","quiver","radial","radically","rainbow","rally","random","ratio","ravage","rave","reactor","realm","reap","rebellion","receipt","recipe","reciprocal","reckon","reclaim","reconcile","rectify","redundant","referee","refinery","refute","regime","reign","reinforce","rejoice","relay","reliance","relic","relish","remainder","remnant","renaissance","render","renovate","renown","repay","repel","repertoire","representative","repress","reproach","reptile","requisite","rescue","resemblance","resent","reservoir","reside","residual","residue","resonance","respectable","respectful","respiration","restoration","resume","retention","retort","retrieve","retrospect","revelation","revenge","revenue","reverse","revision","revival","revolve","rigorous","rim","rip","ritual","rivalry","robust","rotary","royalty","rural","rust","sacred","salute","sanction","saturate","savage","scar","scent","scope","scramble","scrutiny","sculpture","seam","sector","sediment","seemingly","segment","seminar","sensation","sentiment","sequence","serial","serene","shabby","shatter","shrink","shrub","shudder","siege","signify","silicon","simulate","simultaneous","skeleton","skeptical","slack","slaughter","slender","slim","smash","smuggle","snatch","soar","solemn","solidarity","solitary","soluble","somatic","soothe","sovereign","spacious","specification","spectacle","spectator","spectrum","speculation","sphere","spiral","spiritual","splash","split","spokesman","sponsor","spontaneous","sprinkle","squad","stability","stagger","stagnant","stainless","stall","staple","static","stationary","statistics","statute","steer","stellar","stem","stereotype","stern","stimulus","stipulate","stir","strain","stratagem","streamline","strife","striking","strive","stubborn","stumble","sturdy","subdue","subjective","sublime","submarine","submerge","submission","subordinate","subsidy","subsidiary","substantiate","subtle","successor","sue","suffice","suite","sulfur","summarize","summit","summon","superb","superiority","supersonic","supervise","supplement","suppress","surge","surpass","surplus","surrender","surveillance","susceptible","suspension","suspicion","sustain","swamp","symmetry","sympathize","symposium","syndrome","synthesis","synthesize","tablet","tackle","tamper","tariff","tarnish","tease","tedious","temperament","tempo","tenant","tendency","tender","tense","tentative","terminal","terminate","terrace","terrain","testify","testimony","texture","thanksgiving","theft","theme","theoretical","therapy","thereby","thorough","threshold","thrive","thrust","tick","tile","tilt","timber","timid","tiresome","tolerant","tomb","topple","torment","toss","toxic","trait","transaction","transcript","transient","transit","transmission","transplant","traverse","treaty","tremble","tremendous","tribe","tribute","trigger","triple","trivial","tropic","trusteeship","tuberculosis","tug","tumor","turbine","turbulent","twist","ultimate","unanimous","underestimate","undergo","undergraduate","underlie","undermine","underscore","undertake","underwear","undesirable","undo","uneasy","unemployment","unequal","unexpected","unify","union","unique","unity","universe","unpredictable","upholstery","uppermost","uprising","upset","urban","usage","usher","utilize","utmost","utterance","vacancy","vagrant","validity","valve","vanish","vanity","variable","vegetation","veil","velocity","vendor","verge","verify","versatile","verse","veto","viable","vibrant","vibrate","victim","vigilant","vigorous","village","vindicate","violate","virgin","virtual","viscosity","vivid","volley","voluntary","vow","voyage","vulgar","vulnerable","wade","wag","wander","ward","warrant","waver","wayward","weary","weave","wedge","wharf","whereabouts","whereby","whirl","wholesome","widen","widespread","wilderness","willow","windy","wink","wisdom","wit","withdraw","wither","withstand","witness","workshop","worship","wreck","wrench","wretched","wrinkle","yacht","yawn","yield","youngster","zeal","zenith","zigzag"]},
+  ielts:{name:"雅思核心", words:["abandon","abstract","academy","access","accommodate","accompany","accomplish","accumulate","accurate","achieve","acknowledge","acquire","adapt","adequate","adjust","administer","adolescent","advantage","advocate","aesthetic","affect","afford","aggregate","agriculture","aircraft","alcohol","alleviate","alternative","ambiguous","ambitious","analyze","ancestor","anticipate","anxiety","apparent","applicable","appreciate","approach","appropriate","approve","arbitrary","architect","arid","arouse","artistic","aspect","assemble","assess","asset","assume","assure","atmosphere","attain","attribute","audience","authentic","authorize","automatic","autonomous","available","awareness","barren","behavior","beneficial","bias","biodiversity","boost","boundary","breakthrough","breed","bureaucracy","capacity","category","cater","cease","census","chaos","chronic","circumstance","cite","civilization","clarify","client","climate","coincide","collaborate","collapse","commence","commodity","community","compatible","compensate","competence","compile","complement","component","compound","comprehensive","comprise","compulsory","conceive","concentrate","concept","concern","conclude","concrete","condemn","condition","conduct","confer","confine","confirm","conflict","conform","confront","congestion","consecutive","consensus","consent","consequence","conservation","consist","constant","constitute","constraint","construct","consult","consume","contact","contaminate","contemporary","contempt","contend","contest","context","contingent","contract","contradict","contrary","contrast","contribute","controversy","convention","converge","conversion","convince","cooperate","coordinate","correlate","correspond","corrupt","council","counterpart","criterion","crucial","cultivate","curriculum","cycle","database","dazzling","deceive","decent","decline","dedicate","deem","deficiency","deficit","degrade","deliberate","delusion","demographic","demonstrate","denote","dense","deprive","derive","designate","destructive","detect","deteriorate","determine","devastate","devise","devote","diagnose","differentiate","diffuse","digital","dilemma","diligent","diminish","discern","discard","discipline","disclose","discrete","discrepancy","disease","disguise","dismiss","disorder","dispatch","disperse","displace","disposal","dispute","disrupt","dissipate","distinct","distinguish","distribute","district","diverse","divert","domain","domestic","dominate","donate","downside","drastic","drought","dynamic","eccentric","ecological","economy","elaborate","eligible","eliminate","embark","embody","emerge","emission","emphasize","empirical","employ","enable","enact","encounter","endeavor","endorse","endure","enhance","enormous","enrich","ensure","enterprise","enthusiasm","entitle","environment","envisage","epidemic","equivalent","erode","eruption","essential","establish","estate","estimate","ethical","evaluate","evident","evolution","exaggerate","exceed","excellent","exception","excessive","exclude","execute","exempt","exhaust","exhibit","exist","expand","expedition","expense","experiment","expertise","explicit","exploit","expose","extinction","extract","facility","factor","faculty","famine","feasible","flourish","forbid","forecast","formulate","fossil","foster","foundation","framework","frequency","friction","fulfil","fundamental","furnish","generate","genetic","genuine","geography","gigantic","global","govern","grant","graphic","guarantee","habitat","halt","hamper","harmony","hazard","hemisphere","heritage","hesitate","hierarchy","highlight","horizon","hostile","humble","hypothesis","identical","ideology","ignorance","illustrate","immense","impact","implement","implication","impose","impoverish","impressive","incline","incredible","independence","indicate","indifferent","indigenous","individual","industrial","inevitable","infant","infection","inflate","influence","infrastructure","inherent","inherit","initial","initiate","initiative","innovative","input","insight","insist","inspect","inspire","installation","instance","institute","instruct","instrument","insulate","intact","integral","integrate","intellect","intense","interact","interfere","interior","internal","international","interpret","interrupt","intervene","intimate","intricate","intuition","invade","invent","invest","investigate","involve","irrigate","isolate","item","iterate","justify","landscape","launch","legislation","legitimate","leisure","liability","liberal","likelihood","literacy","litter","livestock","lobby","local","location","logic","maintain","majority","mammal","management","manifest","manipulate","manual","manufacture","margin","marine","market","medieval","mental","mentor","mercy","merge","merit","metabolism","methodology","migrate","militant","mineral","minimize","minimum","ministry","minority","mission","mobile","moderate","modernize","modify","momentum","monitor","monopoly","monument","moreover","motivate","municipal","mutual","navigate","necessity","negative","negotiate","nerve","network","neutral","nominate","norm","notion","nourish","novel","nuclear","nurture","nutrition","obligation","obscure","observe","obstacle","obtain","occasion","occupy","occurrence","offend","omit","opaque","operator","opponent","oppose","opt","optimize","orbit","orchestra","organ","orient","origin","originate","ornament","outbreak","outcome","outfit","outline","output","overall","overcome","overlap","overlook","overseas","overwhelm","ownership","ozone","pact","paleolithic","paradox","parallel","paralyze","parameter","parasite","participate","particle","partnership","passion","passive","patent","patience","patriot","penalty","pending","pension","perceive","permanently","permission","perpetual","persist","perspective","persuade","pesticide","phenomenon","philosophy","physical","plausible","platform","plenty","policy","politic","pollute","portion","portray","position","positive","possess","potential","poverty","practical","precede","precise","predict","predominant","preliminary","premise","prescribe","preserve","preside","pressure","prestige","presumably","prevail","previous","primary","prime","primitive","principal","principle","prior","priority","privilege","procedure","proceed","proclaim","profound","prohibit","project","prominent","promote","prompt","proof","proportion","proposal","prospect","prosperous","provoke","publication","pursue","qualify","quantity","quarter","radical","radius","random","rapid","ratio","rational","react","realm","rebel","recall","receipt","recipe","recognition","recommend","recover","recruit","refine","reflect","reform","refuge","refuse","region","register","regulate","reign","reinforce","reject","relate","relative","release","relevant","reluctance","rely","remark","remedy","render","renew","renowned","repay","repeal","reproduce","reputation","resemble","reserve","reside","resign","resist","resolve","resource","respective","respond","restore","restrain","restrict","resume","retain","retreat","retrieve","reveal","revenue","reverse","revive","rigid","rival","robust","rural","sacrifice","salient","sample","satisfy","scarce","scheme","scrutiny","secondary","sector","secure","segment","seize","sensitive","sequence","session","settle","severe","shelter","shrug","significant","simulate","simultaneous","sincere","singular","site","skeptical","solemn","solid","solitary","sophisticated","sovereign","specify","sphere","spontaneous","stability","stagnant","statistics","status","statute","steep","stimulate","stipulate","strain","strategy","subordinate","subsidy","substance","substantial","substitute","subtle","succeed","sufficient","summit","summon","superficial","superior","supplement","suppress","supreme","surge","surpass","surplus","survey","survive","suspect","suspend","sustain","symbol","sympathy","syndrome","synthesize","tackle","tamper","tariff","temper","temporary","tenant","tentative","terminate","terrace","territory","testify","texture","thereby","thrive","tolerate","torture","toxic","trace","tradition","tragic","transfer","transform","transient","transmit","transparent","transplant","trigger","triumph","turbulent","ultimate","unanimous","undergo","underlie","undermine","undertake","uneven","uniform","unify","unprecedented","upright","urban","urge","utilize","utterance","vacant","vague","valid","vanish","variable","verify","versatile","vessel","veteran","viable","vibrate","victim","vigorous","violate","virtual","visa","visual","vital","volatile","volume","voluntary","vulnerable","warrant","welfare","whereas","witness","wretched","yield"]}
+};
+function wsLabel(v){ return v===0?"陌生":v===1?"学习中":v===2?"已掌握":"忽略"; }
+function renderWSMgr(){
+  const el = document.getElementById("wsmgr");
+  if(!el) return;
+  const ws = wordStates();
+  const cnt = {"-1":0}; let total=0;
+  Object.values(ws).forEach(f=>{ total++; cnt[f.st]=(cnt[f.st]||0)+1; });
+  const list = Object.entries(ws)
+    .filter(([k,f])=> (wsf==="all"||String(f.st)===wsf) && (!wsk || (f.w||k).toLowerCase().includes(wsk)))
+    .slice(0,300);
+  el.innerHTML = `
+    <h2 class="sec">📚 词库管理（词族粒度 · M2）</h2>
+    <div class="rec-banner">共 ${total} 个词族 · 陌生 ${cnt[0]||0} · 学习中 ${cnt[1]||0} · 已掌握 ${cnt[2]||0} · 忽略 ${cnt["-1"]}</div>
+    <div class="filters">
+      ${[["all","全部"],["0","陌生"],["1","学习中"],["2","已掌握"],["-1","忽略"]].map(([v,l])=>
+        `<button class="chip ${wsf===v?"on":""}" onclick="wsf='${v}';renderWSMgr()">${l}</button>`).join("")}
+    </div>
+    <input class="search" style="margin-top:10px" placeholder="搜索词根…" value="${wsk}"
+      oninput="wsk=this.value.toLowerCase();renderWSMgr()">
+    <div class="vlist" style="margin-top:10px">
+      ${list.map(([k,f])=>`<div class="vitem">
+        <span class="w">${f.w||k}</span>
+        <span class="m">${wsLabel(f.st)} · 查 ${f.n} 次 · 词族 ${k}*</span>
+        <button class="iconbtn" onclick="event.stopPropagation();speakText('${(f.w||k).replace(/'/g,"\\'")}')">🔊</button>
+        <button class="iconbtn" onclick="wsToggle('${k}')">切换状态</button>
+        <button class="iconbtn" onclick="wsDel('${k}')">🗑</button>
+      </div>`).join("") || `<div class="empty">暂无记录：阅读时点词即自动进入词库。</div>`}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn ghost small" onclick="wsBatch()">把筛选结果全部标为已掌握</button>
+      <button class="btn ghost small" onclick="wsExport()">📤 导出 JSON</button>
+      <button class="btn ghost small" onclick="document.getElementById('wsImportFile').click()">📥 导入 JSON</button>
+      <input type="file" id="wsImportFile" accept=".json" style="display:none" onchange="wsImport(this)">
+    </div>
+    <h2 class="sec" style="margin-top:20px">⚡ 预设词表：一键标为已掌握，正文不再高亮这些词</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      ${Object.entries(PRESETS).map(([k,p])=>
+        `<button class="btn ghost small" onclick="markPreset('${k}')">${p.name}（${p.words.length}词）</button>`).join("")}
+    </div>`;
+}
+function wsToggle(k){
+  const ws = wordStates(); const f = ws[k];
+  if(!f) return;
+  f.st = f.st===-1 ? 0 : (f.st+1)%3;
+  saveWS(); renderWSMgr();
+}
+function wsDel(k){
+  const ws = wordStates();
+  delete ws[k]; saveWS(); renderWSMgr();
+}
+function wsBatch(){
+  const ws = wordStates();
+  let n=0;
+  Object.entries(ws).forEach(([k,f])=>{
+    if((wsf==="all"||String(f.st)===wsf) && (!wsk || (f.w||k).toLowerCase().includes(wsk))){ f.st=2; n++; }
+  });
+  saveWS(); renderWSMgr();
+  alert(`已把 ${n} 个词族标为已掌握`);
+}
+function wsExport(){
+  const data = JSON.stringify({wstates:wordStates(), vocab:store.vocab, exportedAt:new Date().toISOString()}, null, 2);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], {type:"application/json"}));
+  a.download = "lizzread-vocab.json";
+  a.click();
+}
+function wsImport(input){
+  const f = input.files && input.files[0];
+  input.value = "";
+  if(!f) return;
+  f.text().then(txt=>{
+    try{
+      const j = JSON.parse(txt);
+      const ws = wordStates();
+      Object.entries(j.wstates||{}).forEach(([k,v])=>{
+        if(!ws[k] || (v.n||0) > (ws[k].n||0)) ws[k] = v;
+      });
+      saveWS();
+      if(Array.isArray(j.vocab)){
+        const cur = store.vocab;
+        j.vocab.forEach(x=>{ if(!cur.some(y=>y.w===x.w)) cur.push(x); });
+        store.vocab = cur;
+      }
+      renderSReview();
+      alert("导入完成");
+    }catch(e){ alert("JSON 解析失败：" + e.message); }
+  });
+}
+function markPreset(k){
+  const ws = wordStates();
+  let n=0;
+  PRESETS[k].words.forEach(w=>{
+    const stem = stemOf(w);
+    if(!ws[stem] || ws[stem].st!==2){ ws[stem] = {st:2, n:Math.max(ws[stem]?.n||0, 9), w}; n++; }
+  });
+  saveWS(); renderWSMgr();
+  alert(`《${PRESETS[k].name}》：${n} 个词族已标为已掌握`);
+}
+
+/* =====================================================
+  M2：划选弹层（查首词 / 整段翻译 / 朗读）
+===================================================== */
+document.addEventListener("mouseup", e=>{
+  const pop = document.getElementById("selpop");
+  if(!pop || e.target.closest("#selpop")) return;
+  const sel = (window.getSelection().toString()||"").trim();
+  if(!sel || sel.length<2 || !e.target.closest("#view-reader .en")){
+    pop.style.display="none"; return;
+  }
+  const r = window.getSelection().getRangeAt(0).getBoundingClientRect();
+  pop.dataset.sel = sel.slice(0,300);
+  pop.style.left = Math.max(10, Math.min(r.left+window.scrollX, window.innerWidth-310))+"px";
+  pop.style.top  = (r.bottom+window.scrollY+8)+"px";
+  document.getElementById("selpopTxt").textContent = sel.length>60 ? sel.slice(0,60)+"…" : sel;
+  document.getElementById("selpopOut").textContent = "";
+  pop.style.display = "block";
+});
+function selTranslate(){
+  const out = document.getElementById("selpopOut");
+  out.textContent = "翻译中…";
+  mtFetch(document.getElementById("selpop").dataset.sel)
+    .then(t=>{ out.textContent = t; })
+    .catch(()=>{ out.textContent = "翻译失败，请稍后重试"; });
+}
+function selWord(){
+  const pop = document.getElementById("selpop");
+  const sel = pop.dataset.sel || "";
+  const w = (sel.match(/[A-Za-z]+/)||[])[0];
+  if(!w || !curBook) return;
+  const all = getSents(curBook.id);
+  const si = all.findIndex(s=>s.en.toLowerCase().includes(w.toLowerCase()));
+  if(si<0) return;
+  const sp = [...document.querySelectorAll(`#view-reader .sent[data-si="${si}"] .w`)]
+    .find(x=>x.textContent.toLowerCase().replace(/[^a-z'-]/g,"")===w.toLowerCase());
+  if(sp) sp.click();
+  pop.style.display = "none";
+}
+function selSpeak(){ speakText(document.getElementById("selpop").dataset.sel); }
+
+/* =====================================================
   十二、初始化
 ===================================================== */
 document.getElementById("searchBox").addEventListener("input", renderLibrary);
 renderLibrary();
 renderTestIntro();
 renderVocab();
+/* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
+if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
 </script>
 </body>
 </html>

@@ -1,0 +1,12 @@
+{
+  "name": "LIZZREAD · 线上图书馆",
+  "short_name": "LIZZREAD",
+  "description": "英文名著双语阅读 · 点词查义 · 生词复习",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F6F1E7",
+  "theme_color": "#2F5D50",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
