@@ -839,8 +839,11 @@ function bookCard(b, rec){
 /* =====================================================
   八、书籍详情页
 ===================================================== */
-/* 全文阅读与译本检索：Open Library（互联网档案馆，稳定）+ 豆瓣 */
+/* 全文阅读与译本检索：有编号的书直连古腾堡镜像 pg<l>af（国内可访问）；
+   无编号的书走 Open Library 检索 */
 function gutenbergUrl(b){
+  if(typeof b.gb === "number")
+    return `https://gutenberg.pglaf.org/cache/epub/${b.gb}/pg${b.gb}.txt`;
   return "https://openlibrary.org/search?q="+encodeURIComponent(b.t+" "+b.a);
 }
 function openBook(id){
@@ -869,8 +872,10 @@ function openBook(id){
     go("book"); return;
   }
   const b = BOOKS.find(x=>x.id===id);
+  fullMode = null;   // 从详情页进入的阅读都从样章/全文第一处开始
   const glink = gutenbergUrl(b);
   const zhlink = "https://www.douban.com/search?q="+encodeURIComponent(b.zh);
+  const hasFull = typeof b.gb === "number" && FULLSET[b.gb];
   document.getElementById("view-book").innerHTML = `
     <span class="back" onclick="go('library')">← 返回书城</span>
     <div class="detail-head">
@@ -887,14 +892,18 @@ function openBook(id){
         </div>
         <p style="margin-bottom:14px">${b.d}</p>
         <div class="links">
-          <p>🔗 全文在线读：<a href="${glink}" target="_blank" rel="noopener">Open Library ↗</a></p>
+          <p>🔗 全文在线读：<a href="${glink}" target="_blank" rel="noopener">${typeof b.gb==="number"?"古腾堡镜像全文 ↗":"Open Library 检索 ↗"}</a></p>
           <p>🇨🇳 中文译本检索：<a href="${zhlink}" target="_blank" rel="noopener">搜索中文译本 ↗</a></p>
         </div>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+          ${hasFull
+            ? `<button class="btn" onclick="openFull('${b.id}')">📚 整本阅读（站内全文）</button>`
+            : ""}
           ${SAMPLES[b.id]
-            ? `<button class="btn" onclick="openReader('${b.id}')">📖 双语试读</button>
+            ? `<button class="btn ${hasFull?"ghost":""}" onclick="openReader('${b.id}')">📖 双语试读</button>
                <a class="btn ghost" href="${glink}" target="_blank" rel="noopener">去读英文全文 ↗</a>`
-            : `<a class="btn" href="${glink}" target="_blank" rel="noopener">📖 在线阅读英文全文 ↗</a>`}
+            : (hasFull ? ""
+              : `<a class="btn" href="${glink}" target="_blank" rel="noopener">📖 在线阅读英文全文 ↗</a>`)}
         </div>
       </div>
     </div>
@@ -905,6 +914,100 @@ function openBook(id){
 /* =====================================================
   九、双语阅读器：逐句对照(可关) + 背景色 + 颜色标记 + TTS
 ===================================================== */
+/* ---- 站内整书阅读：46 本热门书全文已打包进 books/ 目录 ---- */
+const FULLSET = {"1342":1,"84":1,"11":1,"1661":1,"2701":1,"1400":1,"46":1,"98":1,"174":1,
+  "158":1,"161":1,"76":1,"1260":1,"74":1,"16":1,"55":1,"120":1,"345":1,"2591":1,"215":1,
+  "35":1,"36":1,"43":1,"219":1,"1232":1,"2542":1,"5200":1,"205":1,"108":1,"1952":1,
+  "863":1,"2814":1,"1184":1,"996":1,"2600":1,"2554":1,"28054":1,"1399":1,"145":1,
+  "1497":1,"3207":1,"1998":1,"6130":1,"1727":1,"244":1,"271":1};
+const fullCache = {};        // bookId → {sents:[{en,zh}], chapters:[{t,start,end}]}
+let fullMode = null;         // {id, chap} 整书阅读模式
+/* 解析古腾堡纯文本：去头尾 → 按空行分段 → 按章节标题分章 → 全书分句 */
+function parseFull(txt){
+  let t = txt.replace(/\r/g,"");
+  const st = t.search(/\*\*\*\s*START OF (THE|THIS) PROJECT/i);
+  if(st > -1) t = t.slice(st).replace(/^[^\n]*\n/, "");
+  const en = t.search(/\*\*\*\s*END OF (THE|THIS) PROJECT/i);
+  if(en > -1) t = t.slice(0, en);
+  const paras = t.split(/\n\s*\n/).map(s=>s.replace(/\s+/g," ").trim())
+    .filter(p=>p && !/^(image|illustration|\[illustration)/i.test(p));
+  const sents = [], chapters = [];
+  let heading = "开篇";
+  const closeChap = ()=>{
+    const start = chapters.length ? chapters[chapters.length-1].end : 0;
+    chapters.push({t:heading, start, end:sents.length});
+  };
+  for(const p of paras){
+    if(p.length < 70 && /((chapter|canto|stave|act|book|part|letter|scene)\s+[ivxlc0-9]+|^[ivxlcdm]{1,7}$)/i.test(p)){
+      closeChap();
+      heading = p.slice(0, 40);
+    }else{
+      p.split(/(?<=[.!?…"”])\s+/).forEach(s=>{ s = s.trim(); if(s) sents.push({en:s, zh:null}); });
+    }
+  }
+  closeChap();
+  let chs = chapters.filter(c=>c.end > c.start);
+  if(chs.length < 4){   // 标题识别不出来时，每 250 句切一部分
+    chs = [];
+    for(let i=0; i<sents.length; i+=250)
+      chs.push({t:`第 ${chs.length+1} 部分`, start:i, end:Math.min(i+250, sents.length)});
+  }
+  return {sents, chapters:chs};
+}
+/* 整书阅读入口：加载全文 → 分章 → 打开阅读器 */
+async function openFull(id){
+  curBook = BOOKS.find(x=>x.id===id);
+  if(fullCache[id]){ fullMode = {id, chap:0}; openReader(id); return; }
+  document.getElementById("view-reader").innerHTML =
+    `<div class="reader"><div class="rd-head"><h2>《${curBook.t}》全文加载中…</h2></div>
+     <p class="tip">首次加载约需几秒，加载后可离线阅读。</p></div>`;
+  go("reader");
+  try{
+    const txt = await (await fetch("./books/pg"+curBook.gb+".txt")).text();
+    fullCache[id] = parseFull(txt);
+    fullMode = {id, chap:0};
+    openReader(id);
+  }catch(e){
+    document.getElementById("view-reader").innerHTML =
+      `<div class="reader"><div class="rd-head"><h2>加载失败</h2></div>
+       <p class="tip">全文文件缺失（books/pg${curBook.gb}.txt）。${e.message}</p>
+       <button class="btn ghost small" onclick="openBook('${id}')">← 返回详情</button></div>`;
+  }
+}
+function jumpChapter(n){
+  if(!fullMode) return;
+  fullMode.chap = Math.max(0, Math.min(fullCache[curBook.id].chapters.length-1, Number(n)));
+  openReader(curBook.id);
+  window.scrollTo(0, 0);
+}
+/* 机翻本章：按 5 句一组请求，译文写回句对象，完成后随对照开关显示 */
+async function mtChapter(){
+  if(!fullMode) return;
+  const sents = getSents(curBook.id);
+  const ch = fullCache[curBook.id].chapters[fullMode.chap];
+  const todo = [];
+  for(let i=ch.start; i<ch.end; i++) if(sents[i].zh==null) todo.push(i);
+  if(!todo.length){ alert("本章已全部翻译"); return; }
+  const btn = document.getElementById("mtChapBtn");
+  btn.disabled = true;
+  for(let p=0; p<todo.length; p+=5){
+    const grp = todo.slice(p, p+5);
+    try{
+      const t = await mtFetch(grp.map(i=>sents[i].en).join(" "));
+      const parts = t.split(/(?<=[。！？…])/).map(s=>s.trim()).filter(Boolean);
+      grp.forEach((gi,k)=>{
+        sents[gi].zh = (parts.length===grp.length && parts[k]) ? parts[k] : (k===0 ? t : "");
+      });
+    }catch(e){
+      grp.forEach(gi=>{ sents[gi].zh = ""; });
+    }
+    btn.textContent = `🌐 机翻本章 ${Math.min(p+5, todo.length)}/${todo.length}`;
+  }
+  btn.disabled = false;
+  btn.textContent = "🌐 机翻本章 ✓";
+  if(store.showzh) openReader(curBook.id);
+}
+
 function getBookMarks(id){
   const m = store.marks;
   if(!m[id]) m[id] = {w:{}, s:{}};
@@ -916,7 +1019,11 @@ function openReader(id){
   /* 导入书没有 BOOKS 记录，构造一个临时对象供标题显示 */
   curBook = BOOKS.find(x=>x.id===id) ||
     { id, t:(store.imports.find(x=>x.id===id)||{t:"导入书籍"}).t };
-  const sents = getSents(id);   // 内置书 = 样章；导入书 = 全文分句
+  const sents = getSents(id);   // 内置书 = 样章；导入书 = 全文分句；整书 = 全书
+  const isFull = fullMode && fullMode.id===id && fullCache[id];
+  const rng = isFull
+    ? (c=>[c.start, c.end])(fullCache[id].chapters[fullMode.chap])
+    : [0, sents.length];        // 整书模式只渲染当前章（句序号仍是全书全局序号）
   const bm = getBookMarks(id);
   const ws = wordStates();   // M2 词族状态（用于正文高亮）
   /* 英文按单词切片包 span（si 为所在句序号，词标记在两种模式下都生效） */
@@ -935,8 +1042,9 @@ function openReader(id){
   let html = "";
   if(store.mode === "para"){
     /* 整段模式：每 3 句合成一段，原文连续排版；开启对照时整段译文在下方 */
-    for(let p=0; p<sents.length; p+=3){
-      const grp = sents.slice(p, p+3);
+    for(let p=rng[0]; p<rng[1]; p+=3){
+      const end = Math.min(p+3, rng[1]);
+      const grp = sents.slice(p, end);
       html += `<div class="sent para" data-si="${p}">
         <div class="en" onclick="wordClick(event)">${grp.map((s,k)=>wordSpans(s,p+k)).join(" ")}</div>
         <div class="zh">${zhBlock("p"+p, grp)}</div>
@@ -948,7 +1056,8 @@ function openReader(id){
     }
   }else{
     /* 逐句模式：一句一卡，含整句标记色条 */
-    html = sents.map((s,i)=>{
+    html = sents.slice(rng[0], rng[1]).map((s,k)=>{
+      const i = rng[0]+k;
       const en = wordSpans(s,i);
       const sm = bm.s[i] ? (" sm"+bm.s[i]) : "";
       return `<div class="sent${sm}" data-si="${i}">
@@ -966,11 +1075,31 @@ function openReader(id){
       </div>`;
     }).join("");
   }
-  /* 顶部工具条：模式切换 + 双语开关 + 背景色选择 */
+  /* 顶部工具条：模式切换 + 双语开关 + 背景色选择（整书模式加章节导航与机翻本章） */
   document.getElementById("view-reader").innerHTML = `
     <div class="reader">
       <span class="back" onclick="openBook('${id}')">← 返回详情</span>
-      <div class="rd-head"><h2>${curBook.t} · 双语试读</h2></div>
+      <div class="rd-head"><h2>${curBook.t} · ${isFull ? "整本阅读" : "双语试读"}</h2></div>
+      ${isFull ? `
+      <div class="rd-tools">
+        <button class="btn ghost small" onclick="jumpChapter(${fullMode.chap-1})" ${fullMode.chap===0?"disabled":""}>← 上一章</button>
+        <select class="chip" style="width:auto;max-width:220px" onchange="jumpChapter(this.value)">
+          ${fullCache[id].chapters.map((c,i)=>
+            `<option value="${i}" ${i===fullMode.chap?"selected":""}>${c.t}</option>`).join("")}
+        </select>
+        <button class="btn ghost small" onclick="jumpChapter(${fullMode.chap+1})" ${fullMode.chap===fullCache[id].chapters.length-1?"disabled":""}>下一章 →</button>
+        <button class="btn ghost small" id="mtChapBtn" onclick="mtChapter()">🌐 机翻本章</button>
+        <span class="tip" style="display:inline;margin:0">第 ${fullMode.chap+1}/${fullCache[id].chapters.length} 章</span>
+      </div>` : `
+      <div class="rd-tools">
+        <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"排版：整段原文":"排版：逐句对照"}</button>
+        <button class="btn ghost small" id="zhToggle" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
+        <span class="tip" style="display:inline;margin:0">背景：</span>
+        ${BGS.map(([v,label,c])=>`<button class="bgdot ${store.bg===v?"on":""}"
+          style="background:${v==="dark"?"#17191B":c}" title="${label}"
+          onclick="setBg('${v}')"></button>`).join("")}
+      </div>`}
+      ${isFull ? `
       <div class="rd-tools">
         <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"排版：整段原文":"排版：逐句对照"}</button>
         <button class="btn ghost small" id="zhToggle" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
@@ -979,7 +1108,8 @@ function openReader(id){
           style="background:${v==="dark"?"#17191B":c}" title="${label}"
           onclick="setBg('${v}')"></button>`).join("")}
       </div>
-      <p class="tip">点击任意英文单词：自动弹出「本句语境义 + 平时常用义 + 英英释义」，可朗读、标记颜色、收入生词本。</p>
+      <p class="tip">点词查义 · 划选短语整段翻译 · 「机翻本章」自动翻译全章后随对照开关显示。</p>`
+      : `<p class="tip">点击任意英文单词：自动弹出「本句语境义 + 平时常用义 + 英英释义」，可朗读、标记颜色、收入生词本。</p>`}
       ${html}
     </div>`;
   go("reader");
@@ -1146,6 +1276,8 @@ async function mtOnce(key){
 const impCache = {};   // 导入书 id → 分句缓存
 /* 内置书取样章；导入书取全文分句（首次访问时生成） */
 function getSents(id){
+  /* 整书模式下返回全书句子（点词语境/标记/朗读都用全局句序号） */
+  if(fullMode && fullMode.id===id && fullCache[id]) return fullCache[id].sents;
   if(SAMPLES[id]) return SAMPLES[id];
   if(!impCache[id]){
     const rec = store.imports.find(x=>x.id===id);
