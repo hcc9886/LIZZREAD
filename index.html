@@ -92,6 +92,7 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .g-fab{background:linear-gradient(135deg,#B96A2F,#E0A45C)}
 .g-adv{background:linear-gradient(135deg,#8A4B2F,#C08A5A)}
 .g-phl{background:linear-gradient(135deg,#4B3A6B,#7A68A0)}
+.g-drama{background:linear-gradient(135deg,#7A3B3B,#A86868)}
 .g-imp{background:linear-gradient(135deg,#555F66,#8A9AA5)}
 
 /* ---------- 推荐横幅 ---------- */
@@ -323,13 +324,12 @@ body.no-zh .sent .zh{display:none}
 
 <script>
 /* =====================================================
-  一、书库数据：全部为古腾堡计划公版书（无版权风险）
-  lv: CEFR 难度  g: 类型
-  gb: 古腾堡 ebook 编号；不确定编号时用 "q:搜索词"（永远可用的站内搜索链接）
+  一、书库数据：英文书名 / 通行中文译名 / 作者 / 年份 / 难度 / 类型
+  lv: CEFR 难度  g: 类型  gb: 兼容字段（链接统一走 Open Library 检索）
 ===================================================== */
 const GENRES = {
   lit:"文学经典", mys:"侦探推理", sci:"科幻幻想",
-  fab:"童话寓言", adv:"冒险探索", phl:"哲学历史", imp:"我的导入"
+  fab:"童话寓言", adv:"冒险探索", phl:"哲学历史", drama:"戏剧诗歌", imp:"我的导入"
 };
 /* 作者中文名对照（按拉丁名查） */
 const AUTHOR_ZH = {
@@ -354,7 +354,13 @@ const AUTHOR_ZH = {
  "Niccolò Machiavelli":"马基雅维利","Thomas More":"托马斯·莫尔","Adam Smith":"亚当·斯密",
  "Charles Darwin":"达尔文","St. Augustine":"奥古斯丁","Thomas Paine":"托马斯·潘恩",
  "Frederick Douglass":"弗雷德里克·道格拉斯","W. E. B. Du Bois":"杜波依斯",
- "Laozi":"老子","Confucius":"孔子","Thomas Hobbes":"霍布斯"
+ "Laozi":"老子","Confucius":"孔子","Thomas Hobbes":"霍布斯",
+ "William Shakespeare":"莎士比亚","Albert Camus":"加缪","Leo Tolstoy":"托尔斯泰",
+ "Fyodor Dostoevsky":"陀思妥耶夫斯基","Gustave Flaubert":"福楼拜",
+ "Miguel de Cervantes":"塞万提斯","Jonathan Swift":"斯威夫特",
+ "Nathaniel Hawthorne":"霍桑","John Milton":"弥尔顿","Dante Alighieri":"但丁",
+ "Johann Wolfgang von Goethe":"歌德","Friedrich Nietzsche":"尼采",
+ "Emmuska Orczy":"奥尔齐","Dante":"但丁"
 };
 /* AI 生成的书皮图（懒加载；加载失败时回退为渐变文字封面） */
 function coverUrl(b){
@@ -481,7 +487,53 @@ const BOOKS = [
  {id:"souls",  t:"The Souls of Black Folk", zh:"黑人的灵魂", a:"W. E. B. Du Bois", y:1903, lv:"C1", g:"phl", gb:408, d:"20 世纪最重要的美国社会学文本之一。"},
  {id:"tao",    t:"Tao Te Ching", zh:"道德经(英译)", a:"Laozi", y:-400, lv:"C1", g:"phl", gb:"q:Tao Te Ching Legge", d:"反读自己母语的经典，别有趣味。"},
  {id:"analects", t:"The Sayings of Confucius", zh:"论语(英译)", a:"Confucius", y:-400, lv:"C1", g:"phl", gb:"q:Sayings of Confucius", d:"熟悉的句子读英文版，词汇量轻压力。"},
- {id:"leviathan", t:"Leviathan", zh:"利维坦", a:"Thomas Hobbes", y:1651, lv:"C2", g:"phl", gb:"q:Leviathan Hobbes", d:"社会契约论源头，长难句密布的挑战。"}
+ {id:"leviathan", t:"Leviathan", zh:"利维坦", a:"Thomas Hobbes", y:1651, lv:"C2", g:"phl", gb:"q:Leviathan Hobbes", d:"社会契约论源头，长难句密布的挑战。"},
+ /* ---- 莎士比亚戏剧 ---- */
+ {id:"sh-hamlet", t:"Hamlet", zh:"哈姆雷特", a:"William Shakespeare", y:1600, lv:"C1", g:"drama", d:"丹麦王子复仇记，四大悲剧之首。"},
+ {id:"sh-macbeth", t:"Macbeth", zh:"麦克白", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", d:"野心与弑君的悲剧。"},
+ {id:"sh-romeo", t:"Romeo and Juliet", zh:"罗密欧与朱丽叶", a:"William Shakespeare", y:1595, lv:"B2", g:"drama", d:"维罗纳的双星悲剧。"},
+ {id:"sh-othello", t:"Othello", zh:"奥赛罗", a:"William Shakespeare", y:1603, lv:"C1", g:"drama", d:"嫉妒摧毁一切的悲剧。"},
+ {id:"sh-lear", t:"King Lear", zh:"李尔王", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", d:"分家引发的疯癫与救赎。"},
+ {id:"sh-midsummer", t:"A Midsummer Night's Dream", zh:"仲夏夜之梦", a:"William Shakespeare", y:1596, lv:"B2", g:"drama", d:"精灵恶作剧的仲夏喜剧。"},
+ {id:"sh-tempest", t:"The Tempest", zh:"暴风雨", a:"William Shakespeare", y:1611, lv:"B2", g:"drama", d:"魔法师普洛斯彼罗的海岛。"},
+ {id:"sh-caesar", t:"Julius Caesar", zh:"尤利乌斯·凯撒", a:"William Shakespeare", y:1599, lv:"B2", g:"drama", d:"刺杀独裁者的后果。"},
+ {id:"sh-twelfth", t:"Twelfth Night", zh:"第十二夜", a:"William Shakespeare", y:1601, lv:"B2", g:"drama", d:"错认性别的浪漫喜剧。"},
+ {id:"sh-muchado", t:"Much Ado About Nothing", zh:"无事生非", a:"William Shakespeare", y:1599, lv:"B2", g:"drama", d:"斗嘴成真的喜剧。"},
+ {id:"sh-merchant", t:"The Merchant of Venice", zh:"威尼斯商人", a:"William Shakespeare", y:1598, lv:"B2", g:"drama", d:"一磅肉的契约。"},
+ {id:"sh-shrew", t:"The Taming of the Shrew", zh:"驯悍记", a:"William Shakespeare", y:1592, lv:"B2", g:"drama", d:"泼辣新娘的驯服喜剧。"},
+ {id:"sh-henryv", t:"Henry V", zh:"亨利五世", a:"William Shakespeare", y:1599, lv:"C1", g:"drama", d:"阿金库尔战役的国王。"},
+ /* ---- 加缪（全文链接为 Open Library 借阅/检索） ---- */
+ {id:"camus-stranger", t:"The Stranger", zh:"局外人", a:"Albert Camus", y:1942, lv:"B1", g:"lit", d:"默尔索与荒诞的开端，加缪入门首选。"},
+ {id:"camus-plague", t:"The Plague", zh:"鼠疫", a:"Albert Camus", y:1947, lv:"B2", g:"lit", d:"奥兰城封城纪事，集体抗争的寓言。"},
+ {id:"camus-fall", t:"The Fall", zh:"堕落", a:"Albert Camus", y:1956, lv:"C1", g:"lit", d:"阿姆斯特丹酒吧里的独白审判。"},
+ {id:"camus-sisyphus", t:"The Myth of Sisyphus", zh:"西西弗神话", a:"Albert Camus", y:1942, lv:"C2", g:"phl", d:"荒诞哲学的散文论述。"},
+ {id:"camus-rebel", t:"The Rebel", zh:"反抗者", a:"Albert Camus", y:1951, lv:"C2", g:"phl", d:"反抗的历史与界限。"},
+ {id:"camus-exile", t:"Exile and the Kingdom", zh:"流放与王国", a:"Albert Camus", y:1958, lv:"B2", g:"lit", d:"六篇流放主题短篇。"},
+ {id:"camus-happydeath", t:"A Happy Death", zh:"快乐的死", a:"Albert Camus", y:1971, lv:"B2", g:"lit", d:"生前未出版的遗作。"},
+ /* ---- 世界经典扩充 ---- */
+ {id:"warpeace", t:"War and Peace", zh:"战争与和平", a:"Leo Tolstoy", y:1869, lv:"C1", g:"lit", d:"拿破仑战争时期的俄国史诗。"},
+ {id:"annakarenina", t:"Anna Karenina", zh:"安娜·卡列尼娜", a:"Leo Tolstoy", y:1878, lv:"C1", g:"lit", d:"幸福的家庭都是相似的。"},
+ {id:"crimepunish", t:"Crime and Punishment", zh:"罪与罚", a:"Fyodor Dostoevsky", y:1866, lv:"C1", g:"lit", d:"拉斯柯尔尼科夫的罪与忏悔。"},
+ {id:"karamazov", t:"The Brothers Karamazov", zh:"卡拉马佐夫兄弟", a:"Fyodor Dostoevsky", y:1880, lv:"C2", g:"lit", d:"弑父疑案与信仰之辩。"},
+ {id:"madambovary", t:"Madame Bovary", zh:"包法利夫人", a:"Gustave Flaubert", y:1857, lv:"C1", g:"lit", d:"爱玛的幻想与幻灭。"},
+ {id:"donquixote", t:"Don Quixote", zh:"堂吉诃德", a:"Miguel de Cervantes", y:1605, lv:"C1", g:"adv", d:"骑士小说迷的理想主义冒险。"},
+ {id:"gulliver", t:"Gulliver's Travels", zh:"格列佛游记", a:"Jonathan Swift", y:1726, lv:"B2", g:"adv", d:"小人国到慧骃国的讽刺之旅。"},
+ {id:"scarletletter", t:"The Scarlet Letter", zh:"红字", a:"Nathaniel Hawthorne", y:1850, lv:"C1", g:"lit", d:"清教徒胸前的耻辱印记。"},
+ {id:"paradiselost", t:"Paradise Lost", zh:"失乐园", a:"John Milton", y:1667, lv:"C2", g:"drama", d:"亚当夏娃与撒旦的史诗。"},
+ {id:"divinecomedy", t:"The Divine Comedy", zh:"神曲", a:"Dante Alighieri", y:1320, lv:"C2", g:"drama", d:"地狱·炼狱·天堂三界游。"},
+ {id:"faust", t:"Faust", zh:"浮士德", a:"Johann Wolfgang von Goethe", y:1808, lv:"C2", g:"drama", d:"与魔鬼交换灵魂的悲剧。"},
+ {id:"kim", t:"Kim", zh:"基姆", a:"Rudyard Kipling", y:1901, lv:"B2", g:"adv", d:"印度街头少年的大博弈间谍游戏。"},
+ {id:"kidnapped", t:"Kidnapped", zh:"绑架", a:"R. L. Stevenson", y:1886, lv:"B2", g:"adv", d:"苏格兰高地历险。"},
+ {id:"princepauper", t:"The Prince and the Pauper", zh:"王子与贫儿", a:"Mark Twain", y:1881, lv:"B1", g:"adv", d:"长相一样的两人互换身份。"},
+ {id:"littleprincess", t:"A Little Princess", zh:"小公主", a:"F. H. Burnett", y:1905, lv:"A2", g:"fab", d:"从优渥到女佣的萨拉。"},
+ {id:"canterville", t:"The Canterville Ghost", zh:"坎特维尔的幽灵", a:"Oscar Wilde", y:1887, lv:"B1", g:"fab", d:"吓不倒美国一家的幽灵。"},
+ {id:"hunchback", t:"The Hunchback of Notre-Dame", zh:"巴黎圣母院", a:"Victor Hugo", y:1831, lv:"C1", g:"lit", d:"钟楼怪人与吉普赛少女。"},
+ {id:"zarathustra", t:"Thus Spake Zarathustra", zh:"查拉图斯特拉如是说", a:"Friedrich Nietzsche", y:1883, lv:"C2", g:"phl", d:"超人哲学的诗化宣言。"},
+ {id:"silasmarner", t:"Silas Marner", zh:"织工马南", a:"George Eliot", y:1861, lv:"B2", g:"lit", d:"织工的失金与得爱。"},
+ {id:"lordjim", t:"Lord Jim", zh:"吉姆老爷", a:"Joseph Conrad", y:1900, lv:"C1", g:"lit", d:"一次弃船逃生的终生赎罪。"},
+ {id:"pimpernel", t:"The Scarlet Pimpernel", zh:"红花侠", a:"Emmuska Orczy", y:1905, lv:"B2", g:"adv", d:"法国大革命时期的神秘救星。"},
+ {id:"lastman", t:"The Last Man", zh:"最后一个人", a:"Mary Shelley", y:1826, lv:"B2", g:"sci", d:"21 世纪瘟疫后的末日编年。"},
+ {id:"littlemen", t:"Little Men", zh:"小绅士", a:"Louisa May Alcott", y:1871, lv:"B1", g:"fab", d:"乔的桃树园学堂。"}
 ];
 
 /* =====================================================
@@ -760,11 +812,9 @@ function bookCard(b, rec){
 /* =====================================================
   八、书籍详情页
 ===================================================== */
-/* 古腾堡链接：gb 为数字用直达页，"q:词" 用站内搜索（永远有效） */
+/* 全文阅读与译本检索：Open Library（互联网档案馆，稳定）+ 豆瓣 */
 function gutenbergUrl(b){
-  if(typeof b.gb === "number")
-    return `https://www.gutenberg.org/ebooks/${b.gb}`;
-  return "https://www.gutenberg.org/ebooks/search/?query="+encodeURIComponent(b.gb.slice(2));
+  return "https://openlibrary.org/search?q="+encodeURIComponent(b.t+" "+b.a);
 }
 function openBook(id){
   /* 导入书籍走独立详情页 */
@@ -793,7 +843,7 @@ function openBook(id){
   }
   const b = BOOKS.find(x=>x.id===id);
   const glink = gutenbergUrl(b);
-  const zhlink = "https://www.gutenberg.org/ebooks/search/?query="+encodeURIComponent(b.zh);
+  const zhlink = "https://www.douban.com/search?q="+encodeURIComponent(b.zh);
   document.getElementById("view-book").innerHTML = `
     <span class="back" onclick="go('library')">← 返回书城</span>
     <div class="detail-head">
@@ -806,11 +856,11 @@ function openBook(id){
         <div class="tags">
           <span class="tag">难度 ${b.lv}</span>
           <span class="tag">${GENRES[b.g]}</span>
-          <span class="tag">免费全文在线读</span>
+          <span class="tag">点词查义 · 双语对照</span>
         </div>
         <p style="margin-bottom:14px">${b.d}</p>
         <div class="links">
-          <p>🔗 免费全文：<a href="${glink}" target="_blank" rel="noopener">${glink.replace("https://","")}</a></p>
+          <p>🔗 全文在线读：<a href="${glink}" target="_blank" rel="noopener">Open Library ↗</a></p>
           <p>🇨🇳 中文译本检索：<a href="${zhlink}" target="_blank" rel="noopener">搜索中文译本 ↗</a></p>
         </div>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
