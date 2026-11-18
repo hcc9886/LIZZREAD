@@ -1,5 +1,5 @@
 /* LIZZREAD Service Worker：缓存优先，离线也能打开已缓存页面 */
-const CACHE = "lizzread-v1";
+const CACHE = "lizzread-v2";
 const ASSETS = ["./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {

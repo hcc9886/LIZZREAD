@@ -194,6 +194,10 @@ body.no-zh .sent .zh{display:none}
   border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px}
 .vitem .w{font:600 17px/1.3 var(--serif);flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis}
 .vitem .m{color:var(--muted);font-size:13px;flex:2;min-width:120px}
+/* 词卡折叠区 */
+.fold{border:1px solid var(--border);border-radius:10px;margin-top:10px;padding:8px 12px}
+.fold summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.fold[open] summary{color:var(--brand)}
 /* 生词详情展开区 */
 .vdet{flex-basis:100%;border-top:1px dashed var(--border);margin-top:8px;
   padding-top:8px;font-size:13px;color:var(--text);cursor:default}
@@ -319,17 +323,15 @@ body.no-zh .sent .zh{display:none}
 <div class="sheet" id="sheet">
   <button class="close" onclick="closeSheet()">✕</button>
   <div class="w" id="shWord"></div>
-  <div class="sec-t">🔍 本句语境义（结合上下文）</div>
-  <div class="d" id="shCtx"></div>
   <div class="sec-t">📖 平时常用义</div>
   <div class="d" id="shDef"></div>
-  <div class="sec-t">🇬🇧 英英释义 · 音标 · 读法 · 常用场景（联网查询）</div>
-  <div class="d dim" id="shEn">查询中…</div>
-  <div class="sec-t">🎨 颜色标记</div>
-  <div class="mrow" id="shMarks"></div>
-  <div class="sec-t">🎯 词汇状态（词族三态：查词越多越熟，自动升级）</div>
-  <div class="mrow" id="shState"></div>
-  <div class="d dim" id="shLookup" style="font-size:12px"></div>
+  <details class="fold"><summary>🔍 本句语境义 · 英英 · 音标 · 读法（点开）</summary>
+    <div class="d" id="shCtx" style="margin-bottom:8px"></div>
+    <div class="d dim" id="shEn">查询中…</div></details>
+  <details class="fold"><summary>🎨 标记 · 🎯 熟练度（点开）</summary>
+    <div class="mrow" id="shMarks"></div>
+    <div class="mrow" id="shState" style="margin-top:8px"></div>
+    <div class="d dim" id="shLookup" style="font-size:12px"></div></details>
   <div class="row" style="margin-top:14px">
     <button class="btn small" id="shAdd">＋ 加入生词本</button>
     <button class="btn ghost small" onclick="speakWord()">🔊 朗读</button>
@@ -513,9 +515,9 @@ const BOOKS = [
  {id:"analects", t:"The Sayings of Confucius", zh:"论语(英译)", a:"Confucius", y:-400, lv:"C1", g:"phl", gb:"q:Sayings of Confucius", d:"熟悉的句子读英文版，词汇量轻压力。"},
  {id:"leviathan", t:"Leviathan", zh:"利维坦", a:"Thomas Hobbes", y:1651, lv:"C2", g:"phl", gb:"q:Leviathan Hobbes", d:"社会契约论源头，长难句密布的挑战。"},
  /* ---- 莎士比亚戏剧 ---- */
- {id:"sh-hamlet", t:"Hamlet", zh:"哈姆雷特", a:"William Shakespeare", y:1600, lv:"C1", g:"drama", d:"丹麦王子复仇记，四大悲剧之首。"},
- {id:"sh-macbeth", t:"Macbeth", zh:"麦克白", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", d:"野心与弑君的悲剧。"},
- {id:"sh-romeo", t:"Romeo and Juliet", zh:"罗密欧与朱丽叶", a:"William Shakespeare", y:1595, lv:"B2", g:"drama", d:"维罗纳的双星悲剧。"},
+ {id:"sh-hamlet", t:"Hamlet", zh:"哈姆雷特", a:"William Shakespeare", y:1600, lv:"C1", g:"drama", gb:1524, d:"丹麦王子复仇记，四大悲剧之首。"},
+ {id:"sh-macbeth", t:"Macbeth", zh:"麦克白", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", gb:1533, d:"野心与弑君的悲剧。"},
+ {id:"sh-romeo", t:"Romeo and Juliet", zh:"罗密欧与朱丽叶", a:"William Shakespeare", y:1595, lv:"B2", g:"drama", gb:1513, d:"维罗纳的双星悲剧。"},
  {id:"sh-othello", t:"Othello", zh:"奥赛罗", a:"William Shakespeare", y:1603, lv:"C1", g:"drama", d:"嫉妒摧毁一切的悲剧。"},
  {id:"sh-lear", t:"King Lear", zh:"李尔王", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", d:"分家引发的疯癫与救赎。"},
  {id:"sh-midsummer", t:"A Midsummer Night's Dream", zh:"仲夏夜之梦", a:"William Shakespeare", y:1596, lv:"B2", g:"drama", d:"精灵恶作剧的仲夏喜剧。"},
@@ -892,7 +894,7 @@ function openBook(id){
         </div>
         <p style="margin-bottom:14px">${b.d}</p>
         <div class="links">
-          <p>🔗 全文在线读：<a href="${glink}" target="_blank" rel="noopener">${typeof b.gb==="number"?"古腾堡镜像全文 ↗":"Open Library 检索 ↗"}</a></p>
+          <p>🔗 外部纯文本（无查词翻译，不推荐）：<a href="${glink}" target="_blank" rel="noopener">↗</a></p>
           <p>🇨🇳 中文译本检索：<a href="${zhlink}" target="_blank" rel="noopener">搜索中文译本 ↗</a></p>
         </div>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
@@ -900,26 +902,20 @@ function openBook(id){
             ? `<button class="btn" onclick="openFull('${b.id}')">📚 整本阅读（站内全文）</button>`
             : ""}
           ${SAMPLES[b.id]
-            ? `<button class="btn ${hasFull?"ghost":""}" onclick="openReader('${b.id}')">📖 双语试读</button>
-               <a class="btn ghost" href="${glink}" target="_blank" rel="noopener">去读英文全文 ↗</a>`
-            : (hasFull ? ""
-              : `<a class="btn" href="${glink}" target="_blank" rel="noopener">📖 在线阅读英文全文 ↗</a>`)}
+            ? `<button class="btn ${hasFull?"ghost":""}" onclick="openReader('${b.id}')">📖 双语试读</button>`
+            : ""}
         </div>
       </div>
     </div>
-    <p class="tip">试读样章的中文翻译为本站编写；导入书籍的中文为点击「机翻」时联网生成。</p>`;
+    <p class="tip">推荐用「整本阅读」：点词查义、双语对照、生词本、熟练度高亮全部可用（站内已内置 93 本全文）；外部链接仅为纯文本备份。</p>`;
   go("book");
 }
 
 /* =====================================================
   九、双语阅读器：逐句对照(可关) + 背景色 + 颜色标记 + TTS
 ===================================================== */
-/* ---- 站内整书阅读：46 本热门书全文已打包进 books/ 目录 ---- */
-const FULLSET = {"1342":1,"84":1,"11":1,"1661":1,"2701":1,"1400":1,"46":1,"98":1,"174":1,
-  "158":1,"161":1,"76":1,"1260":1,"74":1,"16":1,"55":1,"120":1,"345":1,"2591":1,"215":1,
-  "35":1,"36":1,"43":1,"219":1,"1232":1,"2542":1,"5200":1,"205":1,"108":1,"1952":1,
-  "863":1,"2814":1,"1184":1,"996":1,"2600":1,"2554":1,"28054":1,"1399":1,"145":1,
-  "1497":1,"3207":1,"1998":1,"6130":1,"1727":1,"244":1,"271":1};
+/* ---- 站内整书阅读：93 本古腾堡书全文已打包进 books/ 目录（有编号书全覆盖） ---- */
+const FULLSET = {"11":1,"12":1,"16":1,"21":1,"23":1,"27":1,"35":1,"36":1,"43":1,"45":1,"46":1,"55":1,"73":1,"74":1,"76":1,"84":1,"97":1,"98":1,"103":1,"105":1,"108":1,"110":1,"113":1,"120":1,"121":1,"132":1,"135":1,"139":1,"141":1,"145":1,"147":1,"148":1,"153":1,"155":1,"158":1,"160":1,"161":1,"162":1,"164":1,"174":1,"205":1,"209":1,"215":1,"219":1,"236":1,"244":1,"271":1,"289":1,"345":1,"351":1,"376":1,"408":1,"514":1,"521":1,"534":1,"541":1,"599":1,"730":1,"766":1,"768":1,"834":1,"844":1,"863":1,"910":1,"996":1,"1023":1,"1184":1,"1232":1,"1257":1,"1260":1,"1342":1,"1399":1,"1400":1,"1497":1,"1597":1,"1661":1,"1727":1,"1952":1,"1998":1,"2009":1,"2130":1,"2148":1,"2281":1,"2542":1,"2554":1,"2591":1,"2600":1,"2680":1,"2701":1,"2814":1,"2852":1,"2895":1,"3207":1,"3296":1,"3300":1,"4217":1,"4300":1,"5200":1,"5230":1,"6130":1,"1513":1,"1524":1,"1533":1,"16328":1,"22865":1,"28054":1,"64317":1};
 const fullCache = {};        // bookId → {sents:[{en,zh}], chapters:[{t,start,end}]}
 let fullMode = null;         // {id, chap} 整书阅读模式
 /* 解析古腾堡纯文本：去头尾 → 按空行分段 → 按章节标题分章 → 全书分句 */
@@ -1414,26 +1410,35 @@ function setWordState(low, st){
   renderStateRow(low);
 }
 
-/* 英英区改为富文本：音标 + 读法按钮 + 分词性释义 + 常用场景例句 */
+/* 英英区：默认只显示 1 个义项（防英文过多），点「展开全部义项」看其余 */
+let _dictCache = {};
 async function fetchDict(word){
   const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(word));
   if(!r.ok) throw new Error("http");
   const j = await r.json();
   const e0 = j[0];
   const phon = e0.phonetic || (e0.phonetics.find(p=>p.text)||{}).text || "";
-  let html = "";
-  if(phon) html += `<span style="font-size:16px;color:var(--text)">/${phon.replace(/^\/|\/$/g,"")}/</span>
-    <button class="iconbtn" onclick="speakText('${word.replace(/'/g,"\\'")}')">🔊 读法</button>`;
-  let count = 0;
-  for(const e of j){
-    for(const m of e.meanings){
-      for(const df of m.definitions){
-        html += `<div style="margin-top:6px;color:var(--text)">[${m.partOfSpeech}] ${df.definition}</div>`;
-        if(df.example) html += `<div class="dim">常用于：${df.example}</div>`;
-        if(++count>=3) return html;
-      }
-    }
+  const defs = [];
+  outer: for(const e of j) for(const m of e.meanings) for(const df of m.definitions){
+    defs.push({pos:m.partOfSpeech, en:df.definition, ex:df.example||""});
+    if(defs.length>=5) break outer;
   }
+  _dictCache[word] = {phon, defs};
+  return renderDefs(word, 1);
+}
+function renderDefs(word, n){
+  const d0 = _dictCache[word] || {phon:"", defs:[]};
+  const esc = word.replace(/'/g,"\\'");
+  let html = "";
+  if(d0.phon) html += `<span style="font-size:16px;color:var(--text)">/${d0.phon.replace(/^\/|\/$/g,"")}/</span>
+    <button class="iconbtn" onclick="speakText('${esc}')">🔊 读法</button>`;
+  d0.defs.slice(0,n).forEach(d=>{
+    html += `<div style="margin-top:6px;color:var(--text)">[${d.pos}] ${d.en}</div>` +
+      (d.ex ? `<div class="dim">常用于：${d.ex}</div>` : "");
+  });
+  if(d0.defs.length > n)
+    html += `<button class="btn ghost small" style="margin-top:8px"
+      onclick="this.outerHTML=renderDefs('${esc}',${d0.defs.length})">展开全部 ${d0.defs.length} 个义项</button>`;
   return html || "（暂无英英释义）";
 }
 
