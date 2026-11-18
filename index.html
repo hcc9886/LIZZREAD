@@ -255,6 +255,7 @@ body.no-zh .sent .zh{display:none}
     <div class="filters">
       <button class="btn ghost small" onclick="document.getElementById('importFile').click()">📥 导入书籍</button>
       <input type="file" id="importFile" accept=".txt,.epub" style="display:none" onchange="doImport(this)">
+      <button class="btn ghost small" id="offlineBtn" onclick="downloadAll()">📶 离线下载全部</button>
       <input class="search" id="searchBox" placeholder="搜索书名 / 作者…">
     </div>
     <div id="recSec"></div>
@@ -386,7 +387,16 @@ const AUTHOR_ZH = {
  "Miguel de Cervantes":"塞万提斯","Jonathan Swift":"斯威夫特",
  "Nathaniel Hawthorne":"霍桑","John Milton":"弥尔顿","Dante Alighieri":"但丁",
  "Johann Wolfgang von Goethe":"歌德","Friedrich Nietzsche":"尼采",
- "Emmuska Orczy":"奥尔齐","Dante":"但丁"
+ "Emmuska Orczy":"奥尔齐","Dante":"但丁",
+ "Nikolai Gogol":"果戈里","Anton Chekhov":"契诃夫","Voltaire":"伏尔泰","Stendhal":"司汤达",
+ "Honoré de Balzac":"巴尔扎克","Gaston Leroux":"加斯东·勒鲁","Maurice Leblanc":"莫里斯·勒布朗",
+ "Anthony Hope":"安东尼·霍普","E. Nesbit":"内斯比特","Virgil":"维吉尔","Aristotle":"亚里士多德",
+ "Karl Marx":"马克思","Jean-Jacques Rousseau":"卢梭","John Stuart Mill":"密尔",
+ "Booker T. Washington":"布克·华盛顿","Ralph Waldo Emerson":"爱默生","Walt Whitman":"惠特曼",
+ "Washington Irving":"华盛顿·欧文","Harriet Beecher Stowe":"斯托夫人","H. P. Lovecraft":"洛夫克拉夫特",
+ "Robert W. Chambers":"钱伯斯","J. Sheridan Le Fanu":"勒法努","Elizabeth Gaskell":"盖斯凯尔",
+ "Richard Henry Dana":"达纳","Anne Brontë":"安妮·勃朗特","E. M. Forster":"福斯特",
+ "Theodore Dreiser":"德莱塞","Immanuel Kant":"康德"
 };
 /* AI 生成的书皮图（懒加载；加载失败时回退为渐变文字封面） */
 function coverUrl(b){
@@ -431,8 +441,8 @@ const BOOKS = [
  {id:"awakening", t:"The Awakening", zh:"觉醒", a:"Kate Chopin", y:1899, lv:"B2", g:"lit", gb:160, d:"女性自我意识的早期觉醒之作。"},
  {id:"anne",   t:"Anne of Green Gables", zh:"绿山墙的安妮", a:"L. M. Montgomery", y:1908, lv:"B1", g:"lit", gb:45, d:"红发孤女用想象力征服整个小镇。"},
  {id:"blackbeauty", t:"Black Beauty", zh:"黑骏马", a:"Anna Sewell", y:1877, lv:"B1", g:"lit", gb:271, d:"以马的视角讲述的一生，动物福利经典。"},
- {id:"portraitlady", t:"The Portrait of a Lady", zh:"一位女士的画像", a:"Henry James", y:1881, lv:"C1", g:"lit", gb:"q:The Portrait of a Lady Henry James", d:"伊莎贝尔继承遗产后的婚姻抉择。"},
- {id:"ethan",  t:"Ethan Frome", zh:"伊坦·弗洛美", a:"Edith Wharton", y:1911, lv:"B2", g:"lit", gb:"q:Ethan Frome Edith Wharton", d:"雪乡三角恋的冷冽悲剧，篇幅短。"},
+ {id:"portraitlady", t:"The Portrait of a Lady", zh:"一位女士的画像", a:"Henry James", y:1881, lv:"C1", g:"lit", gb:2833, d:"伊莎贝尔继承遗产后的婚姻抉择。"},
+ {id:"ethan",  t:"Ethan Frome", zh:"伊坦·弗洛美", a:"Edith Wharton", y:1911, lv:"B2", g:"lit", gb:4517, d:"雪乡三角恋的冷冽悲剧，篇幅短。"},
 
  /* ---- 侦探推理 ---- */
  {id:"sherlock", t:"The Adventures of Sherlock Holmes", zh:"福尔摩斯探案集", a:"Arthur Conan Doyle", y:1892, lv:"B2", g:"mys", gb:1661, d:"12 个经典短篇，侦探入门首选。"},
@@ -445,7 +455,7 @@ const BOOKS = [
  {id:"morgue", t:"The Murders in the Rue Morgue", zh:"莫格街凶杀案", a:"Edgar Allan Poe", y:1841, lv:"B2", g:"mys", gb:2148, d:"公认的侦探小说开山之作。"},
  {id:"moonstone", t:"The Moonstone", zh:"月亮宝石", a:"Wilkie Collins", y:1868, lv:"C1", g:"mys", gb:155, d:"钻石失窃案，长篇侦探小说的奠基之作。"},
  {id:"womanwhite", t:"The Woman in White", zh:"白衣女人", a:"Wilkie Collins", y:1860, lv:"C1", g:"mys", gb:162, d:"深夜路遇白衣女人的连环骗局。"},
- {id:"brown",  t:"The Innocence of Father Brown", zh:"布朗神父的天真", a:"G. K. Chesterton", y:1911, lv:"B2", g:"mys", gb:276, d:"貌不惊人的小神父靠人心推理破案。"},
+ {id:"brown",  t:"The Innocence of Father Brown", zh:"布朗神父的天真", a:"G. K. Chesterton", y:1911, lv:"B2", g:"mys", gb:204, d:"貌不惊人的小神父靠人心推理破案。"},
  {id:"39steps", t:"The Thirty-nine Steps", zh:"三十九级台阶", a:"John Buchan", y:1915, lv:"B2", g:"mys", gb:2895, d:"被冤男子逃亡与谍战，希区柯克改编原著。"},
  {id:"styles", t:"The Mysterious Affair at Styles", zh:"斯泰尔斯庄园奇案", a:"Agatha Christie", y:1920, lv:"B2", g:"mys", gb:863, d:"波洛侦探的初登场。"},
 
@@ -458,12 +468,12 @@ const BOOKS = [
  {id:"moreau", t:"The Island of Doctor Moreau", zh:"莫罗博士的岛", a:"H. G. Wells", y:1896, lv:"B2", g:"sci", gb:351, d:"兽化人实验 island 的伦理噩梦。"},
  {id:"jekyll", t:"The Strange Case of Dr Jekyll and Mr Hyde", zh:"化身博士", a:"R. L. Stevenson", y:1886, lv:"B2", g:"sci", gb:43, d:"人格分裂的双面人原型故事。"},
  {id:"around", t:"Around the World in Eighty Days", zh:"八十天环游地球", a:"Jules Verne", y:1873, lv:"B1", g:"sci", gb:103, d:"一场与赌注赛跑的环球旅行。"},
- {id:"mars",   t:"A Princess of Mars", zh:"火星公主", a:"Edgar Rice Burroughs", y:1912, lv:"B2", g:"sci", gb:"q:A Princess of Mars Burroughs", d:"星舰科幻与太空歌剧的源头之一。"},
+ {id:"mars",   t:"A Princess of Mars", zh:"火星公主", a:"Edgar Rice Burroughs", y:1912, lv:"B2", g:"sci", gb:62, d:"星舰科幻与太空歌剧的源头之一。"},
  {id:"lostworld", t:"The Lost World", zh:"失落的世界", a:"Arthur Conan Doyle", y:1912, lv:"B2", g:"sci", gb:139, d:"高原上的活恐龙探险，柯南·道尔科幻代表作。"},
- {id:"metamorphosis", t:"The Metamorphosis", zh:"变形记", a:"Franz Kafka", y:1915, lv:"B2", g:"sci", gb:"q:Metamorphosis Kafka", d:"一觉醒来变成甲虫的推销员。"},
+ {id:"metamorphosis", t:"The Metamorphosis", zh:"变形记", a:"Franz Kafka", y:1915, lv:"B2", g:"sci", gb:5200, d:"一觉醒来变成甲虫的推销员。"},
  {id:"flatland", t:"Flatland", zh:"平面国", a:"Edwin A. Abbott", y:1884, lv:"B2", g:"sci", gb:97, d:"二维国度的几何寓言，维度思维启蒙。"},
- {id:"journey", t:"Journey to the Centre of the Earth", zh:"地心游记", a:"Jules Verne", y:1864, lv:"B2", g:"sci", gb:"q:Journey to the Centre of the Earth Verne", d:"火山口直下地心的远古世界。"},
- {id:"earthmoon", t:"From the Earth to the Moon", zh:"从地球到月球", a:"Jules Verne", y:1865, lv:"B2", g:"sci", gb:"q:From the Earth to the Moon Verne", d:"大炮俱乐部制造登月巨炮的狂想。"},
+ {id:"journey", t:"Journey to the Centre of the Earth", zh:"地心游记", a:"Jules Verne", y:1864, lv:"B2", g:"sci", gb:18857, d:"火山口直下地心的远古世界。"},
+ {id:"earthmoon", t:"From the Earth to the Moon", zh:"从地球到月球", a:"Jules Verne", y:1865, lv:"B2", g:"sci", gb:83, d:"大炮俱乐部制造登月巨炮的狂想。"},
 
  /* ---- 童话寓言 ---- */
  {id:"alice",  t:"Alice's Adventures in Wonderland", zh:"爱丽丝梦游仙境", a:"Lewis Carroll", y:1865, lv:"A2", g:"fab", gb:11, d:"掉进兔子洞的奇想世界，入门首选。"},
@@ -477,10 +487,10 @@ const BOOKS = [
  {id:"jungle", t:"The Jungle Book", zh:"丛林之书", a:"Rudyard Kipling", y:1894, lv:"B1", g:"fab", gb:236, d:"狼孩毛格利的丛林法则。"},
  {id:"andersen", t:"Fairy Tales of Hans Christian Andersen", zh:"安徒生童话(英译)", a:"H. C. Andersen", y:1835, lv:"B1", g:"fab", gb:1597, d:"丑小鸭、卖火柴的小女孩的英文版。"},
  {id:"pinocchio", t:"The Adventures of Pinocchio", zh:"木偶奇遇记(英译)", a:"Carlo Collodi", y:1883, lv:"B1", g:"fab", gb:22865, d:"说谎鼻子会变长的木偶的冒险。"},
- {id:"rabbit", t:"The Tale of Peter Rabbit", zh:"彼得兔的故事", a:"Beatrix Potter", y:1902, lv:"A1", g:"fab", gb:"q:The Tale of Peter Rabbit Potter", d:"偷进麦格雷戈先生菜园的小兔子。"},
- {id:"heidi",  t:"Heidi", zh:"海蒂", a:"Johanna Spyri", y:1881, lv:"B1", g:"fab", gb:"q:Heidi Johanna Spyri", d:"阿尔卑斯山女孩与爷爷的温情故事。"},
- {id:"pooh",   t:"Winnie-the-Pooh", zh:"小熊维尼", a:"A. A. Milne", y:1926, lv:"A2", g:"fab", gb:"q:Winnie-the-Pooh A. A. Milne", d:"百亩森林里的憨趣日常，童趣十足。"},
- {id:"happyprince", t:"The Happy Prince and Other Tales", zh:"快乐王子", a:"Oscar Wilde", y:1888, lv:"B1", g:"fab", gb:"q:Happy Prince and Other Tales Oscar Wilde", d:"王尔德的忧伤唯美的童话集。"},
+ {id:"rabbit", t:"The Tale of Peter Rabbit", zh:"彼得兔的故事", a:"Beatrix Potter", y:1902, lv:"A1", g:"fab", gb:14838, d:"偷进麦格雷戈先生菜园的小兔子。"},
+ {id:"heidi",  t:"Heidi", zh:"海蒂", a:"Johanna Spyri", y:1881, lv:"B1", g:"fab", gb:1448, d:"阿尔卑斯山女孩与爷爷的温情故事。"},
+ {id:"pooh",   t:"Winnie-the-Pooh", zh:"小熊维尼", a:"A. A. Milne", y:1926, lv:"A2", g:"fab", gb:67098, d:"百亩森林里的憨趣日常，童趣十足。"},
+ {id:"happyprince", t:"The Happy Prince and Other Tales", zh:"快乐王子", a:"Oscar Wilde", y:1888, lv:"B1", g:"fab", gb:902, d:"王尔德的忧伤唯美的童话集。"},
 
  /* ---- 冒险探索 ---- */
  {id:"treasure", t:"Treasure Island", zh:"金银岛", a:"R. L. Stevenson", y:1883, lv:"B1", g:"adv", gb:120, d:"藏宝图、海盗与独腿船长。"},
@@ -493,7 +503,7 @@ const BOOKS = [
  {id:"monte",  t:"The Count of Monte Cristo", zh:"基督山伯爵", a:"Alexandre Dumas", y:1844, lv:"B2", g:"adv", gb:1184, d:"越狱、宝藏与完美复仇，爽文鼻祖。"},
  {id:"musketeers", t:"The Three Musketeers", zh:"三个火枪手", a:"Alexandre Dumas", y:1844, lv:"B2", g:"adv", gb:1257, d:"人人为我，我为人人的剑侠传奇。"},
  {id:"mohicans", t:"The Last of the Mohicans", zh:"最后的莫希干人", a:"James F. Cooper", y:1826, lv:"C1", g:"adv", gb:2281, d:"北美殖民战争中的印第安追踪者。"},
- {id:"ksm",    t:"King Solomon's Mines", zh:"所罗门王的宝藏", a:"H. Rider Haggard", y:1885, lv:"B2", g:"adv", gb:"q:King Solomon's Mines Haggard", d:"深入非洲寻找 diamond 矿的探险鼻祖。"},
+ {id:"ksm",    t:"King Solomon's Mines", zh:"所罗门王的宝藏", a:"H. Rider Haggard", y:1885, lv:"B2", g:"adv", gb:2166, d:"深入非洲寻找钻石矿的探险鼻祖。"},
  {id:"odyssey", t:"The Odyssey", zh:"奥德赛(英译)", a:"Homer", y:-700, lv:"C1", g:"adv", gb:1727, d:"十年海上归乡，西方文学源头之一。"},
  {id:"iliad",  t:"The Iliad", zh:"伊利亚特(英译)", a:"Homer", y:-750, lv:"C1", g:"adv", gb:6130, d:"特洛伊战争的怒火与荣耀。"},
  {id:"beowulf", t:"Beowulf", zh:"贝奥武夫(英译)", a:"Anonymous", y:1000, lv:"C1", g:"adv", gb:16328, d:"屠龙英雄史诗，最古老的英语文学。"},
@@ -511,23 +521,23 @@ const BOOKS = [
  {id:"commonsense", t:"Common Sense", zh:"常识", a:"Thomas Paine", y:1776, lv:"B2", g:"phl", gb:147, d:"点燃美国独立革命的 47 页小册子。"},
  {id:"douglass", t:"Narrative of the Life of Frederick Douglass", zh:"道格拉斯自述", a:"Frederick Douglass", y:1845, lv:"B2", g:"phl", gb:23, d:"从奴隶到演说家，文字力量惊人。"},
  {id:"souls",  t:"The Souls of Black Folk", zh:"黑人的灵魂", a:"W. E. B. Du Bois", y:1903, lv:"C1", g:"phl", gb:408, d:"20 世纪最重要的美国社会学文本之一。"},
- {id:"tao",    t:"Tao Te Ching", zh:"道德经(英译)", a:"Laozi", y:-400, lv:"C1", g:"phl", gb:"q:Tao Te Ching Legge", d:"反读自己母语的经典，别有趣味。"},
- {id:"analects", t:"The Sayings of Confucius", zh:"论语(英译)", a:"Confucius", y:-400, lv:"C1", g:"phl", gb:"q:Sayings of Confucius", d:"熟悉的句子读英文版，词汇量轻压力。"},
- {id:"leviathan", t:"Leviathan", zh:"利维坦", a:"Thomas Hobbes", y:1651, lv:"C2", g:"phl", gb:"q:Leviathan Hobbes", d:"社会契约论源头，长难句密布的挑战。"},
+ {id:"tao",    t:"Tao Te Ching", zh:"道德经(英译)", a:"Laozi", y:-400, lv:"C1", g:"phl", gb:216, d:"反读自己母语的经典，别有趣味。"},
+ {id:"analects", t:"The Sayings of Confucius", zh:"论语(英译)", a:"Confucius", y:-400, lv:"C1", g:"phl", gb:3330, d:"熟悉的句子读英文版，词汇量轻压力。"},
+ {id:"leviathan", t:"Leviathan", zh:"利维坦", a:"Thomas Hobbes", y:1651, lv:"C2", g:"phl", gb:3207, d:"社会契约论源头，长难句密布的挑战。"},
  /* ---- 莎士比亚戏剧 ---- */
  {id:"sh-hamlet", t:"Hamlet", zh:"哈姆雷特", a:"William Shakespeare", y:1600, lv:"C1", g:"drama", gb:1524, d:"丹麦王子复仇记，四大悲剧之首。"},
  {id:"sh-macbeth", t:"Macbeth", zh:"麦克白", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", gb:1533, d:"野心与弑君的悲剧。"},
  {id:"sh-romeo", t:"Romeo and Juliet", zh:"罗密欧与朱丽叶", a:"William Shakespeare", y:1595, lv:"B2", g:"drama", gb:1513, d:"维罗纳的双星悲剧。"},
- {id:"sh-othello", t:"Othello", zh:"奥赛罗", a:"William Shakespeare", y:1603, lv:"C1", g:"drama", d:"嫉妒摧毁一切的悲剧。"},
- {id:"sh-lear", t:"King Lear", zh:"李尔王", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", d:"分家引发的疯癫与救赎。"},
- {id:"sh-midsummer", t:"A Midsummer Night's Dream", zh:"仲夏夜之梦", a:"William Shakespeare", y:1596, lv:"B2", g:"drama", d:"精灵恶作剧的仲夏喜剧。"},
- {id:"sh-tempest", t:"The Tempest", zh:"暴风雨", a:"William Shakespeare", y:1611, lv:"B2", g:"drama", d:"魔法师普洛斯彼罗的海岛。"},
- {id:"sh-caesar", t:"Julius Caesar", zh:"尤利乌斯·凯撒", a:"William Shakespeare", y:1599, lv:"B2", g:"drama", d:"刺杀独裁者的后果。"},
- {id:"sh-twelfth", t:"Twelfth Night", zh:"第十二夜", a:"William Shakespeare", y:1601, lv:"B2", g:"drama", d:"错认性别的浪漫喜剧。"},
- {id:"sh-muchado", t:"Much Ado About Nothing", zh:"无事生非", a:"William Shakespeare", y:1599, lv:"B2", g:"drama", d:"斗嘴成真的喜剧。"},
- {id:"sh-merchant", t:"The Merchant of Venice", zh:"威尼斯商人", a:"William Shakespeare", y:1598, lv:"B2", g:"drama", d:"一磅肉的契约。"},
- {id:"sh-shrew", t:"The Taming of the Shrew", zh:"驯悍记", a:"William Shakespeare", y:1592, lv:"B2", g:"drama", d:"泼辣新娘的驯服喜剧。"},
- {id:"sh-henryv", t:"Henry V", zh:"亨利五世", a:"William Shakespeare", y:1599, lv:"C1", g:"drama", d:"阿金库尔战役的国王。"},
+ {id:"sh-othello", t:"Othello", zh:"奥赛罗", a:"William Shakespeare", y:1603, lv:"C1", g:"drama", d:"嫉妒摧毁一切的悲剧。", gb:1531},
+ {id:"sh-lear", t:"King Lear", zh:"李尔王", a:"William Shakespeare", y:1606, lv:"C1", g:"drama", d:"分家引发的疯癫与救赎。", gb:1532},
+ {id:"sh-midsummer", t:"A Midsummer Night's Dream", zh:"仲夏夜之梦", a:"William Shakespeare", y:1596, lv:"B2", g:"drama", d:"精灵恶作剧的仲夏喜剧。", gb:1514},
+ {id:"sh-tempest", t:"The Tempest", zh:"暴风雨", a:"William Shakespeare", y:1611, lv:"B2", g:"drama", d:"魔法师普洛斯彼罗的海岛。", gb:1540},
+ {id:"sh-caesar", t:"Julius Caesar", zh:"尤利乌斯·凯撒", a:"William Shakespeare", y:1599, lv:"B2", g:"drama", d:"刺杀独裁者的后果。", gb:1522},
+ {id:"sh-twelfth", t:"Twelfth Night", zh:"第十二夜", a:"William Shakespeare", y:1601, lv:"B2", g:"drama", d:"错认性别的浪漫喜剧。", gb:1526},
+ {id:"sh-muchado", t:"Much Ado About Nothing", zh:"无事生非", a:"William Shakespeare", y:1599, lv:"B2", g:"drama", d:"斗嘴成真的喜剧。", gb:1519},
+ {id:"sh-merchant", t:"The Merchant of Venice", zh:"威尼斯商人", a:"William Shakespeare", y:1598, lv:"B2", g:"drama", d:"一磅肉的契约。", gb:1515},
+ {id:"sh-shrew", t:"The Taming of the Shrew", zh:"驯悍记", a:"William Shakespeare", y:1592, lv:"B2", g:"drama", d:"泼辣新娘的驯服喜剧。", gb:1508},
+ {id:"sh-henryv", t:"Henry V", zh:"亨利五世", a:"William Shakespeare", y:1599, lv:"C1", g:"drama", d:"阿金库尔战役的国王。", gb:1521},
  /* ---- 加缪（全文链接为 Open Library 借阅/检索） ---- */
  {id:"camus-stranger", t:"The Stranger", zh:"局外人", a:"Albert Camus", y:1942, lv:"B1", g:"lit", d:"默尔索与荒诞的开端，加缪入门首选。"},
  {id:"camus-plague", t:"The Plague", zh:"鼠疫", a:"Albert Camus", y:1947, lv:"B2", g:"lit", d:"奥兰城封城纪事，集体抗争的寓言。"},
@@ -537,29 +547,82 @@ const BOOKS = [
  {id:"camus-exile", t:"Exile and the Kingdom", zh:"流放与王国", a:"Albert Camus", y:1958, lv:"B2", g:"lit", d:"六篇流放主题短篇。"},
  {id:"camus-happydeath", t:"A Happy Death", zh:"快乐的死", a:"Albert Camus", y:1971, lv:"B2", g:"lit", d:"生前未出版的遗作。"},
  /* ---- 世界经典扩充 ---- */
- {id:"warpeace", t:"War and Peace", zh:"战争与和平", a:"Leo Tolstoy", y:1869, lv:"C1", g:"lit", d:"拿破仑战争时期的俄国史诗。"},
- {id:"annakarenina", t:"Anna Karenina", zh:"安娜·卡列尼娜", a:"Leo Tolstoy", y:1878, lv:"C1", g:"lit", d:"幸福的家庭都是相似的。"},
- {id:"crimepunish", t:"Crime and Punishment", zh:"罪与罚", a:"Fyodor Dostoevsky", y:1866, lv:"C1", g:"lit", d:"拉斯柯尔尼科夫的罪与忏悔。"},
- {id:"karamazov", t:"The Brothers Karamazov", zh:"卡拉马佐夫兄弟", a:"Fyodor Dostoevsky", y:1880, lv:"C2", g:"lit", d:"弑父疑案与信仰之辩。"},
- {id:"madambovary", t:"Madame Bovary", zh:"包法利夫人", a:"Gustave Flaubert", y:1857, lv:"C1", g:"lit", d:"爱玛的幻想与幻灭。"},
- {id:"donquixote", t:"Don Quixote", zh:"堂吉诃德", a:"Miguel de Cervantes", y:1605, lv:"C1", g:"adv", d:"骑士小说迷的理想主义冒险。"},
- {id:"gulliver", t:"Gulliver's Travels", zh:"格列佛游记", a:"Jonathan Swift", y:1726, lv:"B2", g:"adv", d:"小人国到慧骃国的讽刺之旅。"},
- {id:"scarletletter", t:"The Scarlet Letter", zh:"红字", a:"Nathaniel Hawthorne", y:1850, lv:"C1", g:"lit", d:"清教徒胸前的耻辱印记。"},
- {id:"paradiselost", t:"Paradise Lost", zh:"失乐园", a:"John Milton", y:1667, lv:"C2", g:"drama", d:"亚当夏娃与撒旦的史诗。"},
- {id:"divinecomedy", t:"The Divine Comedy", zh:"神曲", a:"Dante Alighieri", y:1320, lv:"C2", g:"drama", d:"地狱·炼狱·天堂三界游。"},
- {id:"faust", t:"Faust", zh:"浮士德", a:"Johann Wolfgang von Goethe", y:1808, lv:"C2", g:"drama", d:"与魔鬼交换灵魂的悲剧。"},
- {id:"kim", t:"Kim", zh:"基姆", a:"Rudyard Kipling", y:1901, lv:"B2", g:"adv", d:"印度街头少年的大博弈间谍游戏。"},
- {id:"kidnapped", t:"Kidnapped", zh:"绑架", a:"R. L. Stevenson", y:1886, lv:"B2", g:"adv", d:"苏格兰高地历险。"},
- {id:"princepauper", t:"The Prince and the Pauper", zh:"王子与贫儿", a:"Mark Twain", y:1881, lv:"B1", g:"adv", d:"长相一样的两人互换身份。"},
- {id:"littleprincess", t:"A Little Princess", zh:"小公主", a:"F. H. Burnett", y:1905, lv:"A2", g:"fab", d:"从优渥到女佣的萨拉。"},
- {id:"canterville", t:"The Canterville Ghost", zh:"坎特维尔的幽灵", a:"Oscar Wilde", y:1887, lv:"B1", g:"fab", d:"吓不倒美国一家的幽灵。"},
- {id:"hunchback", t:"The Hunchback of Notre-Dame", zh:"巴黎圣母院", a:"Victor Hugo", y:1831, lv:"C1", g:"lit", d:"钟楼怪人与吉普赛少女。"},
- {id:"zarathustra", t:"Thus Spake Zarathustra", zh:"查拉图斯特拉如是说", a:"Friedrich Nietzsche", y:1883, lv:"C2", g:"phl", d:"超人哲学的诗化宣言。"},
- {id:"silasmarner", t:"Silas Marner", zh:"织工马南", a:"George Eliot", y:1861, lv:"B2", g:"lit", d:"织工的失金与得爱。"},
- {id:"lordjim", t:"Lord Jim", zh:"吉姆老爷", a:"Joseph Conrad", y:1900, lv:"C1", g:"lit", d:"一次弃船逃生的终生赎罪。"},
- {id:"pimpernel", t:"The Scarlet Pimpernel", zh:"红花侠", a:"Emmuska Orczy", y:1905, lv:"B2", g:"adv", d:"法国大革命时期的神秘救星。"},
- {id:"lastman", t:"The Last Man", zh:"最后一个人", a:"Mary Shelley", y:1826, lv:"B2", g:"sci", d:"21 世纪瘟疫后的末日编年。"},
- {id:"littlemen", t:"Little Men", zh:"小绅士", a:"Louisa May Alcott", y:1871, lv:"B1", g:"fab", d:"乔的桃树园学堂。"}
+ {id:"warpeace", t:"War and Peace", zh:"战争与和平", a:"Leo Tolstoy", y:1869, lv:"C1", g:"lit", d:"拿破仑战争时期的俄国史诗。", gb:2600},
+ {id:"annakarenina", t:"Anna Karenina", zh:"安娜·卡列尼娜", a:"Leo Tolstoy", y:1878, lv:"C1", g:"lit", d:"幸福的家庭都是相似的。", gb:1399},
+ {id:"crimepunish", t:"Crime and Punishment", zh:"罪与罚", a:"Fyodor Dostoevsky", y:1866, lv:"C1", g:"lit", d:"拉斯柯尔尼科夫的罪与忏悔。", gb:2554},
+ {id:"karamazov", t:"The Brothers Karamazov", zh:"卡拉马佐夫兄弟", a:"Fyodor Dostoevsky", y:1880, lv:"C2", g:"lit", d:"弑父疑案与信仰之辩。", gb:28054},
+ {id:"madambovary", t:"Madame Bovary", zh:"包法利夫人", a:"Gustave Flaubert", y:1857, lv:"C1", g:"lit", d:"爱玛的幻想与幻灭。", gb:2413},
+ {id:"donquixote", t:"Don Quixote", zh:"堂吉诃德", a:"Miguel de Cervantes", y:1605, lv:"C1", g:"adv", d:"骑士小说迷的理想主义冒险。", gb:996},
+ {id:"gulliver", t:"Gulliver's Travels", zh:"格列佛游记", a:"Jonathan Swift", y:1726, lv:"B2", g:"adv", d:"小人国到慧骃国的讽刺之旅。", gb:829},
+ {id:"scarletletter", t:"The Scarlet Letter", zh:"红字", a:"Nathaniel Hawthorne", y:1850, lv:"C1", g:"lit", d:"清教徒胸前的耻辱印记。", gb:33},
+ {id:"paradiselost", t:"Paradise Lost", zh:"失乐园", a:"John Milton", y:1667, lv:"C2", g:"drama", d:"亚当夏娃与撒旦的史诗。", gb:26},
+ {id:"divinecomedy", t:"The Divine Comedy", zh:"神曲", a:"Dante Alighieri", y:1320, lv:"C2", g:"drama", d:"地狱·炼狱·天堂三界游。", gb:8800},
+ {id:"faust", t:"Faust", zh:"浮士德", a:"Johann Wolfgang von Goethe", y:1808, lv:"C2", g:"drama", d:"与魔鬼交换灵魂的悲剧。", gb:14591},
+ {id:"kim", t:"Kim", zh:"基姆", a:"Rudyard Kipling", y:1901, lv:"B2", g:"adv", d:"印度街头少年的大博弈间谍游戏。", gb:2226},
+ {id:"kidnapped", t:"Kidnapped", zh:"绑架", a:"R. L. Stevenson", y:1886, lv:"B2", g:"adv", d:"苏格兰高地历险。", gb:421},
+ {id:"princepauper", t:"The Prince and the Pauper", zh:"王子与贫儿", a:"Mark Twain", y:1881, lv:"B1", g:"adv", d:"长相一样的两人互换身份。", gb:1837},
+ {id:"littleprincess", t:"A Little Princess", zh:"小公主", a:"F. H. Burnett", y:1905, lv:"A2", g:"fab", d:"从优渥到女佣的萨拉。", gb:146},
+ {id:"canterville", t:"The Canterville Ghost", zh:"坎特维尔的幽灵", a:"Oscar Wilde", y:1887, lv:"B1", g:"fab", d:"吓不倒美国一家的幽灵。", gb:14522},
+ {id:"hunchback", t:"The Hunchback of Notre-Dame", zh:"巴黎圣母院", a:"Victor Hugo", y:1831, lv:"C1", g:"lit", d:"钟楼怪人与吉普赛少女。", gb:2610},
+ {id:"zarathustra", t:"Thus Spake Zarathustra", zh:"查拉图斯特拉如是说", a:"Friedrich Nietzsche", y:1883, lv:"C2", g:"phl", d:"超人哲学的诗化宣言。", gb:1998},
+ {id:"silasmarner", t:"Silas Marner", zh:"织工马南", a:"George Eliot", y:1861, lv:"B2", g:"lit", d:"织工的失金与得爱。", gb:550},
+ {id:"lordjim", t:"Lord Jim", zh:"吉姆老爷", a:"Joseph Conrad", y:1900, lv:"C1", g:"lit", d:"一次弃船逃生的终生赎罪。", gb:5658},
+ {id:"pimpernel", t:"The Scarlet Pimpernel", zh:"红花侠", a:"Emmuska Orczy", y:1905, lv:"B2", g:"adv", d:"法国大革命时期的神秘救星。", gb:60},
+ {id:"lastman", t:"The Last Man", zh:"最后一个人", a:"Mary Shelley", y:1826, lv:"B2", g:"sci", d:"21 世纪瘟疫后的末日编年。", gb:18247},
+ {id:"littlemen", t:"Little Men", zh:"小绅士", a:"Louisa May Alcott", y:1871, lv:"B1", g:"fab", d:"乔的桃树园学堂。", gb:2788},
+ /* ---- 第三批扩充（俄法德等世界名著 + 哲学 + 哥特） ---- */
+ {id:"idiot", t:"The Idiot", zh:"白痴", a:"Fyodor Dostoevsky", y:1869, lv:"C2", g:"lit", d:"圣愚公爵梅什金在世俗社会中的碰撞。", gb:2638},
+ {id:"notesunderground", t:"Notes from Underground", zh:"地下室手记", a:"Fyodor Dostoevsky", y:1864, lv:"C1", g:"lit", d:"地下人的自白，现代反英雄小说的先声。", gb:600},
+ {id:"gambler", t:"The Gambler", zh:"赌徒", a:"Fyodor Dostoevsky", y:1867, lv:"B2", g:"lit", d:"轮盘赌桌旁的痴迷与毁灭。", gb:2197},
+ {id:"deadsouls", t:"Dead Souls", zh:"死魂灵", a:"Nikolai Gogol", y:1842, lv:"C1", g:"lit", d:"收购死农奴的荒诞讽刺长诗。", gb:1081},
+ {id:"cherryorchard", t:"The Cherry Orchard", zh:"樱桃园", a:"Anton Chekhov", y:1904, lv:"B2", g:"drama", d:"贵族庄园易主的时代挽歌。", gb:7986},
+ {id:"candide", t:"Candide", zh:"老实人", a:"Voltaire", y:1759, lv:"B2", g:"lit", d:"启蒙时代的讽刺杰作，篇幅短节奏快。", gb:4650},
+ {id:"redandblack", t:"The Red and the Black", zh:"红与黑", a:"Stendhal", y:1830, lv:"C1", g:"lit", d:"于连的野心、爱情与阶级跨越。", gb:44747},
+ {id:"peregoriot", t:"Père Goriot", zh:"高老头", a:"Honoré de Balzac", y:1835, lv:"C1", g:"lit", d:"巴黎公寓里的父爱悲剧与野心青年。", gb:1237},
+ {id:"phantomopera", t:"The Phantom of the Opera", zh:"歌剧魅影", a:"Gaston Leroux", y:1910, lv:"B2", g:"mys", d:"巴黎歌剧院地下的幽灵与歌女。", gb:175},
+ {id:"ironmask", t:"The Man in the Iron Mask", zh:"铁面人", a:"Alexandre Dumas", y:1850, lv:"B2", g:"adv", d:"巴士底狱的神秘囚徒与火枪手终章。", gb:2759},
+ {id:"lupin", t:"Arsène Lupin, Gentleman Burglar", zh:"亚森·罗宾", a:"Maurice Leblanc", y:1907, lv:"B2", g:"mys", d:"绅士怪盗的优雅冒险。", gb:6133},
+ {id:"she", t:"She", zh:"她", a:"H. Rider Haggard", y:1887, lv:"B2", g:"adv", d:"非洲腹地的永生女王。", gb:3155},
+ {id:"zenda", t:"The Prisoner of Zenda", zh:"曾达的囚徒", a:"Anthony Hope", y:1894, lv:"B2", g:"adv", d:"替身国王的宫廷阴谋冒险。", gb:95},
+ {id:"firstmeninmoon", t:"The First Men in the Moon", zh:"月球上的第一批人", a:"H. G. Wells", y:1901, lv:"B2", g:"sci", d:"月球内部文明的奇想。", gb:1013},
+ {id:"seawolf", t:"The Sea-Wolf", zh:"海狼", a:"Jack London", y:1904, lv:"B2", g:"adv", d:"海上风暴与强者哲学的碰撞。", gb:1074},
+ {id:"justsostories", t:"Just So Stories", zh:"原来如此的故事", a:"Rudyard Kipling", y:1902, lv:"A2", g:"fab", d:"动物为什么长这样的童趣故事。", gb:2781},
+ {id:"railwaychildren", t:"The Railway Children", zh:"铁路边的孩子们", a:"E. Nesbit", y:1906, lv:"B1", g:"fab", d:"火车站旁的温情冒险。", gb:1874},
+ {id:"aeneid", t:"The Aeneid", zh:"埃涅阿斯纪(英译)", a:"Virgil", y:-19, lv:"C1", g:"adv", d:"特洛伊英雄的建国史诗。", gb:228},
+ {id:"apology", t:"Apology", zh:"申辩篇", a:"Plato", y:-399, lv:"C1", g:"phl", d:"苏格拉底在法庭上的自辩。", gb:1656},
+ {id:"ethics", t:"Nicomachean Ethics", zh:"尼各马可伦理学", a:"Aristotle", y:-340, lv:"C2", g:"phl", d:"幸福与德性的系统论述。", gb:8438},
+ {id:"poetics", t:"Poetics", zh:"诗学", a:"Aristotle", y:-335, lv:"C1", g:"phl", d:"悲剧理论的奠基之作。", gb:1974},
+ {id:"beyondgoodevil", t:"Beyond Good and Evil", zh:"善恶的彼岸", a:"Friedrich Nietzsche", y:1886, lv:"C2", g:"phl", d:"格言体写成的哲学挑战。", gb:4363},
+ {id:"critique", t:"Critique of Pure Reason", zh:"纯粹理性批判", a:"Immanuel Kant", y:1781, lv:"C2", g:"phl", d:"艰深但重要的认识论基石。", gb:4280},
+ {id:"manifesto", t:"The Communist Manifesto", zh:"共产党宣言", a:"Karl Marx", y:1848, lv:"C1", g:"phl", d:"改变世界的政治宣言。", gb:61},
+ {id:"socialcontract", t:"The Social Contract", zh:"社会契约论", a:"Jean-Jacques Rousseau", y:1762, lv:"C1", g:"phl", d:"主权在民的思想源头。", gb:46333},
+ {id:"onliberty", t:"On Liberty", zh:"论自由", a:"John Stuart Mill", y:1859, lv:"C2", g:"phl", d:"个人自由与社会权力的界限。", gb:34901},
+ {id:"upslavery", t:"Up from Slavery", zh:"超越奴隶制", a:"Booker T. Washington", y:1901, lv:"B2", g:"phl", d:"从奴隶到教育家的自传。", gb:2376},
+ {id:"emerson", t:"Essays", zh:"爱默生随笔", a:"Ralph Waldo Emerson", y:1841, lv:"C1", g:"phl", d:"自立精神与美国思想的宣言。", gb:16643},
+ {id:"leavesofgrass", t:"Leaves of Grass", zh:"草叶集", a:"Walt Whitman", y:1855, lv:"C1", g:"lit", d:"自由体诗歌的里程碑。", gb:1322},
+ {id:"sleepyhollow", t:"The Legend of Sleepy Hollow", zh:"睡谷传奇", a:"Washington Irving", y:1820, lv:"B1", g:"mys", d:"无头骑士的万圣夜传说。", gb:41},
+ {id:"sevengables", t:"The House of the Seven Gables", zh:"七角屋", a:"Nathaniel Hawthorne", y:1851, lv:"C1", g:"lit", d:"家族诅咒笼罩的哥特小说。", gb:77},
+ {id:"hardtimes", t:"Hard Times", zh:"艰难时世", a:"Charles Dickens", y:1854, lv:"B2", g:"lit", d:"功利主义时代的工厂小镇。", gb:786},
+ {id:"pickwick", t:"The Pickwick Papers", zh:"匹克威克外传", a:"Charles Dickens", y:1837, lv:"C1", g:"lit", d:"狄更斯成名作，幽默的英式漫游。", gb:580},
+ {id:"mayorcaster", t:"The Mayor of Casterbridge", zh:"卡斯特桥市长", a:"Thomas Hardy", y:1886, lv:"C1", g:"lit", d:"卖妻者的兴衰与命运报应。", gb:143},
+ {id:"millfloss", t:"The Mill on the Floss", zh:"弗洛斯河上的磨坊", a:"George Eliot", y:1860, lv:"C1", g:"lit", d:"兄妹深情与成长抉择。", gb:6688},
+ {id:"villette", t:"Villette", zh:"维莱特", a:"Charlotte Brontë", y:1853, lv:"C2", g:"lit", d:"异国女教师的孤独与爱。", gb:9182},
+ {id:"tenantwildfell", t:"The Tenant of Wildfell Hall", zh:"荒野庄园的房客", a:"Anne Brontë", y:1848, lv:"C1", g:"lit", d:"出逃妻子的独立抗争。", gb:969},
+ {id:"nostromo", t:"Nostromo", zh:"诺斯托罗莫", a:"Joseph Conrad", y:1904, lv:"C2", g:"lit", d:"南美银矿的政治寓言。", gb:2021},
+ {id:"secretagent", t:"The Secret Agent", zh:"间谍", a:"Joseph Conrad", y:1907, lv:"C1", g:"mys", d:"伦敦炸弹阴谋与人性暗面。", gb:974},
+ {id:"roomwithview", t:"A Room with a View", zh:"看得见风景的房间", a:"E. M. Forster", y:1908, lv:"B2", g:"lit", d:"佛罗伦萨之旅唤起的自我觉醒。", gb:2641},
+ {id:"houseofmirth", t:"The House of Mirth", zh:"欢乐之家", a:"Edith Wharton", y:1905, lv:"C1", g:"lit", d:"社交名媛的坠落。", gb:284},
+ {id:"sistercarrie", t:"Sister Carrie", zh:"嘉莉妹妹", a:"Theodore Dreiser", y:1900, lv:"C1", g:"lit", d:"城市欲望中的浮沉。", gb:233},
+ {id:"daisymiller", t:"Daisy Miller", zh:"黛西·米勒", a:"Henry James", y:1878, lv:"B2", g:"lit", d:"美国少女与欧洲礼俗的冲突。", gb:208},
+ {id:"bartleby", t:"Bartleby, the Scrivener", zh:"抄写员巴特比", a:"Herman Melville", y:1853, lv:"C1", g:"lit", d:"一句「我宁愿不」的办公室寓言。", gb:11231},
+ {id:"puddnhead", t:"Pudd'nhead Wilson", zh:"傻瓜威尔逊", a:"Mark Twain", y:1894, lv:"B2", g:"lit", d:"身份互换与指纹断案。", gb:102},
+ {id:"uncletom", t:"Uncle Tom's Cabin", zh:"汤姆叔叔的小屋", a:"Harriet Beecher Stowe", y:1852, lv:"B2", g:"lit", d:"推动废奴运动的文学炸弹。", gb:203},
+ {id:"cthulhu", t:"The Call of Cthulhu", zh:"克苏鲁的呼唤", a:"H. P. Lovecraft", y:1928, lv:"C1", g:"mys", d:"宇宙恐怖文学的开山短篇。", gb:68283},
+ {id:"kinginyellow", t:"The King in Yellow", zh:"黄衣之王", a:"Robert W. Chambers", y:1895, lv:"B2", g:"mys", d:"让人发疯的同名剧本与怪谈集。", gb:8492},
+ {id:"carmilla", t:"Carmilla", zh:"卡米拉", a:"J. Sheridan Le Fanu", y:1872, lv:"B2", g:"mys", d:"吸血鬼女伯爵的哥特经典。", gb:10007},
+ {id:"northandsouth", t:"North and South", zh:"南方与北方", a:"Elizabeth Gaskell", y:1855, lv:"B2", g:"lit", d:"工业城市里的阶级与爱情。", gb:4276},
+ {id:"cranford", t:"Cranford", zh:"克兰福德", a:"Elizabeth Gaskell", y:1853, lv:"B2", g:"lit", d:"乡村老小姐们的温情群像。", gb:394},
+ {id:"twobeforemast", t:"Two Years Before the Mast", zh:"桅前两年", a:"Richard Henry Dana", y:1840, lv:"B2", g:"adv", d:"水手生活的真实航海记录。", gb:2055}
 ];
 
 /* =====================================================
@@ -834,20 +897,14 @@ function bookCard(b, rec){
     <div class="cover ${b.imp?"g-imp":"g-"+b.g}">${cov}</div>
     <div class="meta"><b>${b.zh}</b> · <span class="g">${b.imp?"我的导入":GENRES[b.g]}</span>
       ${rec?`<span class="badge">推荐</span>`:""}
-      <br>${b.imp?"✦ 可阅读":(SAMPLES[b.id]?"✦ 可试读":"")}</div>
+      <br>${b.imp?"✦ 可阅读":(typeof b.gb==="number"?"✦ 可读全文":(GUIDES[b.id]?"✦ 精读导读":(SAMPLES[b.id]?"✦ 可试读":"")))}</div>
   </div>`;
 }
 
 /* =====================================================
   八、书籍详情页
 ===================================================== */
-/* 全文阅读与译本检索：有编号的书直连古腾堡镜像 pg<l>af（国内可访问）；
-   无编号的书走 Open Library 检索 */
-function gutenbergUrl(b){
-  if(typeof b.gb === "number")
-    return `https://gutenberg.pglaf.org/cache/epub/${b.gb}/pg${b.gb}.txt`;
-  return "https://openlibrary.org/search?q="+encodeURIComponent(b.t+" "+b.a);
-}
+/* 全文阅读与译本检索：所有书籍均在站内阅读，不跳转外部网站 */
 function openBook(id){
   /* 导入书籍走独立详情页 */
   const imp = store.imports.find(x=>x.id===id);
@@ -875,9 +932,8 @@ function openBook(id){
   }
   const b = BOOKS.find(x=>x.id===id);
   fullMode = null;   // 从详情页进入的阅读都从样章/全文第一处开始
-  const glink = gutenbergUrl(b);
-  const zhlink = "https://www.douban.com/search?q="+encodeURIComponent(b.zh);
-  const hasFull = typeof b.gb === "number" && FULLSET[b.gb];
+  const hasFull = typeof b.gb === "number";          // 有古腾堡编号 = 站内可读全文
+  const hasGuide = !!GUIDES[id];                     // 无全文的书：站内精读导读
   document.getElementById("view-book").innerHTML = `
     <span class="back" onclick="go('library')">← 返回书城</span>
     <div class="detail-head">
@@ -893,29 +949,23 @@ function openBook(id){
           <span class="tag">点词查义 · 双语对照</span>
         </div>
         <p style="margin-bottom:14px">${b.d}</p>
-        <div class="links">
-          <p>🔗 外部纯文本（无查词翻译，不推荐）：<a href="${glink}" target="_blank" rel="noopener">↗</a></p>
-          <p>🇨🇳 中文译本检索：<a href="${zhlink}" target="_blank" rel="noopener">搜索中文译本 ↗</a></p>
-        </div>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-          ${hasFull
-            ? `<button class="btn" onclick="openFull('${b.id}')">📚 整本阅读（站内全文）</button>`
-            : ""}
-          ${SAMPLES[b.id]
-            ? `<button class="btn ${hasFull?"ghost":""}" onclick="openReader('${b.id}')">📖 双语试读</button>`
-            : ""}
+          ${hasFull ? `<button class="btn" onclick="openFull('${b.id}')">📚 开始阅读（站内全文）</button>` : ""}
+          ${hasGuide ? `<button class="btn ${hasFull?"ghost":""}" onclick="openGuide('${b.id}')">📖 精读导读（站内）</button>` : ""}
+          ${SAMPLES[b.id] ? `<button class="btn ghost" onclick="openReader('${b.id}')">📝 双语试读</button>` : ""}
         </div>
       </div>
     </div>
-    <p class="tip">推荐用「整本阅读」：点词查义、双语对照、生词本、熟练度高亮全部可用（站内已内置 93 本全文）；外部链接仅为纯文本备份。</p>`;
+    <p class="tip">${hasFull
+      ? "整本阅读全部在站内完成：点词查义、双语对照、生词本、熟练度高亮、听书全部可用，不需要跳转任何外部网站。"
+      : (hasGuide ? "该书仍在版权保护期，站内提供原创精读导读（分章英文概要 + 中文讲解 + 名句），同样支持点词查义与朗读。"
+                  : "该书暂无可用全文。")}</p>`;
   go("book");
 }
 
 /* =====================================================
   九、双语阅读器：逐句对照(可关) + 背景色 + 颜色标记 + TTS
 ===================================================== */
-/* ---- 站内整书阅读：93 本古腾堡书全文已打包进 books/ 目录（有编号书全覆盖） ---- */
-const FULLSET = {"11":1,"12":1,"16":1,"21":1,"23":1,"27":1,"35":1,"36":1,"43":1,"45":1,"46":1,"55":1,"73":1,"74":1,"76":1,"84":1,"97":1,"98":1,"103":1,"105":1,"108":1,"110":1,"113":1,"120":1,"121":1,"132":1,"135":1,"139":1,"141":1,"145":1,"147":1,"148":1,"153":1,"155":1,"158":1,"160":1,"161":1,"162":1,"164":1,"174":1,"205":1,"209":1,"215":1,"219":1,"236":1,"244":1,"271":1,"289":1,"345":1,"351":1,"376":1,"408":1,"514":1,"521":1,"534":1,"541":1,"599":1,"730":1,"766":1,"768":1,"834":1,"844":1,"863":1,"910":1,"996":1,"1023":1,"1184":1,"1232":1,"1257":1,"1260":1,"1342":1,"1399":1,"1400":1,"1497":1,"1597":1,"1661":1,"1727":1,"1952":1,"1998":1,"2009":1,"2130":1,"2148":1,"2281":1,"2542":1,"2554":1,"2591":1,"2600":1,"2680":1,"2701":1,"2814":1,"2852":1,"2895":1,"3207":1,"3296":1,"3300":1,"4217":1,"4300":1,"5200":1,"5230":1,"6130":1,"1513":1,"1524":1,"1533":1,"16328":1,"22865":1,"28054":1,"64317":1};
 const fullCache = {};        // bookId → {sents:[{en,zh}], chapters:[{t,start,end}]}
 let fullMode = null;         // {id, chap} 整书阅读模式
 /* 解析古腾堡纯文本：去头尾 → 按空行分段 → 按章节标题分章 → 全书分句 */
@@ -950,25 +1000,182 @@ function parseFull(txt){
   }
   return {sents, chapters:chs};
 }
-/* 整书阅读入口：加载全文 → 分章 → 打开阅读器 */
+/* =====================================================
+  版权期作品（如加缪）：站内原创精读导读（分章英文概要 + 中文讲解 + 名句）
+  点词查义、朗读、生词本、标注全部与整书阅读一致
+===================================================== */
+const GUIDES = {
+"camus-stranger":[
+ {t:"第一章 · 母亲之死", items:[
+  {en:"The novel opens with the news that Meursault's mother has died in the nursing home where she spent her last years.", zh:"小说开篇：默尔索的母亲在养老院去世，他要去参加葬礼。"},
+  {en:"At the funeral he notices the heat, the glare of the sun, and the small details of the landscape far more than he notices his own grief.", zh:"葬礼上，他对炎热的天气、刺眼的阳光和风景的细节格外敏感，却几乎没有悲伤。"},
+  {en:"The next day he swims, meets Marie, and starts a relationship, as if ordinary life simply continues.", zh:"第二天他就去游泳、认识玛丽并开始交往，仿佛生活照常继续。"}]},
+ {t:"第二章 · 日常与邻居", items:[
+  {en:"Meursault spends ordinary days working, eating at the same restaurant, and watching the street from his balcony.", zh:"默尔索过着刻板的日常：上班、在同一家餐馆吃饭、在阳台上看街景。"},
+  {en:"His neighbour Raymond asks him to write a letter that will help him punish a woman he believes has betrayed him.", zh:"邻居雷蒙请他代写一封信，用来报复一个他认为背叛了自己的女人。"},
+  {en:"Meursault agrees without judging him, because he can see no strong reason to refuse.", zh:"默尔索答应了，不评判对错，因为他也找不出拒绝的理由。"}]},
+ {t:"第三章 · 海滩与枪声", items:[
+  {en:"On a beach trip with Raymond and Marie, they meet a group of men, and a fight breaks out.", zh:"默尔索和雷蒙、玛丽去海滩，与一伙人相遇并爆发冲突。"},
+  {en:"Later Meursault walks back along the beach alone, blinded by the sun, and shoots an Arab man four times.", zh:"后来他独自走回海滩，在烈日下开枪打死了那个阿拉伯人，连开四枪。"},
+  {en:"The act is described without explanation, as if the heat and the light were the only causes.", zh:"这一行为没有任何解释，仿佛炎热与阳光就是全部原因。"}]},
+ {t:"第四章 · 审判与领悟", items:[
+  {en:"In prison Meursault slowly accepts his situation and begins to feel the indifference of the universe.", zh:"在狱中，默尔索慢慢接受处境，并感受到世界的冷漠。"},
+  {en:"At the trial the prosecution focuses on his behaviour at his mother's funeral rather than on the killing itself.", zh:"审判时，检察官更在意他在母亲葬礼上的表现，而不是杀人本身。"},
+  {en:"He is sentenced to death and finally opens himself to what he calls the gentle indifference of the world.", zh:"他被判死刑，最终向「世界温柔的冷漠」敞开心扉，获得一种奇特的平静。"}]}],
+
+"camus-plague":[
+ {t:"第一章 · 封城", items:[
+  {en:"Doctor Rieux notices dead rats in the streets of Oran, and soon the town is struck by a mysterious fever.", zh:"里厄医生注意到奥兰街头出现死鼠，很快全城爆发神秘的高烧。"},
+  {en:"The authorities close the gates, separating the living from the outside world.", zh:"当局关闭城门，把城里的人与外部世界隔开。"},
+  {en:"People who thought of themselves as individuals become members of a single suffering community.", zh:"原本各自为生的市民被迫成为一个共同承受苦难的整体。"}]},
+ {t:"第二章 · 抗争", items:[
+  {en:"Rieux and his friends organise hospitals and sanitation teams while the death toll rises.", zh:"死亡人数攀升时，里厄和朋友们组织医院与防疫队。"},
+  {en:"Tarrou forms volunteer groups, and Grand keeps rewriting the first sentence of his novel.", zh:"塔鲁组建志愿队，格朗则反复重写他小说的第一句。"},
+  {en:"Each character chooses to fight the plague even though no one knows whether the fight can be won.", zh:"每个人都选择与瘟疫抗争，尽管没人知道这场战斗能否获胜。"}]},
+ {t:"第三章 · 流放与思念", items:[
+  {en:"Families are separated by the closed gates, and love becomes a form of exile.", zh:"城门紧闭使家人分离，爱变成了一种流放。"},
+  {en:"Some people try to escape, while others learn to live with uncertainty and fear.", zh:"有人试图逃离，有人学会与不确定和恐惧共处。"},
+  {en:"The narrator insists that the story is told with the simple honesty of a witness.", zh:"叙述者坚持用见证者朴素诚实的方式讲述这个故事。"}]},
+ {t:"第四章 · 结束与警示", items:[
+  {en:"The plague retreats as suddenly as it came, and the town celebrates its liberation.", zh:"瘟疫像来时一样突然退去，全城庆祝解封。"},
+  {en:"Tarrou dies, and Rieux learns that his wife has died outside the city.", zh:"塔鲁病逝，里厄得知妻子也在城外去世。"},
+  {en:"The final pages warn that the plague bacillus never disappears and may return.", zh:"结尾警告：鼠疫杆菌从未消失，也许还会回来。"}]}],
+
+"camus-fall":[
+ {t:"第一章 · 忏悔者的独白", items:[
+  {en:"In an Amsterdam bar called Mexico City, a former Parisian lawyer named Jean-Baptiste Clamence speaks to a stranger.", zh:"在阿姆斯特丹一间名为「墨西哥城」的酒吧里，前巴黎律师克莱芒斯对一个陌生人开口。"},
+  {en:"He presents himself as a judge-penitent, a man who accuses himself in order to accuse everyone else.", zh:"他自称「忏悔者法官」——通过审判自己来审判所有人。"},
+  {en:"The setting is grey: canals, fog, and a city that resembles a circle of hell.", zh:"场景灰暗：运河、浓雾，以及一座像地狱之环的城市。"}]},
+ {t:"第二章 · 过去的成功", items:[
+  {en:"Clamence describes his brilliant career defending the weak and his pleasure in feeling superior.", zh:"克莱芒斯讲述自己为弱者辩护的辉煌生涯，以及居高临下带来的快感。"},
+  {en:"He admits that his generosity was a way of enjoying his own virtue.", zh:"他承认，自己的慷慨不过是享受自身美德的一种方式。"},
+  {en:"A woman's cry on a bridge at night becomes the moment he cannot forget.", zh:"某个夜里桥上的女人呼喊，成了他无法忘记的瞬间。"}]},
+ {t:"第三章 · 坠落的自觉", items:[
+  {en:"He fails to act when he hears a body fall into the water, and afterwards he begins to doubt himself.", zh:"他听见有人落水却没有行动，此后开始怀疑自己。"},
+  {en:"His confidence collapses, and he discovers that other people are as false as he is.", zh:"自信崩塌，他发现别人和自己一样虚伪。"},
+  {en:"He concludes that every human being carries the same guilt, and that life is a courtroom.", zh:"他得出结论：每个人都背负同样的罪，生活就是一间法庭。"}]},
+ {t:"第四章 · 审判与自由", items:[
+  {en:"Clamence moves to Amsterdam and lives among people whose suffering seems to confirm his vision.", zh:"克莱芒斯搬到阿姆斯特丹，生活在似乎能印证他看法的受苦者中间。"},
+  {en:"He refuses love, freedom, and sincerity, because each of them would demand a choice.", zh:"他拒绝爱、自由与真诚，因为每一项都要求作出选择。"},
+  {en:"He ends by offering the stranger the same role he has taken for himself.", zh:"最后，他把自己的角色交给了那个陌生人。"}]}],
+
+"camus-sisyphus":[
+ {t:"第一章 · 荒谬的起点", items:[
+  {en:"Camus begins from a simple question: is life worth living?", zh:"加缪从一个简单的问题开始：生活是否值得经历？"},
+  {en:"He rejects both suicide and religious hope as escapes from the problem.", zh:"他既拒绝自杀，也拒绝宗教希望，因为二者都是逃避问题。"},
+  {en:"The absurd is born when human longing for meaning meets a silent universe.", zh:"当人对意义的渴望遇上沉默的宇宙，荒谬便诞生了。"}]},
+ {t:"第二章 · 荒谬的人", items:[
+  {en:"The absurd hero lives without consolation, keeping his lucidity intact.", zh:"荒谬的英雄不求慰藉地活着，始终保持清醒。"},
+  {en:"Don Juan, the actor, and the conqueror are offered as examples of lives lived without appeal.", zh:"唐璜、演员与征服者被举为「不诉诸永恒」的生活范例。"},
+  {en:"Each of them multiplies experience instead of seeking eternity.", zh:"他们追求的是经验的增殖，而不是永恒。"}]},
+ {t:"第三章 · 西西弗", items:[
+  {en:"Sisyphus is condemned to push a stone uphill forever, and it rolls back each time.", zh:"西西弗被罚永远推石上山，石头每次又滚落下来。"},
+  {en:"Camus imagines him happy, because the struggle itself fills his heart.", zh:"加缪想象他是幸福的，因为抗争本身足以填满一颗心。"},
+  {en:"The work of art and the act of living become ways of holding the absurd in view.", zh:"艺术创作与生活本身，都成为直面荒谬的方式。"}]},
+ {t:"第四章 · 反抗的态度", items:[
+  {en:"Accepting the absurd is not resignation but a constant revolt against false answers.", zh:"接受荒谬不是认命，而是对虚假答案的持续反抗。"},
+  {en:"Freedom means living without appeal to any final meaning.", zh:"自由意味着不再诉诸任何终极意义而生活。"},
+  {en:"The essay ends with the image of a man who knows his fate and refuses to hate it.", zh:"全文以这样的形象收尾：一个知晓命运却拒绝憎恨它的人。"}]}],
+
+"camus-rebel":[
+ {t:"第一章 · 反抗的起源", items:[
+  {en:"Camus argues that rebellion begins when a person says no to an unbearable condition.", zh:"加缪认为，反抗始于一个人对无法忍受的处境说「不」。"},
+  {en:"This no implies a yes to something that must be protected.", zh:"这个「不」同时包含着对某种必须守护之物的「是」。"},
+  {en:"Rebellion therefore contains a demand for shared dignity rather than private anger.", zh:"因此反抗要求的是共同的尊严，而非私人的愤怒。"}]},
+ {t:"第二章 · 历史中的反抗", items:[
+  {en:"He examines religious and metaphysical rebellion, from Prometheus to Nietzsche.", zh:"他考察从普罗米修斯到尼采的宗教与形而上学反抗。"},
+  {en:"Revolutionary movements often turn rebellion into new forms of tyranny.", zh:"革命运动常把反抗变成新的暴政形式。"},
+  {en:"The guillotine shows how absolute ideas can destroy the freedom they claim to defend.", zh:"断头台表明：绝对化的理念会摧毁它声称捍卫的自由。"}]},
+ {t:"第三章 · 限度与团结", items:[
+  {en:"Camus asks for rebellion that respects limits and refuses to sacrifice living people to abstractions.", zh:"加缪主张有节制的反抗，拒绝为抽象理念牺牲活人。"},
+  {en:"Solidarity grows when people rebel together against injustice.", zh:"当人们共同反抗不义时，团结便生长起来。"},
+  {en:"Art and thought must keep a tension between refusal and acceptance.", zh:"艺术与思想必须在拒绝与接受之间保持张力。"}]},
+ {t:"第四章 · 今日的意义", items:[
+  {en:"The rebel is a witness who acts without hope of final victory.", zh:"反抗者是明知无望仍行动的见证人。"},
+  {en:"Camus insists that ends never justify the murder of the innocent.", zh:"加缪坚持：任何目的都不能为杀害无辜辩护。"},
+  {en:"The book closes on the idea of a difficult but honest freedom.", zh:"全书以「艰难却诚实的自由」这一观念作结。"}]}],
+
+"camus-exile":[
+ {t:"第一章 · 不忠的女人", items:[
+  {en:"A woman travels into the desert with her husband and spends a night in a fortress.", zh:"一个女人随丈夫深入沙漠，在堡垒中过夜。"},
+  {en:"In the cold wind she feels both the emptiness of her marriage and a strange freedom.", zh:"寒风中她既感到婚姻的空洞，也感到一种奇异的自由。"},
+  {en:"The story ends with her return to the tent, unable to explain what changed.", zh:"故事以她回到帐篷结束，她无法说明自己究竟改变了什么。"}]},
+ {t:"第二章 · 叛教者", items:[
+  {en:"A missionary is tortured in a desert town by people who reject his faith.", zh:"一名传教士在沙漠小镇被拒绝他信仰的人折磨。"},
+  {en:"His faith collapses into hatred, and he waits for a new kind of justice.", zh:"他的信仰崩解为仇恨，转而等待另一种正义。"},
+  {en:"The story explores how belief can turn into violence.", zh:"这个故事探讨信仰如何转化为暴力。"}]},
+ {t:"第三章 · 沉默的人们 · 客人", items:[
+  {en:"Workers strike in silence, and a schoolteacher must decide whether to hand over an Arab prisoner.", zh:"工人沉默罢工；一位乡村教师必须决定是否交出阿拉伯囚犯。"},
+  {en:"The teacher gives the prisoner a choice and is left alone with his own freedom.", zh:"教师让囚犯自己选择，最后独自面对自己的自由。"},
+  {en:"Camus treats moral decisions as quiet, difficult acts.", zh:"加缪把道德抉择写成安静而艰难的行动。"}]},
+ {t:"第四章 · 约拿 · 生长的石头", items:[
+  {en:"An artist becomes famous and loses the silence he needs to work.", zh:"一位画家成名后，失去了创作所需的安静。"},
+  {en:"A man arrives in a colonial town and becomes involved in the life of a native community.", zh:"一个男人来到殖民地小镇，捲入当地社群的生活。"},
+  {en:"Both stories ask what it costs to belong and to create.", zh:"两个故事都在问：归属与创造，代价是什么。"}]}],
+
+"camus-happydeath":[
+ {t:"第一章 · 帕特里斯", items:[
+  {en:"Patrice Mersault visits a wealthy invalid named Zagreus and decides to kill him.", zh:"帕特里斯·梅尔索拜访富有的病人扎格勒斯，并决定杀了他。"},
+  {en:"He wants the man's money and, more deeply, his freedom.", zh:"他想要那人的钱，更深层地，想要他的自由。"},
+  {en:"The murder is planned with cold attention to detail.", zh:"谋杀被冷静而细致地计划。"}]},
+ {t:"第二章 · 财富与时间", items:[
+  {en:"With the money Mersault travels and lives alone, trying to build a happy life.", zh:"拿到钱后，梅尔索独自行走生活，试图构建幸福。"},
+  {en:"He discovers that possessions do not bring the happiness he expected.", zh:"他发现占有并不能带来预期的幸福。"},
+  {en:"Time becomes the real wealth he must learn to use.", zh:"时间才是他真正要学会运用的财富。"}]},
+ {t:"第三章 · 婚姻与身体", items:[
+  {en:"He marries and tries domestic happiness, but illness begins to change his body.", zh:"他结婚、尝试家庭幸福，疾病却开始改变他的身体。"},
+  {en:"His wife and friends stand around him while he faces the end.", zh:"临终时，妻子与朋友围在他身边。"},
+  {en:"He accepts death slowly, without any religious hope.", zh:"他缓慢地接受死亡，不抱任何宗教希望。"}]},
+ {t:"第四章 · 与《局外人》的联系", items:[
+  {en:"The novel anticipates the themes of The Stranger, written later.", zh:"这部小说预示了后来《局外人》的主题。"},
+  {en:"Mersault's search for a happy death becomes a meditation on solitude and freedom.", zh:"梅尔索对「幸福的死」的追寻，成为对孤独与自由的沉思。"},
+  {en:"Camus asks whether happiness is possible without illusions.", zh:"加缪在问：没有幻觉，幸福是否可能。"}]}]
+};
+/* 打开精读导读：把导读内容转成与整书一致的数据结构 */
+function openGuide(id){
+  const g = GUIDES[id];
+  if(!g) return;
+  const sents = [], chapters = [];
+  g.forEach(ch=>{
+    const start = sents.length;
+    ch.items.forEach(it=>sents.push({en:it.en, zh:it.zh}));
+    chapters.push({t:ch.t, start, end:sents.length});
+  });
+  fullCache[id] = {sents, chapters, guide:true};
+  fullMode = {id, chap:0};
+  openReader(id);
+}
+/* 整书阅读入口：加载全文 → 分章 → 打开阅读器
+   优先读站内打包文件；缺失时自动从古腾堡镜像拉取并写入缓存（装到 PWA 后可离线） */
 async function openFull(id){
   curBook = BOOKS.find(x=>x.id===id);
   if(fullCache[id]){ fullMode = {id, chap:0}; openReader(id); return; }
   document.getElementById("view-reader").innerHTML =
-    `<div class="reader"><div class="rd-head"><h2>《${curBook.t}》全文加载中…</h2></div>
-     <p class="tip">首次加载约需几秒，加载后可离线阅读。</p></div>`;
+    `<div class="reader"><div class="rd-head"><h2>《${curBook.zh}》全文加载中…</h2></div>
+     <p class="tip">首次加载约需几秒，加载后即可离线阅读。</p></div>`;
   go("reader");
+  let txt = null;
   try{
-    const txt = await (await fetch("./books/pg"+curBook.gb+".txt")).text();
-    fullCache[id] = parseFull(txt);
-    fullMode = {id, chap:0};
-    openReader(id);
-  }catch(e){
+    const r = await fetch("./books/pg"+curBook.gb+".txt");
+    if(r.ok) txt = await r.text();
+  }catch(e){}
+  if(!txt || txt.length < 5000){
+    try{
+      const r2 = await fetch("https://gutenberg.pglaf.org/cache/epub/"+curBook.gb+"/pg"+curBook.gb+".txt");
+      if(r2.ok) txt = await r2.text();
+    }catch(e){}
+  }
+  if(!txt || txt.length < 5000){
     document.getElementById("view-reader").innerHTML =
       `<div class="reader"><div class="rd-head"><h2>加载失败</h2></div>
-       <p class="tip">全文文件缺失（books/pg${curBook.gb}.txt）。${e.message}</p>
+       <p class="tip">这本书的全文文件暂时取不到，请检查网络后重试。</p>
+       <button class="btn ghost small" onclick="openFull('${id}')">重试</button>
        <button class="btn ghost small" onclick="openBook('${id}')">← 返回详情</button></div>`;
+    return;
   }
+  fullCache[id] = parseFull(txt);
+  fullMode = {id, chap:0};
+  openReader(id);
 }
 function jumpChapter(n){
   if(!fullMode) return;
@@ -1017,6 +1224,7 @@ function openReader(id){
     { id, t:(store.imports.find(x=>x.id===id)||{t:"导入书籍"}).t };
   const sents = getSents(id);   // 内置书 = 样章；导入书 = 全文分句；整书 = 全书
   const isFull = fullMode && fullMode.id===id && fullCache[id];
+  const isGuide = !!(isFull && fullCache[id].guide);
   const rng = isFull
     ? (c=>[c.start, c.end])(fullCache[id].chapters[fullMode.chap])
     : [0, sents.length];        // 整书模式只渲染当前章（句序号仍是全书全局序号）
@@ -1075,7 +1283,7 @@ function openReader(id){
   document.getElementById("view-reader").innerHTML = `
     <div class="reader">
       <span class="back" onclick="openBook('${id}')">← 返回详情</span>
-      <div class="rd-head"><h2>${curBook.t} · ${isFull ? "整本阅读" : "双语试读"}</h2></div>
+      <div class="rd-head"><h2>${curBook.t} · ${isGuide?"精读导读":(isFull ? "整本阅读" : "双语试读")}</h2></div>
       ${isFull ? `
       <div class="rd-tools">
         <button class="btn ghost small" onclick="jumpChapter(${fullMode.chap-1})" ${fullMode.chap===0?"disabled":""}>← 上一章</button>
@@ -1084,7 +1292,7 @@ function openReader(id){
             `<option value="${i}" ${i===fullMode.chap?"selected":""}>${c.t}</option>`).join("")}
         </select>
         <button class="btn ghost small" onclick="jumpChapter(${fullMode.chap+1})" ${fullMode.chap===fullCache[id].chapters.length-1?"disabled":""}>下一章 →</button>
-        <button class="btn ghost small" id="mtChapBtn" onclick="mtChapter()">🌐 机翻本章</button>
+        ${isGuide ? "" : `<button class="btn ghost small" id="mtChapBtn" onclick="mtChapter()">🌐 机翻本章</button>`}
         <span class="tip" style="display:inline;margin:0">第 ${fullMode.chap+1}/${fullCache[id].chapters.length} 章</span>
       </div>` : `
       <div class="rd-tools">
@@ -1104,7 +1312,9 @@ function openReader(id){
           style="background:${v==="dark"?"#17191B":c}" title="${label}"
           onclick="setBg('${v}')"></button>`).join("")}
       </div>
-      <p class="tip">点词查义 · 划选短语整段翻译 · 「机翻本章」自动翻译全章后随对照开关显示。</p>`
+      <p class="tip">${isGuide
+        ? "精读导读：分章英文概要 + 中文讲解，点词查义、朗读、生词本全部可用。"
+        : "点词查义 · 划选短语整段翻译 · 「机翻本章」自动翻译全章后随对照开关显示。"}</p>`
       : `<p class="tip">点击任意英文单词：自动弹出「本句语境义 + 平时常用义 + 英英释义」，可朗读、标记颜色、收入生词本。</p>`}
       ${html}
     </div>`;
@@ -1867,6 +2077,35 @@ function selWord(){
   pop.style.display = "none";
 }
 function selSpeak(){ speakText(document.getElementById("selpop").dataset.sel); }
+
+/* =====================================================
+  离线：把站内全部书籍下载进缓存，之后断网也能读
+===================================================== */
+let dlRunning = false;
+async function downloadAll(){
+  if(dlRunning) return;
+  const btn = document.getElementById("offlineBtn");
+  const list = BOOKS.filter(b=>typeof b.gb === "number");
+  dlRunning = true; btn.disabled = true;
+  let ok = 0;
+  for(let i=0;i<list.length;i++){
+    try{
+      const r = await fetch("./books/pg"+list[i].gb+".txt");
+      if(r.ok){ await r.text(); ok++; }
+    }catch(e){}
+    btn.textContent = `📶 下载中 ${i+1}/${list.length}`;
+  }
+  btn.textContent = `📶 已离线 ${ok}/${list.length}`;
+  btn.disabled = false; dlRunning = false;
+}
+
+/* PWA 安装提示 */
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e=>{
+  e.preventDefault(); installEvt = e;
+  const b = document.getElementById("offlineBtn");
+  if(b) b.textContent = "📲 安装到桌面";
+});
 
 /* =====================================================
   十二、初始化
