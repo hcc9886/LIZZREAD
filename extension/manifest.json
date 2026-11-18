@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "LIZZREAD 点词翻译",
+  "version": "1.0.0",
+  "description": "在任何网站一键开启/关闭点词翻译：单击单词弹出中文释义、音标、英英解释与发音；选中文本可整句翻译。",
+  "permissions": ["storage", "activeTab", "commands"],
+  "host_permissions": [
+    "https://api.dictionaryapi.dev/*",
+    "https://api.mymemory.translated.net/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LIZZREAD 点词翻译",
+    "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle",
+    "all_frames": true
+  }],
+  "commands": {
+    "toggle-translate": {
+      "suggested_key": { "default": "Alt+T" },
+      "description": "开启/关闭点词翻译"
+    }
+  }
+}

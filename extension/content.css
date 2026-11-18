@@ -1,0 +1,9 @@
+/* 宿主元素只做定位容器，内部样式全部在 Shadow DOM 里，避免被任意网站 CSS 干扰 */
+#lz-translate-host {
+  position: fixed;
+  inset: auto 0 0 auto;
+  width: 0;
+  height: 0;
+  z-index: 2147483000;
+  all: initial;
+}

@@ -396,7 +396,15 @@ const AUTHOR_ZH = {
  "Washington Irving":"华盛顿·欧文","Harriet Beecher Stowe":"斯托夫人","H. P. Lovecraft":"洛夫克拉夫特",
  "Robert W. Chambers":"钱伯斯","J. Sheridan Le Fanu":"勒法努","Elizabeth Gaskell":"盖斯凯尔",
  "Richard Henry Dana":"达纳","Anne Brontë":"安妮·勃朗特","E. M. Forster":"福斯特",
- "Theodore Dreiser":"德莱塞","Immanuel Kant":"康德"
+ "Theodore Dreiser":"德莱塞","Immanuel Kant":"康德",
+ "Bram Stoker":"布拉姆·斯托克","Charlotte Perkins Gilman":"吉尔曼","Sinclair Lewis":"辛克莱·刘易斯",
+ "Upton Sinclair":"厄普顿·辛克莱","Matthew Lewis":"马修·刘易斯","Horace Walpole":"沃波尔",
+ "Ann Radcliffe":"拉德克利夫","Willa Cather":"薇拉·凯瑟","Sherwood Anderson":"舍伍德·安德森",
+ "Margery Williams":"玛杰丽·威廉斯","Kahlil Gibran":"纪伯伦","Helen Keller":"海伦·凯勒",
+ "Hermann Hesse":"黑塞","W. Somerset Maugham":"毛姆","Virginia Woolf":"弗吉尼亚·伍尔夫",
+ "Ernest Hemingway":"海明威","Henry David Thoreau":"梭罗",
+ "Eleanor H. Porter":"埃莉诺·波特","Johann David Wyss":"维斯","Alexandre Dumas fils":"小仲马",
+ "Edward Bellamy":"爱德华·贝拉米"
 };
 /* AI 生成的书皮图（懒加载；加载失败时回退为渐变文字封面） */
 function coverUrl(b){
@@ -622,7 +630,49 @@ const BOOKS = [
  {id:"carmilla", t:"Carmilla", zh:"卡米拉", a:"J. Sheridan Le Fanu", y:1872, lv:"B2", g:"mys", d:"吸血鬼女伯爵的哥特经典。", gb:10007},
  {id:"northandsouth", t:"North and South", zh:"南方与北方", a:"Elizabeth Gaskell", y:1855, lv:"B2", g:"lit", d:"工业城市里的阶级与爱情。", gb:4276},
  {id:"cranford", t:"Cranford", zh:"克兰福德", a:"Elizabeth Gaskell", y:1853, lv:"B2", g:"lit", d:"乡村老小姐们的温情群像。", gb:394},
- {id:"twobeforemast", t:"Two Years Before the Mast", zh:"桅前两年", a:"Richard Henry Dana", y:1840, lv:"B2", g:"adv", d:"水手生活的真实航海记录。", gb:2055}
+ {id:"twobeforemast", t:"Two Years Before the Mast", zh:"桅前两年", a:"Richard Henry Dana", y:1840, lv:"B2", g:"adv", d:"水手生活的真实航海记录。", gb:2055},
+ /* ---- 第四批扩充（哥特·美国文学·爵士时代与现代经典） ---- */
+ {id:"dracula", t:"Dracula", zh:"德古拉", a:"Bram Stoker", y:1897, lv:"B2", g:"mys", d:"吸血鬼文学的奠基石。", gb:345},
+ {id:"walden", t:"Walden", zh:"瓦尔登湖", a:"Henry David Thoreau", y:1854, lv:"C1", g:"phl", d:"湖畔独居的自然观察与自省。", gb:205},
+ {id:"yellowwallpaper", t:"The Yellow Wallpaper", zh:"黄色墙纸", a:"Charlotte Perkins Gilman", y:1892, lv:"B2", g:"lit", d:"女性精神困境的短篇杰作。", gb:1952},
+ {id:"thisside", t:"This Side of Paradise", zh:"尘世乐园", a:"F. Scott Fitzgerald", y:1920, lv:"B2", g:"lit", d:"爵士时代的青春与幻灭。", gb:805},
+ {id:"beautifuldamned", t:"The Beautiful and Damned", zh:"美丽与毁灭", a:"F. Scott Fitzgerald", y:1922, lv:"C1", g:"lit", d:"纵情年代的婚姻与崩塌。", gb:9830},
+ {id:"mainstreet", t:"Main Street", zh:"大街", a:"Sinclair Lewis", y:1920, lv:"B2", g:"lit", d:"小镇生活的窒息与反抗。", gb:543},
+ {id:"babbitt", t:"Babbitt", zh:"巴比特", a:"Sinclair Lewis", y:1922, lv:"C1", g:"lit", d:"中产商人的庸常与虚荣。", gb:1156},
+ {id:"thejungle", t:"The Jungle", zh:"屠场", a:"Upton Sinclair", y:1906, lv:"B2", g:"lit", d:"移民工人的血汗工厂。", gb:140},
+ {id:"connecticut", t:"A Connecticut Yankee in King Arthur's Court", zh:"误闯亚瑟王宫", a:"Mark Twain", y:1889, lv:"B2", g:"adv", d:"现代人穿越回圆桌骑士时代。", gb:86},
+ {id:"roughingit", t:"Roughing It", zh:"艰苦岁月", a:"Mark Twain", y:1872, lv:"C1", g:"adv", d:"西部淘金岁月的幽默纪实。", gb:3177},
+ {id:"lifeonmississippi", t:"Life on the Mississippi", zh:"密西西比河上", a:"Mark Twain", y:1883, lv:"B2", g:"adv", d:"汽船水手的河上生涯。", gb:245},
+ {id:"innocentsabroad", t:"The Innocents Abroad", zh:"傻子出国记", a:"Mark Twain", y:1869, lv:"C1", g:"adv", d:"美国游客的欧洲吐槽之旅。", gb:3176},
+ {id:"monk", t:"The Monk", zh:"修道士", a:"Matthew Lewis", y:1796, lv:"C1", g:"mys", d:"哥特小说的顶峰之一。", gb:601},
+ {id:"otranto", t:"The Castle of Otranto", zh:"奥特朗托城堡", a:"Horace Walpole", y:1764, lv:"B2", g:"mys", d:"公认的第一部哥特小说。", gb:696},
+ {id:"udolpho", t:"The Mysteries of Udolpho", zh:"尤道弗的秘密", a:"Ann Radcliffe", y:1794, lv:"C1", g:"mys", d:"古堡、秘密与悬疑气氛。", gb:3268},
+ {id:"washingtonsquare", t:"Washington Square", zh:"华盛顿广场", a:"Henry James", y:1880, lv:"B2", g:"lit", d:"父女之间的婚恋博弈。", gb:2870},
+ {id:"ambassadors", t:"The Ambassadors", zh:"使节", a:"Henry James", y:1903, lv:"C2", g:"lit", d:"晚期詹姆斯的叙事迷宫。", gb:432},
+ {id:"opioneers", t:"O Pioneers!", zh:"啊，拓荒者！", a:"Willa Cather", y:1913, lv:"B2", g:"lit", d:"内布拉斯加的拓荒者史诗。", gb:24},
+ {id:"winesburg", t:"Winesburg, Ohio", zh:"小城畸人", a:"Sherwood Anderson", y:1919, lv:"B2", g:"lit", d:"小镇群像的短篇连环。", gb:416},
+ {id:"martineden", t:"Martin Eden", zh:"马丁·伊登", a:"Jack London", y:1909, lv:"C1", g:"lit", d:"自学成才者的爱情与幻灭。", gb:1056},
+ {id:"ironheel", t:"The Iron Heel", zh:"铁蹄", a:"Jack London", y:1908, lv:"C1", g:"sci", d:"反乌托邦的政治预言。", gb:1164},
+ {id:"blackarrow", t:"The Black Arrow", zh:"黑箭", a:"R. L. Stevenson", y:1888, lv:"B2", g:"adv", d:"玫瑰战争中的复仇冒险。", gb:848},
+ {id:"tarzan", t:"Tarzan of the Apes", zh:"人猿泰山", a:"Edgar Rice Burroughs", y:1914, lv:"B2", g:"adv", d:"丛林之子的传奇身世。", gb:78},
+ {id:"godsofmars", t:"The Gods of Mars", zh:"火星众神", a:"Edgar Rice Burroughs", y:1913, lv:"B2", g:"sci", d:"火星冒险系列第二部。", gb:64},
+ {id:"allanquatermain", t:"Allan Quatermain", zh:"艾伦·夸特梅因", a:"H. Rider Haggard", y:1887, lv:"B2", g:"adv", d:"非洲探险的续篇。", gb:711},
+ {id:"velveteen", t:"The Velveteen Rabbit", zh:"绒布兔子", a:"Margery Williams", y:1922, lv:"A2", g:"fab", d:"关于爱与长大的温柔童话。", gb:11757},
+ {id:"prophet", t:"The Prophet", zh:"先知", a:"Kahlil Gibran", y:1923, lv:"B2", g:"phl", d:"诗化散文写成的东方智慧。", gb:58585},
+ {id:"keller", t:"The Story of My Life", zh:"我的一生", a:"Helen Keller", y:1903, lv:"B2", g:"phl", d:"盲聋作家的自传。", gb:2397},
+ {id:"twentyyearsafter", t:"Twenty Years After", zh:"二十年后", a:"Alexandre Dumas", y:1845, lv:"B2", g:"adv", d:"火枪手们的中年续章。", gb:1259},
+ {id:"blacktulip", t:"The Black Tulip", zh:"黑郁金香", a:"Alexandre Dumas", y:1850, lv:"B2", g:"lit", d:"荷兰郁金香狂热中的爱情。", gb:965},
+ {id:"siddhartha", t:"Siddhartha", zh:"悉达多", a:"Hermann Hesse", y:1922, lv:"B2", g:"lit", d:"求道者的一生。", gb:2499},
+ {id:"ofhumanbondage", t:"Of Human Bondage", zh:"人生的枷锁", a:"W. Somerset Maugham", y:1915, lv:"C1", g:"lit", d:"跛足青年的成长与挣脱。", gb:351},
+ {id:"moonandsixpence", t:"The Moon and Sixpence", zh:"月亮与六便士", a:"W. Somerset Maugham", y:1919, lv:"B2", g:"lit", d:"抛弃一切去画画的画家。", gb:222},
+ {id:"mrsdalloway", t:"Mrs. Dalloway", zh:"达洛维夫人", a:"Virginia Woolf", y:1925, lv:"C2", g:"lit", d:"一天之内的意识流。", gb:63107},
+ {id:"sunalsorises", t:"The Sun Also Rises", zh:"太阳照常升起", a:"Ernest Hemingway", y:1926, lv:"B2", g:"lit", d:"迷惘一代的巴黎与斗牛。", gb:67138},
+ {id:"myantonia", t:"My Ántonia", zh:"我的安东尼亚", a:"Willa Cather", y:1918, lv:"B2", g:"lit", d:"草原移民女儿的坚韧一生。", gb:242},
+ {id:"camellias", t:"The Lady of the Camellias", zh:"茶花女", a:"Alexandre Dumas fils", y:1848, lv:"B2", g:"lit", d:"巴黎交际花的爱情悲剧。", gb:1608},
+ {id:"pollyanna", t:"Pollyanna", zh:"波莉安娜", a:"Eleanor H. Porter", y:1913, lv:"B1", g:"fab", d:"把坏消息也变成快乐的女孩。", gb:1450},
+ {id:"howardsend", t:"Howards End", zh:"霍华德庄园", a:"E. M. Forster", y:1910, lv:"B2", g:"lit", d:"两个家庭与一座老宅的连接。", gb:2946},
+ {id:"lookingbackward", t:"Looking Backward, 2000 to 1887", zh:"回顾：2000-1887", a:"Edward Bellamy", y:1888, lv:"B2", g:"sci", d:"一觉睡到 2000 年的乌托邦。", gb:624},
+ {id:"swissfamily", t:"The Swiss Family Robinson", zh:"瑞士家庭鲁滨逊", a:"Johann David Wyss", y:1812, lv:"B1", g:"adv", d:"荒岛求生的家庭冒险经典。", gb:3836}
 ];
 
 /* =====================================================

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root { color-scheme: light dark; }
+  body { width: 268px; margin: 0; padding: 14px 14px 12px;
+    font: 13.5px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: #fff; color: #1b1f1d; }
+  @media (prefers-color-scheme: dark) { body { background: #1f2422; color: #e6ebe8; } }
+  h1 { font-size: 15px; margin: 0 0 2px; }
+  h1 b { color: #0F8A4D; }
+  .site { color: #7c8581; font-size: 12px; margin-bottom: 12px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .row { display: flex; align-items: center; justify-content: space-between;
+    background: #f4f6f4; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  @media (prefers-color-scheme: dark) { .row { background: #272d2a; } }
+  .state { font-weight: 600; }
+  .state.on { color: #0F8A4D; }
+  .state.off { color: #8a928d; }
+  button { border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer;
+    font: 600 13px/1 inherit; background: #0F8A4D; color: #fff; }
+  button.off { background: #5b6360; }
+  .hint { color: #8a928d; font-size: 11.5px; line-height: 1.6; }
+  .warn { color: #b0602f; font-size: 12px; margin-top: 8px; display: none; }
+</style>
+</head>
+<body>
+  <h1><b>LIZZREAD</b> 点词翻译</h1>
+  <div class="site" id="site">—</div>
+  <div class="row">
+    <span>本站状态：<span class="state off" id="state">读取中…</span></span>
+    <button id="btn" disabled>开启</button>
+  </div>
+  <div class="hint">开启后单击任意英文单词即可查看释义；选中一段可整句翻译。<br>快捷键 Alt+T 可随时开关。</div>
+  <div class="warn" id="warn">当前页面不支持（浏览器内置页面或应用商店页面）。</div>
+  <script src="popup.js"></script>
+</body>
+</html>
