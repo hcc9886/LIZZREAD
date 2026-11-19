@@ -803,13 +803,14 @@ const DICT = {
  "door-nail":["n.","门钉"],"otherwise":["adv.","否则；以其他方式"]
 };
 
-/* ---------- 本地大词典（dict.js 约 5 万常用词，异步加载，点词即显） ---------- */
+/* ---------- 本地大词典（dict.js 约 24 万常用词，异步加载，点词即显） ---------- */
 let _bigDictLoading = false;
+const _DICT_V = "2";  // dict.js 版本号，改了字典时 bump 一次绕过浏览器缓存
 function loadBigDict(){
   if(window.LIZ_DICT || _bigDictLoading) return;
   _bigDictLoading = true;
   const s = document.createElement("script");
-  s.src = "./dict.js"; s.async = true;
+  s.src = "./dict.js?v="+_DICT_V; s.async = true;
   document.head.appendChild(s);
 }
 /* 词形变化兜底：复数/过去式/进行式/副词/比较级 */
@@ -826,17 +827,33 @@ function _baseForms(w){
   if(/est$/.test(w)){ c.push(w.slice(0,-3)); c.push(w.slice(0,-2)); }
   return c.filter(x=>x.length>2 && x!==w);
 }
+function _getDictEntry(w){
+  const G = window.LIZ_DICT;
+  if(G){
+    if(G[w]) return G[w];
+    for(const b of _baseForms(w)) if(G[b]) return G[b];
+  }
+  return null;
+}
 function dictEntry(w){
   const low = String(w||"").toLowerCase().replace(/[^a-z'-]/g,"");
   if(!low) return null;
   if(DICT[low]) return DICT[low];
-  const G = window.LIZ_DICT;
+  const G = _getDictEntry(low);
   if(G){
-    if(G[low]) return G[low];
-    for(const b of _baseForms(low)) if(G[b]) return [G[b][0], G[b][1]+"（"+low+"）"];
+    // dict.js entry: [pos, zh, en?] or [pos, zh]
+    return [G[0], G[1]];
   }
   for(const b of _baseForms(low)) if(DICT[b]) return [DICT[b][0], DICT[b][1]+"（"+low+"）"];
   return null;
+}
+/* 本地英文释义（用于无网时秒显英英） */
+function dictEnDef(w){
+  const low = String(w||"").toLowerCase().replace(/[^a-z'-]/g,"");
+  if(!low) return "";
+  const G = _getDictEntry(low);
+  if(G && G[2]) return G[2];
+  return "";
 }
 
 
@@ -1540,14 +1557,16 @@ function wordClick(e){
   /* 平时常用义：本地词典优先 */
   document.getElementById("shDef").textContent =
     d ? `${d[0]} ${d[1]}` : "本地词典暂未收录，可点下方「更多释义」";
-  /* 本句语境义：整句机翻（缓存 + 本地译文兜底） */
+  /* 本句语境义：先用本站译文同步显示，后台联网优化回来再替换 */
   const ctxEl = document.getElementById("shCtx");
-  ctxEl.textContent = "翻译中…";
-  ctxTranslate(ctxEn, localZh).then(t=>{ ctxEl.textContent = t; });
-  /* 英英释义：dictionaryapi.dev（免费无 key，失败静默降级） */
+  ctxEl.textContent = localZh;
+  ctxTranslate(ctxEn, localZh).then(t=>{ if(t !== localZh) ctxEl.textContent = t; }).catch(()=>{});
+  /* 英英释义：先查本地 dict.js 带的英文 definition → 命中秒显；未命中再走联网 */
   const enEl = document.getElementById("shEn");
+  const localEn = dictEnDef(low);
   const cachedEn = getEnCache(low);
   if(cachedEn){ enEl.innerHTML = renderDefs(low, 1); }
+  else if(localEn){ enEl.innerHTML = `<div style="color:var(--text)">${localEn}</div><div class="dim">（本地词典 · 联网补充更多义项）</div>`; fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{}); }
   else {
     enEl.textContent = "英英释义后台补充中…";
     fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{
