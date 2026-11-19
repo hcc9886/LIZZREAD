@@ -404,7 +404,12 @@ const AUTHOR_ZH = {
  "Hermann Hesse":"黑塞","W. Somerset Maugham":"毛姆","Virginia Woolf":"弗吉尼亚·伍尔夫",
  "Ernest Hemingway":"海明威","Henry David Thoreau":"梭罗",
  "Eleanor H. Porter":"埃莉诺·波特","Johann David Wyss":"维斯","Alexandre Dumas fils":"小仲马",
- "Edward Bellamy":"爱德华·贝拉米"
+ "Edward Bellamy":"爱德华·贝拉米",
+ "Geoffrey Chaucer":"杰弗里·乔叟","Alexis de Tocqueville":"托克维尔",
+ "Alexander Hamilton":"汉密尔顿","James Madison":"麦迪逊","John Jay":"杰伊",
+ "Thorstein Veblen":"凡勃伦","Harriet Jacobs":"哈丽雅特·雅各布斯",
+ "Solomon Northup":"所罗门·诺萨普","Olaudah Equiano":"埃奎亚诺",
+ "Samuel Butler":"塞缪尔·巴特勒"
 };
 /* AI 生成的书皮图（懒加载；加载失败时回退为渐变文字封面） */
 function coverUrl(b){
@@ -455,16 +460,16 @@ const BOOKS = [
  /* ---- 侦探推理 ---- */
  {id:"sherlock", t:"The Adventures of Sherlock Holmes", zh:"福尔摩斯探案集", a:"Arthur Conan Doyle", y:1892, lv:"B2", g:"mys", gb:1661, d:"12 个经典短篇，侦探入门首选。"},
  {id:"hound",  t:"The Hound of the Baskervilles", zh:"巴斯克维尔的猎犬", a:"Arthur Conan Doyle", y:1902, lv:"B2", g:"mys", gb:2852, d:"沼泽、怪犬与家族诅咒。"},
- {id:"signfour", t:"The Sign of the Four", zh:"四签名", a:"Arthur Conan Doyle", y:1890, lv:"B2", g:"mys", gb:534, d:"一箱珠宝、四个签名与跨洋追凶。"},
+ {id:"signfour", t:"The Sign of the Four", zh:"四签名", a:"Arthur Conan Doyle", y:1890, lv:"B2", g:"mys", gb:2097, d:"一箱珠宝、四个签名与跨洋追凶。"},
  {id:"memoirs", t:"The Memoirs of Sherlock Holmes", zh:"福尔摩斯回忆录", a:"Arthur Conan Doyle", y:1894, lv:"B2", g:"mys", gb:834, d:"含名篇〈银色马〉与莱辛巴赫瀑布坠落。"},
  {id:"return", t:"The Return of Sherlock Holmes", zh:"福尔摩斯归来记", a:"Arthur Conan Doyle", y:1905, lv:"B2", g:"mys", gb:108, d:"空屋归来，13 案再起。"},
  {id:"study",  t:"A Study in Scarlet", zh:"血字的研究", a:"Arthur Conan Doyle", y:1887, lv:"B2", g:"mys", gb:244, d:"福尔摩斯与华生初次相识的第一案。"},
- {id:"valley", t:"The Valley of Fear", zh:"恐怖谷", a:"Arthur Conan Doyle", y:1915, lv:"B2", g:"mys", gb:376, d:"庄园谋杀案回溯美国煤矿黑帮往事。"},
- {id:"morgue", t:"The Murders in the Rue Morgue", zh:"莫格街凶杀案", a:"Edgar Allan Poe", y:1841, lv:"B2", g:"mys", gb:2148, d:"公认的侦探小说开山之作。"},
+ {id:"valley", t:"The Valley of Fear", zh:"恐怖谷", a:"Arthur Conan Doyle", y:1915, lv:"B2", g:"mys", gb:3289, d:"庄园谋杀案回溯美国煤矿黑帮往事。"},
+ {id:"morgue", t:"The Works of Edgar Allan Poe — Volume 2", zh:"爱伦·坡作品集 · 卷二", a:"Edgar Allan Poe", y:1845, lv:"C1", g:"mys", gb:2148, d:"含《莫格街凶杀案》《玛丽·罗热疑案》等侦探小说开山之作。"},
  {id:"moonstone", t:"The Moonstone", zh:"月亮宝石", a:"Wilkie Collins", y:1868, lv:"C1", g:"mys", gb:155, d:"钻石失窃案，长篇侦探小说的奠基之作。"},
- {id:"womanwhite", t:"The Woman in White", zh:"白衣女人", a:"Wilkie Collins", y:1860, lv:"C1", g:"mys", gb:162, d:"深夜路遇白衣女人的连环骗局。"},
+ {id:"womanwhite", t:"The Woman in White", zh:"白衣女人", a:"Wilkie Collins", y:1860, lv:"C1", g:"mys", gb:583, d:"深夜路遇白衣女人的连环骗局。"},
  {id:"brown",  t:"The Innocence of Father Brown", zh:"布朗神父的天真", a:"G. K. Chesterton", y:1911, lv:"B2", g:"mys", gb:204, d:"貌不惊人的小神父靠人心推理破案。"},
- {id:"39steps", t:"The Thirty-nine Steps", zh:"三十九级台阶", a:"John Buchan", y:1915, lv:"B2", g:"mys", gb:2895, d:"被冤男子逃亡与谍战，希区柯克改编原著。"},
+ {id:"39steps", t:"The Thirty-nine Steps", zh:"三十九级台阶", a:"John Buchan", y:1915, lv:"B2", g:"mys", gb:558, d:"被冤男子逃亡与谍战，希区柯克改编原著。"},
  {id:"styles", t:"The Mysterious Affair at Styles", zh:"斯泰尔斯庄园奇案", a:"Agatha Christie", y:1920, lv:"B2", g:"mys", gb:863, d:"波洛侦探的初登场。"},
 
  /* ---- 科幻幻想 ---- */
@@ -473,7 +478,7 @@ const BOOKS = [
  {id:"war",    t:"The War of the Worlds", zh:"世界之战", a:"H. G. Wells", y:1898, lv:"B2", g:"sci", gb:36, d:"火星人入侵地球的末日图景。"},
  {id:"leagues", t:"Twenty Thousand Leagues Under the Sea", zh:"海底两万里", a:"Jules Verne", y:1870, lv:"B2", g:"sci", gb:164, d:"鹦鹉螺号的海底环球之旅。"},
  {id:"invisible", t:"The Invisible Man", zh:"隐形人", a:"H. G. Wells", y:1897, lv:"B2", g:"sci", gb:5230, d:"隐身实验失控后的恐怖小镇。"},
- {id:"moreau", t:"The Island of Doctor Moreau", zh:"莫罗博士的岛", a:"H. G. Wells", y:1896, lv:"B2", g:"sci", gb:351, d:"兽化人实验 island 的伦理噩梦。"},
+ {id:"moreau", t:"The Island of Doctor Moreau", zh:"莫罗博士的岛", a:"H. G. Wells", y:1896, lv:"B2", g:"sci", gb:159, d:"兽化实验的伦理噩梦。"},
  {id:"jekyll", t:"The Strange Case of Dr Jekyll and Mr Hyde", zh:"化身博士", a:"R. L. Stevenson", y:1886, lv:"B2", g:"sci", gb:43, d:"人格分裂的双面人原型故事。"},
  {id:"around", t:"Around the World in Eighty Days", zh:"八十天环游地球", a:"Jules Verne", y:1873, lv:"B1", g:"sci", gb:103, d:"一场与赌注赛跑的环球旅行。"},
  {id:"mars",   t:"A Princess of Mars", zh:"火星公主", a:"Edgar Rice Burroughs", y:1912, lv:"B2", g:"sci", gb:62, d:"星舰科幻与太空歌剧的源头之一。"},
@@ -494,7 +499,7 @@ const BOOKS = [
  {id:"willows", t:"The Wind in the Willows", zh:"柳林风声", a:"Kenneth Grahame", y:1908, lv:"B1", g:"fab", gb:289, d:"河鼠鼹鼠蛤蟆的田园冒险，文字优美。"},
  {id:"jungle", t:"The Jungle Book", zh:"丛林之书", a:"Rudyard Kipling", y:1894, lv:"B1", g:"fab", gb:236, d:"狼孩毛格利的丛林法则。"},
  {id:"andersen", t:"Fairy Tales of Hans Christian Andersen", zh:"安徒生童话(英译)", a:"H. C. Andersen", y:1835, lv:"B1", g:"fab", gb:1597, d:"丑小鸭、卖火柴的小女孩的英文版。"},
- {id:"pinocchio", t:"The Adventures of Pinocchio", zh:"木偶奇遇记(英译)", a:"Carlo Collodi", y:1883, lv:"B1", g:"fab", gb:22865, d:"说谎鼻子会变长的木偶的冒险。"},
+ {id:"pinocchio", t:"The Adventures of Pinocchio", zh:"木偶奇遇记(英译)", a:"Carlo Collodi", y:1883, lv:"B1", g:"fab", gb:500, d:"说谎鼻子会变长的木偶的冒险。"},
  {id:"rabbit", t:"The Tale of Peter Rabbit", zh:"彼得兔的故事", a:"Beatrix Potter", y:1902, lv:"A1", g:"fab", gb:14838, d:"偷进麦格雷戈先生菜园的小兔子。"},
  {id:"heidi",  t:"Heidi", zh:"海蒂", a:"Johanna Spyri", y:1881, lv:"B1", g:"fab", gb:1448, d:"阿尔卑斯山女孩与爷爷的温情故事。"},
  {id:"pooh",   t:"Winnie-the-Pooh", zh:"小熊维尼", a:"A. A. Milne", y:1926, lv:"A2", g:"fab", gb:67098, d:"百亩森林里的憨趣日常，童趣十足。"},
@@ -510,7 +515,7 @@ const BOOKS = [
  {id:"robin",  t:"Robinson Crusoe", zh:"鲁滨逊漂流记", a:"Daniel Defoe", y:1719, lv:"B2", g:"adv", gb:521, d:"孤岛求生 28 年，英国第一部长篇。"},
  {id:"monte",  t:"The Count of Monte Cristo", zh:"基督山伯爵", a:"Alexandre Dumas", y:1844, lv:"B2", g:"adv", gb:1184, d:"越狱、宝藏与完美复仇，爽文鼻祖。"},
  {id:"musketeers", t:"The Three Musketeers", zh:"三个火枪手", a:"Alexandre Dumas", y:1844, lv:"B2", g:"adv", gb:1257, d:"人人为我，我为人人的剑侠传奇。"},
- {id:"mohicans", t:"The Last of the Mohicans", zh:"最后的莫希干人", a:"James F. Cooper", y:1826, lv:"C1", g:"adv", gb:2281, d:"北美殖民战争中的印第安追踪者。"},
+ {id:"mohicans", t:"The Last of the Mohicans", zh:"最后的莫希干人", a:"James F. Cooper", y:1826, lv:"C1", g:"adv", gb:940, d:"北美殖民战争中的印第安追踪者。"},
  {id:"ksm",    t:"King Solomon's Mines", zh:"所罗门王的宝藏", a:"H. Rider Haggard", y:1885, lv:"B2", g:"adv", gb:2166, d:"深入非洲寻找钻石矿的探险鼻祖。"},
  {id:"odyssey", t:"The Odyssey", zh:"奥德赛(英译)", a:"Homer", y:-700, lv:"C1", g:"adv", gb:1727, d:"十年海上归乡，西方文学源头之一。"},
  {id:"iliad",  t:"The Iliad", zh:"伊利亚特(英译)", a:"Homer", y:-750, lv:"C1", g:"adv", gb:6130, d:"特洛伊战争的怒火与荣耀。"},
@@ -583,7 +588,7 @@ const BOOKS = [
  {id:"notesunderground", t:"Notes from Underground", zh:"地下室手记", a:"Fyodor Dostoevsky", y:1864, lv:"C1", g:"lit", d:"地下人的自白，现代反英雄小说的先声。", gb:600},
  {id:"gambler", t:"The Gambler", zh:"赌徒", a:"Fyodor Dostoevsky", y:1867, lv:"B2", g:"lit", d:"轮盘赌桌旁的痴迷与毁灭。", gb:2197},
  {id:"deadsouls", t:"Dead Souls", zh:"死魂灵", a:"Nikolai Gogol", y:1842, lv:"C1", g:"lit", d:"收购死农奴的荒诞讽刺长诗。", gb:1081},
- {id:"cherryorchard", t:"The Cherry Orchard", zh:"樱桃园", a:"Anton Chekhov", y:1904, lv:"B2", g:"drama", d:"贵族庄园易主的时代挽歌。", gb:7986},
+ {id:"cherryorchard", t:"Plays by Anton Chekhov, Second Series", zh:"契诃夫戏剧集 · 第二辑（含《樱桃园》）", a:"Anton Chekhov", y:1904, lv:"B2", g:"drama", d:"含《樱桃园》《三姊妹》《万尼亚舅舅》等名剧。", gb:7986},
  {id:"candide", t:"Candide", zh:"老实人", a:"Voltaire", y:1759, lv:"B2", g:"lit", d:"启蒙时代的讽刺杰作，篇幅短节奏快。", gb:4650},
  {id:"redandblack", t:"The Red and the Black", zh:"红与黑", a:"Stendhal", y:1830, lv:"C1", g:"lit", d:"于连的野心、爱情与阶级跨越。", gb:44747},
  {id:"peregoriot", t:"Père Goriot", zh:"高老头", a:"Honoré de Balzac", y:1835, lv:"C1", g:"lit", d:"巴黎公寓里的父爱悲剧与野心青年。", gb:1237},
@@ -672,7 +677,22 @@ const BOOKS = [
  {id:"pollyanna", t:"Pollyanna", zh:"波莉安娜", a:"Eleanor H. Porter", y:1913, lv:"B1", g:"fab", d:"把坏消息也变成快乐的女孩。", gb:1450},
  {id:"howardsend", t:"Howards End", zh:"霍华德庄园", a:"E. M. Forster", y:1910, lv:"B2", g:"lit", d:"两个家庭与一座老宅的连接。", gb:2946},
  {id:"lookingbackward", t:"Looking Backward, 2000 to 1887", zh:"回顾：2000-1887", a:"Edward Bellamy", y:1888, lv:"B2", g:"sci", d:"一觉睡到 2000 年的乌托邦。", gb:624},
- {id:"swissfamily", t:"The Swiss Family Robinson", zh:"瑞士家庭鲁滨逊", a:"Johann David Wyss", y:1812, lv:"B1", g:"adv", d:"荒岛求生的家庭冒险经典。", gb:3836}
+ {id:"swissfamily", t:"The Swiss Family Robinson", zh:"瑞士家庭鲁滨逊", a:"Johann David Wyss", y:1812, lv:"B1", g:"adv", d:"荒岛求生的家庭冒险经典。", gb:3836},
+
+ /* ---- 第五批扩充（史诗·东方经典·传记·社会思想） ---- */
+ {id:"arabiannights", t:"The Arabian Nights Entertainments", zh:"阿拉伯之夜", a:"Anonymous", y:1706, lv:"B1", g:"fab", d:"阿拉丁、辛巴达与一千零一夜的英文经典译本。", gb:128},
+ {id:"canterbury", t:"The Canterbury Tales", zh:"坎特伯雷故事集", a:"Geoffrey Chaucer", y:1400, lv:"C2", g:"lit", d:"朝圣者轮流讲故事，中古英语诗歌的巅峰。", gb:2383},
+ {id:"beagle", t:"The Voyage of the Beagle", zh:"小猎犬号航海记", a:"Charles Darwin", y:1839, lv:"C1", g:"adv", d:"达尔文环球考察日记，演化论的思想起点。", gb:944},
+ {id:"democracyamerica", t:"Democracy in America — Volume 1", zh:"论美国的民主（卷一）", a:"Alexis de Tocqueville", y:1835, lv:"C2", g:"phl", d:"托克维尔对美国制度与民情的经典观察。", gb:815},
+ {id:"federalist", t:"The Federalist Papers", zh:"联邦党人文集", a:"Alexander Hamilton", y:1788, lv:"C2", g:"phl", d:"美国宪法辩护文章，政治学必读。", gb:1404},
+ {id:"leisureclass", t:"The Theory of the Leisure Class", zh:"有闲阶级论", a:"Thorstein Veblen", y:1899, lv:"C2", g:"phl", d:"“炫耀性消费”概念出处，社会批判经典。", gb:833},
+ {id:"dhammapada", t:"Dhammapada", zh:"法句经(英译)", a:"Anonymous", y:-300, lv:"C1", g:"phl", d:"南传佛教偈颂集，短句适合精读。", gb:2017},
+ {id:"bhagavadgita", t:"The Song Celestial (Bhagavad Gita)", zh:"薄伽梵歌(英译)", a:"Anonymous", y:-200, lv:"C1", g:"phl", d:"印度史诗《摩诃婆罗多》中的哲学对话。", gb:2388},
+ {id:"werther", t:"The Sorrows of Young Werther", zh:"少年维特之烦恼", a:"Johann Wolfgang von Goethe", y:1774, lv:"B2", g:"lit", d:"书信体爱情悲剧，德国狂飙突进代表作。", gb:2527},
+ {id:"incidents", t:"Incidents in the Life of a Slave Girl", zh:"女奴生平自述", a:"Harriet Jacobs", y:1861, lv:"B2", g:"phl", d:"女奴追求自由的真实自述。", gb:11030},
+ {id:"twelveslaves", t:"Twelve Years a Slave", zh:"为奴十二年", a:"Solomon Northup", y:1853, lv:"B2", g:"phl", d:"自由黑人被贩卖为奴十二年的回忆录。", gb:45631},
+ {id:"equiano", t:"The Interesting Narrative of Olaudah Equiano", zh:"奥劳达·埃奎亚诺自述", a:"Olaudah Equiano", y:1789, lv:"B2", g:"phl", d:"18 世纪非洲奴隶贸易亲历者的自传。", gb:15399},
+ {id:"erewhon", t:"Erewhon", zh:"埃里汪", a:"Samuel Butler", y:1872, lv:"C1", g:"sci", d:"反转社会规则的乌托邦讽刺小说。", gb:1906}
 ];
 
 /* =====================================================
@@ -782,6 +802,43 @@ const DICT = {
  "burial":["n.","埋葬，葬礼"],"signed":["v.","签名（sign 过去式）"],
  "door-nail":["n.","门钉"],"otherwise":["adv.","否则；以其他方式"]
 };
+
+/* ---------- 本地大词典（dict.js 约 5 万常用词，异步加载，点词即显） ---------- */
+let _bigDictLoading = false;
+function loadBigDict(){
+  if(window.LIZ_DICT || _bigDictLoading) return;
+  _bigDictLoading = true;
+  const s = document.createElement("script");
+  s.src = "./dict.js"; s.async = true;
+  document.head.appendChild(s);
+}
+/* 词形变化兜底：复数/过去式/进行式/副词/比较级 */
+function _baseForms(w){
+  const c = [];
+  if(/ies$/.test(w)) c.push(w.slice(0,-3)+"y");
+  if(/ied$/.test(w)) c.push(w.slice(0,-3)+"y");
+  if(/es$/.test(w)) c.push(w.slice(0,-2));
+  if(/s$/.test(w) && !/ss$/.test(w)) c.push(w.slice(0,-1));
+  if(/ed$/.test(w)){ c.push(w.slice(0,-2)); c.push(w.slice(0,-1)); }
+  if(/ing$/.test(w)){ c.push(w.slice(0,-3)); c.push(w.slice(0,-3)+"e"); }
+  if(/ly$/.test(w)) c.push(w.slice(0,-2));
+  if(/er$/.test(w)){ c.push(w.slice(0,-2)); c.push(w.slice(0,-1)); }
+  if(/est$/.test(w)){ c.push(w.slice(0,-3)); c.push(w.slice(0,-2)); }
+  return c.filter(x=>x.length>2 && x!==w);
+}
+function dictEntry(w){
+  const low = String(w||"").toLowerCase().replace(/[^a-z'-]/g,"");
+  if(!low) return null;
+  if(DICT[low]) return DICT[low];
+  const G = window.LIZ_DICT;
+  if(G){
+    if(G[low]) return G[low];
+    for(const b of _baseForms(low)) if(G[b]) return [G[b][0], G[b][1]+"（"+low+"）"];
+  }
+  for(const b of _baseForms(low)) if(DICT[b]) return [DICT[b][0], DICT[b][1]+"（"+low+"）"];
+  return null;
+}
+
 
 /* =====================================================
   四、词汇测试题库：每档 4 词 × 6 档 = 24 题
@@ -1018,37 +1075,95 @@ function openBook(id){
 ===================================================== */
 const fullCache = {};        // bookId → {sents:[{en,zh}], chapters:[{t,start,end}]}
 let fullMode = null;         // {id, chap} 整书阅读模式
-/* 解析古腾堡纯文本：去头尾 → 按空行分段 → 按章节标题分章 → 全书分句 */
+/* 解析古腾堡纯文本：只去平台许可证 → 保留原书目录/前言/题献 → 按标题分章 → 全书分句
+   原则：不丢正文；标题识别必须行首锚定，避免正文里的 “book 4” 被误判 */
 function parseFull(txt){
-  let t = txt.replace(/\r/g,"");
+  let t = String(txt).replace(/\r/g,"");
+  /* 头部：只切掉 START 之前的平台许可证与元数据 */
   const st = t.search(/\*\*\*\s*START OF (THE|THIS) PROJECT/i);
   if(st > -1) t = t.slice(st).replace(/^[^\n]*\n/, "");
-  const en = t.search(/\*\*\*\s*END OF (THE|THIS) PROJECT/i);
-  if(en > -1) t = t.slice(0, en);
-  const paras = t.split(/\n\s*\n/).map(s=>s.replace(/\s+/g," ").trim())
-    .filter(p=>p && !/^(image|illustration|\[illustration)/i.test(p));
-  const sents = [], chapters = [];
-  let heading = "开篇";
-  const closeChap = ()=>{
-    const start = chapters.length ? chapters[chapters.length-1].end : 0;
-    chapters.push({t:heading, start, end:sents.length});
-  };
-  for(const p of paras){
-    if(p.length < 70 && /((chapter|canto|stave|act|book|part|letter|scene)\s+[ivxlc0-9]+|^[ivxlcdm]{1,7}$)/i.test(p)){
-      closeChap();
-      heading = p.slice(0, 40);
-    }else{
-      p.split(/(?<=[.!?…"”])\s+/).forEach(s=>{ s = s.trim(); if(s) sents.push({en:s, zh:null}); });
+  /* 尾部：END 标记 / 旧式结尾 / 许可证正文，全部切掉 */
+  let end = t.length;
+  [/\*\*\*\s*END OF (THE|THIS) PROJECT/i,
+   /\n\s*End of (the )?Project Gutenberg/i,
+   /\n\s*THE FULL PROJECT GUTENBERG LICENSE/i,
+   /\n\s*Section\s+1\.\s+General Terms of Use/i].forEach(re=>{
+    const m = t.search(re);
+    if(m > -1 && m < end) end = m;
+  });
+  t = t.slice(0, end);
+
+  const blocks = t.split(/\n\s*\n/).map(b=>b.trim()).filter(Boolean);
+  const NUM = "([IVXLCDM]+|\\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)";
+  function headingKind(b){
+    const lines = b.split("\n");
+    if(b.length > 120 || lines.length > 3) return null;
+    const s = b.replace(/\s+/g," ").trim();
+    if(!s) return null;
+    /* 目录行：点线引导符或多个页码，不当章节标题（作为正文保留） */
+    if(/\.{3,}|(\.\s*){3,}|…{2,}/.test(s)) return null;
+    /* CHAPTER / PART / BOOK / LETTER / EPISODE / CANTO / STAVE / ACT / SCENE */
+    const m = s.match(new RegExp("^(chapter|part|book|volume|letter|episode|canto|stave|act|scene|section)\\b\\s*" + NUM + "?\\s*[.:—–-]?\\s*(.{0,60})$","i"));
+    if(m){
+      /* 排除 “the book 4 times…” 这类句子：标题里不应有句末标点 */
+      if(/[.!?]\s+\S/.test(m[3]||"")) return null;
+      return "named";
     }
+    /* 前后件类标题 */
+    if(/^(prologue|epilogue|preface|introduction|foreword|afterword|contents|table of contents|dedication|appendix|notes?|glossary)\b/i.test(s)) return "named";
+    /* 装饰性章节号：— I — / [ 1 ] / I. / 12. */
+    if(/^[—–-]\s*[IVXLCDM\d]{1,4}\s*[—–-]$/.test(s)) return "bare";
+    if(/^\[\s*\d{1,3}\s*\]$/.test(s)) return "bare";
+    if(/^[IVXLCDM]{1,7}\.?$/.test(s)) return "bare";
+    if(/^\d{1,3}\.?$/.test(s)) return "bare";
+    /* 罗马/阿拉伯数字 + 全大写标题，如 “I. A SCANDAL IN BOHEMIA” */
+    if(/^([IVXLCDM]{1,7}|\d{1,3})\.\s+[A-Z][A-Z0-9 ,.'’\-]{3,}$/.test(s)) return "named";
+    return null;
   }
-  closeChap();
+
+  const sents = [], chapters = [];
+  let heading = "卷首 · 书名页 / 目录 / 题献";
+  let curStart = 0;
+  const close = ()=>{
+    chapters.push({t:heading, start:curStart, end:sents.length});
+    curStart = sents.length;
+  };
+  for(const b of blocks){
+    const kind = headingKind(b);
+    if(kind){
+      const empty = sents.length === curStart;
+      /* 刚设过标题又遇到装饰性数字（I. / [ 1 ]），忽略，避免把真标题冲掉 */
+      if(empty && kind === "bare" && heading !== "卷首 · 书名页 / 目录 / 题献") continue;
+      const title = b.replace(/\s+/g," ").trim().slice(0,80);
+      if(empty){ heading = title; }        /* 空章：直接换标题，不产生空章 */
+      else { close(); heading = title; }
+      continue;
+    }
+    const p = b.replace(/\s+/g," ").trim();
+    if(!p) continue;
+    if(/^(image|illustration|\[illustration)/i.test(p)) continue;
+    p.split(/(?<=[.!?…"”])\s+/).forEach(s=>{ s = s.trim(); if(s) sents.push({en:s, zh:null}); });
+  }
+  close();
+
+  /* 丢弃空章；如果章节识别失败，按 250 句切分兜底 */
   let chs = chapters.filter(c=>c.end > c.start);
-  if(chs.length < 4){   // 标题识别不出来时，每 250 句切一部分
+  if(!chs.length || (sents.length > 400 && chs.length < 4) ||
+     (chs.length < 30 && sents.length / chs.length > 1500)){
     chs = [];
-    for(let i=0; i<sents.length; i+=250)
-      chs.push({t:`第 ${chs.length+1} 部分`, start:i, end:Math.min(i+250, sents.length)});
+    const step = Math.max(120, Math.ceil(sents.length/40));
+    for(let i=0; i<sents.length; i+=step)
+      chs.push({t:`第 ${chs.length+1} 部分`, start:i, end:Math.min(i+step, sents.length)});
   }
-  return {sents, chapters:chs};
+  /* 相邻超短章（目录/题词误判）合并，避免出现只有 1 句的“章” */
+  const merged = [];
+  for(const c of chs){
+    const last = merged[merged.length-1];
+    if(last && (c.end-c.start <= 1 || last.end-last.start <= 1) && (c.end-c.start)+(last.end-last.start) < 60){
+      last.end = c.end;
+    } else merged.push({...c});
+  }
+  return {sents, chapters:merged};
 }
 /* =====================================================
   版权期作品（如加缪）：站内原创精读导读（分章英文概要 + 中文讲解 + 名句）
@@ -1199,6 +1314,7 @@ function openGuide(id){
    优先读站内打包文件；缺失时自动从古腾堡镜像拉取并写入缓存（装到 PWA 后可离线） */
 async function openFull(id){
   curBook = BOOKS.find(x=>x.id===id);
+  loadBigDict();
   if(fullCache[id]){ fullMode = {id, chap:0}; openReader(id); return; }
   document.getElementById("view-reader").innerHTML =
     `<div class="reader"><div class="rd-head"><h2>《${curBook.zh}》全文加载中…</h2></div>
@@ -1415,7 +1531,7 @@ function wordClick(e){
   localZh = localZh || "（暂无译文）";
   lastCtxZh = localZh;
   const low = sheetWord.toLowerCase().replace(/[^a-z'-]/g,"");
-  const d = DICT[low];
+  const d = dictEntry(low);
   /* M2：记录查词次数并自动升级熟练度（跨阈值时刷新正文高亮） */
   const stBefore = (wordStates()[stemOf(low)]||{}).st;
   const fsNow = recordLookup(low);
@@ -1423,15 +1539,21 @@ function wordClick(e){
   document.getElementById("shWord").textContent = sheetWord;
   /* 平时常用义：本地词典优先 */
   document.getElementById("shDef").textContent =
-    d ? `${d[0]} ${d[1]}` : "本地词典未收录，正在联网查询英英释义…";
+    d ? `${d[0]} ${d[1]}` : "本地词典暂未收录，可点下方「更多释义」";
   /* 本句语境义：整句机翻（缓存 + 本地译文兜底） */
   const ctxEl = document.getElementById("shCtx");
   ctxEl.textContent = "翻译中…";
   ctxTranslate(ctxEn, localZh).then(t=>{ ctxEl.textContent = t; });
   /* 英英释义：dictionaryapi.dev（免费无 key，失败静默降级） */
   const enEl = document.getElementById("shEn");
-  enEl.textContent = "查询中…";
-  fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{ enEl.textContent = "联网查询失败，可点击下方「更多释义」。"; });
+  const cachedEn = getEnCache(low);
+  if(cachedEn){ enEl.innerHTML = renderDefs(low, 1); }
+  else {
+    enEl.textContent = "英英释义后台补充中…";
+    fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{
+      enEl.textContent = d ? "（英英释义联网失败，中文义已显示）" : "联网查询失败，可点下方「更多释义」。";
+    });
+  }
   /* 生词本按钮状态 */
   const addBtn = document.getElementById("shAdd");
   addBtn.disabled = store.vocab.some(v=>v.w===low);
@@ -1462,7 +1584,7 @@ function markWord(n){
 /* 加入生词本：记录 原句/出处书/句序/收藏时间，随后异步补充详细释义 */
 function addVocab(w){
   if(!w || store.vocab.some(v=>v.w===w)) return;
-  const d = DICT[w];
+  const d = dictEntry(w);
   const all = getSents(curBook.id);
   store.vocab = [{
     w,
@@ -1672,19 +1794,34 @@ function setWordState(low, st){
 
 /* 英英区：默认只显示 1 个义项（防英文过多），点「展开全部义项」看其余 */
 let _dictCache = {};
+try{ _dictCache = JSON.parse(localStorage.getItem("lz_encache")||"{}") || {}; }catch(e){ _dictCache = {}; }
+function getEnCache(w){ return _dictCache[w] || null; }
+function _saveEnCache(){
+  try{
+    const ks = Object.keys(_dictCache);
+    if(ks.length > 800) ks.slice(0, ks.length-800).forEach(k=>delete _dictCache[k]);
+    localStorage.setItem("lz_encache", JSON.stringify(_dictCache));
+  }catch(e){}
+}
 async function fetchDict(word){
-  const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(word));
-  if(!r.ok) throw new Error("http");
-  const j = await r.json();
-  const e0 = j[0];
-  const phon = e0.phonetic || (e0.phonetics.find(p=>p.text)||{}).text || "";
-  const defs = [];
-  outer: for(const e of j) for(const m of e.meanings) for(const df of m.definitions){
-    defs.push({pos:m.partOfSpeech, en:df.definition, ex:df.example||""});
-    if(defs.length>=5) break outer;
-  }
-  _dictCache[word] = {phon, defs};
-  return renderDefs(word, 1);
+  if(_dictCache[word]) return renderDefs(word, 1);
+  const ctrl = new AbortController();
+  const tm = setTimeout(()=>ctrl.abort(), 4000);
+  try{
+    const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(word), {signal:ctrl.signal});
+    if(!r.ok) throw new Error("http");
+    const j = await r.json();
+    const e0 = j[0];
+    const phon = e0.phonetic || (e0.phonetics.find(p=>p.text)||{}).text || "";
+    const defs = [];
+    outer: for(const e of j) for(const m of e.meanings) for(const df of m.definitions){
+      defs.push({pos:m.partOfSpeech, en:df.definition, ex:df.example||""});
+      if(defs.length>=5) break outer;
+    }
+    _dictCache[word] = {phon, defs};
+    _saveEnCache();
+    return renderDefs(word, 1);
+  } finally { clearTimeout(tm); }
 }
 function renderDefs(word, n){
   const d0 = _dictCache[word] || {phon:"", defs:[]};
@@ -2164,6 +2301,8 @@ document.getElementById("searchBox").addEventListener("input", renderLibrary);
 renderLibrary();
 renderTestIntro();
 renderVocab();
+/* 预载本地大词典：等页面空闲后加载，点词时基本已就绪 */
+setTimeout(loadBigDict, 200);
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
 if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
   navigator.serviceWorker.register("sw.js").catch(()=>{});
