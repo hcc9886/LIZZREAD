@@ -1275,31 +1275,116 @@ async function fetchPopularPG(){
   });
   return out.filter((x,i,a)=> a.findIndex(y=>y.gb===x.gb)===i);
 }
+/* =====================================================
+  IndexedDB 封装 — 解决长书/多书缓存问题（localStorage 仅 5MB，IndexedDB 几百 MB）
+===================================================== */
+let _idbPromise = null;
+function openIDB(){
+  if(_idbPromise) return _idbPromise;
+  _idbPromise = new Promise((resolve, reject)=>{
+    const r = indexedDB.open("lizzread_v1", 2);
+    r.onupgradeneeded = e=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains("books")) db.createObjectStore("books", {keyPath:"gb"});
+      if(!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", {keyPath:"key"});
+    };
+    r.onsuccess = ()=>resolve(r.result);
+    r.onerror = ()=>reject(r.error);
+  });
+  return _idbPromise;
+}
+async function idbPut(gb, txt, size, title){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction("books","readwrite");
+    tx.objectStore("books").put({ gb, txt, size, title, createdAt: Date.now(), lastReadAt: Date.now() });
+    await new Promise((res, rej)=>{ tx.oncomplete=res; tx.onerror=rej; });
+    /* 超 100MB 自动清理最久没读的 */
+    idbGc();
+  } catch(e){
+    /* IndexedDB 不可用时兜底 localStorage */
+    try{ localStorage.setItem("lz_remote_"+gb, txt); }catch(e2){}
+  }
+}
+async function idbGet(gb){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction("books","readonly");
+    const req = tx.objectStore("books").get(gb);
+    const r = await new Promise((res, rej)=>{ req.onsuccess=()=>res(req.result); req.onerror=rej; });
+    if(r){
+      /* 更新 lastReadAt */
+      const tx2 = db.transaction("books","readwrite");
+      tx2.objectStore("books").put({ ...r, lastReadAt: Date.now() });
+      return r.txt;
+    }
+  } catch(e){}
+  /* 兜底 localStorage */
+  const c = localStorage.getItem("lz_remote_"+gb);
+  if(c){
+    /* 迁移进 IndexedDB，然后删 localStorage */
+    try{ await idbPut(gb, c, c.length, ""); localStorage.removeItem("lz_remote_"+gb); }catch(e){}
+    return c;
+  }
+  return null;
+}
+async function idbHas(gb){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction("books","readonly");
+    const req = tx.objectStore("books").count(gb);
+    const n = await new Promise((res, rej)=>{ req.onsuccess=()=>res(req.result); req.onerror=rej; });
+    if(n>0) return true;
+  } catch(e){}
+  return !!localStorage.getItem("lz_remote_"+gb);
+}
+async function idbSize(){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction("books","readonly");
+    const all = await new Promise((res, rej)=>{ const r=tx.objectStore("books").getAll(); r.onsuccess=()=>res(r.result); r.onerror=rej; });
+    return all.reduce((s,x)=> s + (x.size||x.txt.length||0), 0);
+  } catch(e){ return 0; }
+}
+async function idbGc(){
+  /* 超过 100MB → 删除 lastReadAt 最旧的直到 ≤ 70MB */
+  const limit = 100*1024*1024;
+  const target = 70*1024*1024;
+  let total = await idbSize();
+  if(total < limit) return;
+  try{
+    const db = await openIDB();
+    const tx = db.transaction("books","readonly");
+    const all = await new Promise((res, rej)=>{ const r=tx.objectStore("books").getAll(); r.onsuccess=()=>res(r.result); r.onerror=rej; });
+    all.sort((a,b)=> (a.lastReadAt||0)-(b.lastReadAt||0));
+    const wr = db.transaction("books","readwrite");
+    for(const b of all){
+      if(total <= target) break;
+      wr.objectStore("books").delete(b.gb);
+      total -= (b.size||b.txt.length||0);
+    }
+  } catch(e){}
+}
 function INDEXED_HAS(gb){
-  try {
-    const d = JSON.parse(localStorage.getItem("lz_remote_"+gb)||"null");
-    return !!d;
-  } catch(e){ return false; }
+  /* 同步 UI 显示用 — 真正拉取走 idbGet */
+  return !!document.querySelector("[data-rm='stored-"+gb+"']") || false;
 }
 async function openRemoteBook(gb, title){
   const stat = document.getElementById("remoteStatus");
-  stat.textContent = "📖 正在从 gutenberg.pglaf.org 拉取 pg"+gb+".txt… 首次 ≈2-5 秒，之后本地永久缓存";
-  let txt = null;
-  /* 1) 先查本地 IndexedDB/localStorage 缓存 */
-  const cached = localStorage.getItem("lz_remote_"+gb);
-  if(cached){
-    try{ txt = cached; stat.textContent = "📖 本地缓存命中"; }catch(e){}
-  }
+  stat.textContent = "📖 正在检查本地缓存…";
+  let txt = await idbGet(gb);
+  if(txt){ stat.textContent = "📖 IndexedDB 缓存命中（"+(txt.length/1024).toFixed(0)+"KB）"; }
   /* 2) 没有就从 pglaf 拉 */
   if(!txt){
+    stat.textContent = "📖 正在从 gutenberg.pglaf.org 拉取 pg"+gb+".txt… 首次 ≈2-5 秒";
     try{
       const r = await fetch("https://gutenberg.pglaf.org/cache/epub/"+gb+"/pg"+gb+".txt", {signal: AbortSignal.timeout(15000)});
       if(!r.ok) throw new Error(r.statusText);
       txt = await r.text();
-      localStorage.setItem("lz_remote_"+gb, txt); /* 大书可能爆 localStorage → 用 text 直接塞，最多 5MB/书 */
-      stat.textContent = "📖 拉取成功，已存入本地缓存";
+      await idbPut(gb, txt, txt.length, title);
+      stat.textContent = "📖 拉取成功（"+(txt.length/1024).toFixed(0)+"KB），已存入 IndexedDB（支持长书）";
     } catch(e){
-      stat.textContent = "❌ 拉取失败："+e.message+"（换 Open Library 手动借阅？）";
+      stat.textContent = "❌ 拉取失败："+e.message+"（Open Library 手动借阅？）";
       return;
     }
   }
