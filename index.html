@@ -349,6 +349,8 @@ body.no-zh .sent .zh{display:none}
   </div>
 </div>
 
+<!-- 本地大词典（24 万条，17MB）——阻塞加载，保证点词时立刻有内容 -->
+<script src="./dict.js?v=3"></script>
 <script>
 /* =====================================================
   一、书库数据：英文书名 / 通行中文译名 / 作者 / 年份 / 难度 / 类型
@@ -692,7 +694,10 @@ const BOOKS = [
  {id:"incidents", t:"Incidents in the Life of a Slave Girl", zh:"女奴生平自述", a:"Harriet Jacobs", y:1861, lv:"B2", g:"phl", d:"女奴追求自由的真实自述。", gb:11030},
  {id:"twelveslaves", t:"Twelve Years a Slave", zh:"为奴十二年", a:"Solomon Northup", y:1853, lv:"B2", g:"phl", d:"自由黑人被贩卖为奴十二年的回忆录。", gb:45631},
  {id:"equiano", t:"The Interesting Narrative of Olaudah Equiano", zh:"奥劳达·埃奎亚诺自述", a:"Olaudah Equiano", y:1789, lv:"B2", g:"phl", d:"18 世纪非洲奴隶贸易亲历者的自传。", gb:15399},
- {id:"erewhon", t:"Erewhon", zh:"埃里汪", a:"Samuel Butler", y:1872, lv:"C1", g:"sci", d:"反转社会规则的乌托邦讽刺小说。", gb:1906}
+ {id:"erewhon", t:"Erewhon", zh:"埃里汪", a:"Samuel Butler", y:1872, lv:"C1", g:"sci", d:"反转社会规则的乌托邦讽刺小说。", gb:1906},
+
+ /* ---- 用户本地提供的书籍（文件不在仓库，仅本地实例可用） ---- */
+ {id:"stranger", t:"The Stranger", zh:"局外人", a:"Albert Camus", y:1942, lv:"B2", g:"lit", d:"“今天，妈妈死了。也许是昨天，我不知道。”加缪存在主义代表作。", file:"books/camus_stranger.txt", localOnly:true}
 ];
 
 /* =====================================================
@@ -805,7 +810,7 @@ const DICT = {
 
 /* ---------- 本地大词典（dict.js 约 24 万常用词，异步加载，点词即显） ---------- */
 let _bigDictLoading = false;
-const _DICT_V = "2";  // dict.js 版本号，改了字典时 bump 一次绕过浏览器缓存
+const _DICT_V = "3";  // dict.js 版本号
 function loadBigDict(){
   if(window.LIZ_DICT || _bigDictLoading) return;
   _bigDictLoading = true;
@@ -933,11 +938,44 @@ const store = {
   set bg(v){ localStorage.setItem(pk("bg"), v); },
   /* M2 词族状态机：{词根:{st:0陌生/1学习中/2已掌握/-1忽略, n:查词次数, w:表层词}} */
   get wstates(){ try{ return JSON.parse(localStorage.getItem(pk("wstates"))||"{}"); }catch(e){ return {}; } },
-  set wstates(v){ localStorage.setItem(pk("wstates"), JSON.stringify(v)); }
+  set wstates(v){ localStorage.setItem(pk("wstates"), JSON.stringify(v)); },
+  /* 阅读进度：{bookId: {chap, sent}} — 下次打开直接跳到上次读的位置 */
+  get progress(){ try{ return JSON.parse(localStorage.getItem(pk("progress"))||"{}"); }catch(e){ return {}; } },
+  set progress(v){ localStorage.setItem(pk("progress"), JSON.stringify(v)); }
 };
+function saveProgressNow(){
+  if(!curBook || !fullMode || !fullCache[curBook.id]) return;
+  const sents = getSents(curBook.id);
+  const rng = fullCache[curBook.id].chapters[fullMode.chap];
+  const node = document.querySelector("#view-reader .sent");
+  let sentIdx = rng.start;
+  if(node){
+    const rect = node.getBoundingClientRect();
+    const centerY = window.innerHeight / 2;
+    let best = null, bestD = Infinity;
+    document.querySelectorAll("#view-reader .sent").forEach(el=>{
+      const r = el.getBoundingClientRect();
+      if(r.bottom < 0 || r.top > window.innerHeight) return;
+      const d = Math.abs((r.top+r.bottom)/2 - centerY);
+      if(d < bestD){ bestD = d; best = el; }
+    });
+    if(best) sentIdx = Number(best.dataset.si) || rng.start;
+  }
+  const p = store.progress;
+  p[curBook.id] = { chap: fullMode.chap, sent: sentIdx, at: Date.now() };
+  store.progress = p;
+}
 let testQ = 0, testAns = [];   // 测试进度
 let curBook = null;            // 当前阅读的书
 let mtCache = {};              // 语境义机翻缓存（整句 → 译文）
+try{ mtCache = JSON.parse(localStorage.getItem("lz_mtcache")||"{}") || {}; }catch(e){ mtCache = {}; }
+function _saveMtCache(){
+  try{
+    const ks = Object.keys(mtCache);
+    if(ks.length > 2000) ks.slice(0, ks.length-2000).forEach(k=>delete mtCache[k]);
+    localStorage.setItem("lz_mtcache", JSON.stringify(mtCache));
+  }catch(e){}
+}
 let lastCtxZh = "";            // 最近一次点词所在句的中文语境（加入生词本时一并记录）
 document.body.dataset.bg = store.bg;
 if(!store.showzh) document.body.classList.add("no-zh");
@@ -1328,21 +1366,35 @@ function openGuide(id){
   openReader(id);
 }
 /* 整书阅读入口：加载全文 → 分章 → 打开阅读器
-   优先读站内打包文件；缺失时自动从古腾堡镜像拉取并写入缓存（装到 PWA 后可离线） */
+   优先读站内打包文件；缺失时自动从古腾堡镜像拉取并写入缓存（装到 PWA 后可离线）
+   自动恢复上次阅读位置 */
 async function openFull(id){
   curBook = BOOKS.find(x=>x.id===id);
   loadBigDict();
-  if(fullCache[id]){ fullMode = {id, chap:0}; openReader(id); return; }
+  const saved = (store.progress[id] || {});
+  const savedChap = saved.chap || 0;
+  if(fullCache[id]){
+    fullMode = {id, chap: savedChap};
+    openReader(id);
+    setTimeout(()=>{
+      if(saved.sent) scrollToSent(saved.sent);
+    }, 80);
+    return;
+  }
   document.getElementById("view-reader").innerHTML =
     `<div class="reader"><div class="rd-head"><h2>《${curBook.zh}》全文加载中…</h2></div>
      <p class="tip">首次加载约需几秒，加载后即可离线阅读。</p></div>`;
   go("reader");
   let txt = null;
   try{
-    const r = await fetch("./books/pg"+curBook.gb+".txt");
-    if(r.ok) txt = await r.text();
+    /* 优先：显式 file 字段 → 本地文件；否则按 gb 编号 */
+    const localPath = curBook.file || (curBook.gb ? "./books/pg"+curBook.gb+".txt" : null);
+    if(localPath){
+      const r = await fetch(localPath);
+      if(r.ok) txt = await r.text();
+    }
   }catch(e){}
-  if(!txt || txt.length < 5000){
+  if((!txt || txt.length < 5000) && curBook.gb){
     try{
       const r2 = await fetch("https://gutenberg.pglaf.org/cache/epub/"+curBook.gb+"/pg"+curBook.gb+".txt");
       if(r2.ok) txt = await r2.text();
@@ -1357,14 +1409,38 @@ async function openFull(id){
     return;
   }
   fullCache[id] = parseFull(txt);
-  fullMode = {id, chap:0};
+  fullMode = {id, chap: Math.min(savedChap, fullCache[id].chapters.length-1)};
   openReader(id);
+  setTimeout(()=>{
+    if(saved.sent) scrollToSent(saved.sent);
+  }, 80);
+}
+/* 滚动到指定句序号（sentIdx 是全书全局序号） */
+function scrollToSent(sentIdx){
+  const rng = fullCache[curBook.id].chapters[fullMode.chap];
+  if(sentIdx < rng.start || sentIdx >= rng.end){
+    /* 目标句子不在当前章，跳过去 */
+    for(let i=0; i<fullCache[curBook.id].chapters.length; i++){
+      const c = fullCache[curBook.id].chapters[i];
+      if(sentIdx >= c.start && sentIdx < c.end){
+        jumpChapter(i);
+        setTimeout(()=>scrollToSent(sentIdx), 120);
+        return;
+      }
+    }
+    return;
+  }
+  /* 逐句模式下找 dataset.si === sentIdx 的元素 */
+  const node = document.querySelector(`#view-reader .sent[data-si="${sentIdx}"]`);
+  if(node){ node.scrollIntoView({block:"center", behavior:"smooth"}); }
 }
 function jumpChapter(n){
   if(!fullMode) return;
+  saveProgressNow();
   fullMode.chap = Math.max(0, Math.min(fullCache[curBook.id].chapters.length-1, Number(n)));
   openReader(curBook.id);
   window.scrollTo(0, 0);
+  setTimeout(saveProgressNow, 200);
 }
 /* 机翻本章：按 5 句一组请求，译文写回句对象，完成后随对照开关显示 */
 async function mtChapter(){
@@ -1557,10 +1633,20 @@ function wordClick(e){
   /* 平时常用义：本地词典优先 */
   document.getElementById("shDef").textContent =
     d ? `${d[0]} ${d[1]}` : "本地词典暂未收录，可点下方「更多释义」";
-  /* 本句语境义：先用本站译文同步显示，后台联网优化回来再替换 */
+  /* 本句语境义：先查 mtCache（跨刷新持久化），命中秒显；未命中占位"翻译中…"后台请求 */
   const ctxEl = document.getElementById("shCtx");
-  ctxEl.textContent = localZh;
-  ctxTranslate(ctxEn, localZh).then(t=>{ if(t !== localZh) ctxEl.textContent = t; }).catch(()=>{});
+  const cached = mtCache[ctxEn];
+  if(cached){
+    ctxEl.textContent = cached;
+  } else if(localZh && localZh !== "（暂无译文）"){
+    ctxEl.textContent = localZh;
+  } else {
+    ctxEl.textContent = "翻译中…";
+  }
+  ctxTranslate(ctxEn, localZh).then(t=>{
+    mtCache[ctxEn] = t; _saveMtCache();
+    ctxEl.textContent = t;
+  }).catch(()=>{});
   /* 英英释义：先查本地 dict.js 带的英文 definition → 命中秒显；未命中再走联网 */
   const enEl = document.getElementById("shEn");
   const localEn = dictEnDef(low);
@@ -1842,20 +1928,37 @@ async function fetchDict(word){
     return renderDefs(word, 1);
   } finally { clearTimeout(tm); }
 }
+/* 简洁英英释义 + 自动中译（最多 2 个义项，后台再补到 5 个） */
 function renderDefs(word, n){
   const d0 = _dictCache[word] || {phon:"", defs:[]};
   const esc = word.replace(/'/g,"\\'");
   let html = "";
   if(d0.phon) html += `<span style="font-size:16px;color:var(--text)">/${d0.phon.replace(/^\/|\/$/g,"")}/</span>
     <button class="iconbtn" onclick="speakText('${esc}')">🔊 读法</button>`;
-  d0.defs.slice(0,n).forEach(d=>{
-    html += `<div style="margin-top:6px;color:var(--text)">[${d.pos}] ${d.en}</div>` +
-      (d.ex ? `<div class="dim">常用于：${d.ex}</div>` : "");
+  if(!d0.defs.length) return html + "（暂无英英释义）";
+  /* 最多展示 n 个义项 + 第一个例句 */
+  d0.defs.slice(0, n).forEach((d, i)=>{
+    const enShort = d.en.length > 140 ? d.en.slice(0, 137)+"…" : d.en;
+    html += `<div style="margin-top:6px"><b>[${d.pos}]</b> ${enShort}
+      <span class="dim dictzh" data-en="${d.en.replace(/"/g,'&quot;')}">翻译中…</span></div>`;
+    if(i === 0 && d.ex){
+      const exShort = d.ex.length > 120 ? d.ex.slice(0,117)+"…" : d.ex;
+      html += `<div class="dim" style="font-size:12px">例：${exShort}
+        <span class="dictzh" data-en="${d.ex.replace(/"/g,'&quot;')}">翻译中…</span></div>`;
+    }
   });
   if(d0.defs.length > n)
-    html += `<button class="btn ghost small" style="margin-top:8px"
-      onclick="this.outerHTML=renderDefs('${esc}',${d0.defs.length})">展开全部 ${d0.defs.length} 个义项</button>`;
-  return html || "（暂无英英释义）";
+    html += `<button class="btn ghost small" style="margin-top:6px"
+      onclick="this.outerHTML=renderDefs('${esc}',${Math.min(n+2, d0.defs.length)})">更多义项 (${d0.defs.length})</button>`;
+  /* 异步把每个英文义项/例句翻译成中文 */
+  setTimeout(()=>{
+    document.querySelectorAll(".dictzh").forEach(async el=>{
+      const t = await mtFetch(el.dataset.en);
+      el.textContent = " → " + t;
+      el.dataset.done = "1";
+    });
+  }, 20);
+  return html;
 }
 
 /* 生词模式里的英文释义可点击 → 即时机翻出中文（点击处弹出） */
@@ -2322,6 +2425,15 @@ renderTestIntro();
 renderVocab();
 /* 预载本地大词典：等页面空闲后加载，点词时基本已就绪 */
 setTimeout(loadBigDict, 200);
+/* 阅读进度：滚动防抖保存（300ms）+ 离开页面前强制保存 */
+let _pgSaveTimer = null;
+window.addEventListener("scroll", ()=>{
+  if(!fullMode || document.getElementById("view-reader").classList.contains("on") === false) return;
+  clearTimeout(_pgSaveTimer);
+  _pgSaveTimer = setTimeout(saveProgressNow, 300);
+}, {passive:true});
+window.addEventListener("beforeunload", saveProgressNow);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") saveProgressNow(); });
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
 if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
   navigator.serviceWorker.register("sw.js").catch(()=>{});
