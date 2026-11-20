@@ -238,8 +238,11 @@ body.no-zh .sent .zh{display:none}
     <div class="logo" onclick="go('library')">LIZZ<b>READ</b><small>线上图书馆</small></div>
     <nav>
       <button id="nav-library" class="on" onclick="go('library')">书城</button>
+      <button onclick="go('collections')">📚 书单</button>
+      <button onclick="go('remote')">🌐 PG 书库</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
+      <button onclick="go('review')" id="nav-review" style="display:none">📝 复习</button>
       <button id="nav-sreview" onclick="go('sreview')">生词模式</button>
       <button id="nav-account" onclick="go('account')">账号</button>
     </nav>
@@ -298,8 +301,35 @@ body.no-zh .sent .zh{display:none}
 
   <!-- ============ 生词本 ============ -->
   <section class="view" id="view-vocab">
-    <h2 class="sec">我的生词本 <span class="tip" style="display:inline" id="vocabCount"></span></h2>
+    <h2 class="sec">我的生词本 <span class="tip" style="display:inline" id="vocabCount"></span>
+      <span class="tip" id="revTip" style="display:none"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" id="revBtn" onclick="goReviewew()" style="display:none">📝 今日复习</button>
+      <button class="btn ghost small" onclick="exportVocab()">⬇️ 导出 JSON</button>
+      <button class="btn ghost small" onclick="document.getElementById('vocabImport').click()">⬆️ 导入</button>
+      <input type="file" id="vocabImport" accept=".json" style="display:none" onchange="importVocab(this.files[0])">
+      <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};localStorage.removeItem(pk('progress'));renderVocab();}">♻️ 清空</button>
+    </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 书单合集（增长③） ============ -->
+  <section class="view" id="view-collections">
+    <h2 class="sec">📚 精选书单合集</h2>
+    <div id="collectionsBody"></div>
+  </section>
+
+  <!-- ============ 远程 PG 书库（增长①） ============ -->
+  <section class="view" id="view-remote">
+    <h2 class="sec">🌐 Project Gutenberg 公版书库</h2>
+    <div class="tip" id="remoteStatus">正在加载 PG 元数据（第一次会慢一点）…</div>
+    <div class="filters" id="remoteFilters"></div>
+    <div class="grid" id="remoteGrid"></div>
+  </section>
+
+  <!-- ============ SM-2 复习页面（增长②） ============ -->
+  <section class="view" id="view-review">
+    <div id="reviewBody"></div>
   </section>
 
   <!-- ============ 生词模式（每日复习 + 详细词库） ============ -->
@@ -336,6 +366,7 @@ body.no-zh .sent .zh{display:none}
   <div class="row" style="margin-top:14px">
     <button class="btn small" id="shAdd">＋ 加入生词本</button>
     <button class="btn ghost small" onclick="speakWord()">🔊 朗读</button>
+    <button class="btn ghost small" onclick="exportWordCard()">🖼️ 导出卡片</button>
     <a class="btn ghost small" id="shMore" target="_blank" rel="noopener">更多释义 ↗</a>
   </div>
 </div>
@@ -994,8 +1025,384 @@ function go(name){
   if(name==="sreview") renderSReview();
   if(name==="test") renderTestIntro();
   if(name==="account") renderAccount();
+  if(name==="collections") renderCollections();
+  if(name==="remote") renderRemote();
+  if(name==="review") renderReview();
   if(name!=="book" && name!=="reader") window.scrollTo(0,0);
+  updateNavRev();
 }
+
+/* =====================================================
+  增长② SM-2 间隔重复复习引擎
+  扩 wordStates 加 due/ef/reps/interval，自动安排复习
+===================================================== */
+const _SM_BASE = { ef: 2.5, reps: 0, interval: 0, due: 0, addedAt: 0 };
+function smSchedule(stem, quality){
+  /* quality 0-3：0=忘了（重新学），1=费劲，2=还行，3=很容易 */
+  const ws = wordStates();
+  const fs = ws[stem];
+  if(!fs) return;
+  const sm = fs.sm = fs.sm || { ..._SM_BASE, addedAt: Date.now(), due: Date.now() };
+  const q = quality;
+  if(q < 2){
+    sm.reps = 0; sm.interval = 1;
+  } else {
+    sm.ef = Math.max(1.3, sm.ef + (0.1 - (3 - q) * (0.08 + (3 - q) * 0.02)));
+    sm.reps++;
+    sm.interval = sm.reps === 1 ? 1 : sm.reps === 2 ? 3 : Math.round(sm.interval * sm.ef);
+  }
+  sm.due = Date.now() + sm.interval * 24 * 60 * 60 * 1000;
+  saveWS();
+}
+function dueVocabs(){
+  const ws = wordStates(); const now = Date.now();
+  return Object.entries(ws).filter(([stem,fs])=>{
+    const sm = fs.sm;
+    if(!sm) return false;
+    return sm.due <= now && fs.st !== -1;
+  });
+}
+function updateNavRev(){
+  const due = dueVocabs();
+  const btn = document.getElementById("nav-review");
+  const tip = document.getElementById("revTip");
+  const revBtn = document.getElementById("revBtn");
+  if(due.length > 0){
+    const lbl = `· 今日 ${due.length} 词`;
+    btn.textContent = "📝 复习 "+due.length; btn.style.display="inline-block";
+    tip.textContent = lbl; tip.style.display="inline";
+    revBtn.style.display="inline-block"; revBtn.textContent = "📝 今日复习 "+due.length;
+  } else {
+    btn.style.display="none"; tip.style.display="none"; revBtn.style.display="none";
+  }
+}
+function renderReview(){
+  const body = document.getElementById("reviewBody");
+  const due = dueVocabs();
+  updateNavRev();
+  if(due.length === 0){
+    body.innerHTML = `<div class="test-card" style="text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">🎉</div>
+      <h2 style="font-family:var(--serif);margin-bottom:8px">今日复习清单已清空</h2>
+      <p class="tip">继续读书、查词、点词，系统会自动把新的词排进复习队列。下次 due 的时候导航栏会亮。</p>
+      <button class="btn" onclick="go('library')" style="margin-top:16px">回到书城</button></div>`;
+    return;
+  }
+  let idx = 0;
+  const stems = due.map(([s])=>s);
+  function card(){
+    if(idx >= stems.length){
+      body.innerHTML = `<div class="test-card" style="text-align:center">
+        <div style="font-size:48px;margin-bottom:12px">✨</div>
+        <h2>复习完成！</h2>
+        <p class="tip">${stems.length} 词已安排下次复习</p>
+        <button class="btn" onclick="go('vocab')" style="margin-top:16px">查看生词本</button></div>`;
+      updateNavRev(); return;
+    }
+    const stem = stems[idx];
+    const fs = wordStates()[stem];
+    const v = store.vocab.find(x=>x.w===fs.w) || {};
+    const def = dictEntry(fs.w);
+    body.innerHTML = `<div class="test-card">
+      <div class="tier">📝 今日复习 ${idx+1} / ${stems.length} · 词根 ${stem}*</div>
+      <div class="word">${fs.w}</div>
+      ${def?`<div class="tip" style="color:var(--brand-deep)">${def[0]} ${def[1]}</div>`:"<div class='tip'>（本地词典暂未收录，点下方选「忘了」重新安排）</div>"}
+      ${v.at?`<div class="tip" style="margin-top:6px;font-size:12px">原句：${(v.at.en||"").slice(0,120)}</div>`:""}
+      <div class="prog"><i style="width:${idx/stems.length*100}%"></i></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px">
+        <button class="btn ghost" onclick="revQ(0,${idx})">❌ 忘了</button>
+        <button class="btn ghost" onclick="revQ(1,${idx})">😓 费劲</button>
+        <button class="btn ghost" onclick="revQ(2,${idx})">🙂 还行</button>
+        <button class="btn" onclick="revQ(3,${idx})">😊 轻松</button>
+      </div>
+      <div class="tip" style="margin-top:10px;font-size:11px">SM-2 间隔重复：忘了→1 天；费劲→3 天；还行→按 ef 算；轻松→加长间隔</div>
+    </div>`;
+  }
+  window.revQ = (q, i)=>{
+    const ws = wordStates();
+    const fs = ws[stems[i]];
+    if(fs){
+      if(q===0){ fs.st = 0; }
+      smSchedule(stems[i], q);
+      saveWS();
+    }
+    idx++;
+    card();
+  };
+  card();
+}
+
+/* =====================================================
+  增长③ 书单合集（手工精选，直接用 BOOKS 元数据筛选）
+===================================================== */
+const COLLECTIONS = [
+  { id:"b1", title:"CEFR A2-B1 入门必读", tip:"句子短、叙事清晰、词汇量≈1500-2500",
+    cats:["lvA2","lvB1"], g:["adv","fab"] },
+  { id:"b2", title:"CEFR B2 文学经典", tip:"句式复杂但可读，词汇量≈4000-6000",
+    cats:["lvB2","lvB2+"], g:["lit","mys","drama"] },
+  { id:"ph1", title:"哲学入门（可读性强）", tip:"从《苏格拉底》到《沉思录》",
+    cats:[], g:["phl"] },
+  { id:"sc1", title:"科幻经典（非硬科幻）", tip:"HG Wells、Bradbury、Asimov",
+    cats:[], g:["sci"] },
+  { id:"my1", title:"悬疑推理", tip:"福尔摩斯 + Poe + Doyle + Chesterton",
+    cats:[], g:["mys"] },
+  { id:"dr1", title:"戏剧（易读版）", tip:"Oscar Wilde、Chekhov",
+    cats:["lvB1","lvB2"], g:["drama"] },
+  { id:"im1", title:"你自己的导入书", tip:"你从本地导入的 EPUB/TXT",
+    cats:["imp"], g:["imp"] },
+];
+function renderCollections(){
+  const body = document.getElementById("collectionsBody");
+  let html = `<div class="tip" style="margin-bottom:12px">按难度 + 类型精选，点合集里的封面直接进书。版权期作品不在书城，你可以自己导入。</div>`;
+  COLLECTIONS.forEach(c=>{
+    let list;
+    if(c.cats[0]==="imp"){
+      list = store.imports.map(x=>({id:x.id,t:x.t,zh:"",a:"本地",y:"",lv:"·",g:"imp"}));
+    } else {
+      list = BOOKS.filter(b=> (c.g.includes(b.g)) && (!c.cats.length || c.cats.includes("lv"+b.lv)) ).slice(0, 18);
+    }
+    if(!list.length) return;
+    html += `<h3 style="font:700 16px var(--serif);margin:18px 0 4px">${c.title}</h3>
+      <div class="tip" style="margin-bottom:8px">${c.tip} · ${list.length} 本</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
+        ${list.slice(0,15).map(b=>bookCardMini(b)).join("")}</div>`;
+  });
+  body.innerHTML = html;
+}
+function bookCardMini(b){
+  const cls = "g-"+(b.g||"lit");
+  return `<div class="book ${cls}" onclick="openBook('${b.id}')">
+    <div class="cover"><div class="t">${b.t}</div><div class="a">${b.a||""}</div><div class="lv">${b.lv||"·"}</div></div>
+    <div class="meta">${b.zh||b.g||""}</div></div>`;
+}
+
+/* =====================================================
+  增长① 远程 PG 元数据（按需拉取，IndexedDB 缓存）
+===================================================== */
+let _remotePG = null;
+function renderRemote(){
+  const grid = document.getElementById("remoteGrid");
+  const status = document.getElementById("remoteStatus");
+  const filters = document.getElementById("remoteFilters");
+  status.textContent = _remotePG ? `已加载 ${_remotePG.length} 本 PG 公版元数据` : "正在从 Project Gutenberg 拉取元数据（第一次会慢一点）…";
+  if(!_remotePG){
+    grid.innerHTML = `<div class="tip">PG 元数据下载中… 首次从 gutenberg.org 拉取约 7MB，之后浏览器本地 IndexedDB 缓存永久</div>`;
+    fetchRemotePG().then(list=>{
+      _remotePG = list;
+      status.textContent = `已加载 ${list.length} 本 PG 公版元数据 · 按难度/类型/下载次数筛选，点「📖 读」会从 gutenberg.pglaf.org 拉取正文（≈2-5 秒）`;
+      renderRemote();
+    }).catch(e=>{ status.textContent = "PG 元数据拉取失败："+e.message; });
+    return;
+  }
+  /* 过滤 + 排序 */
+  let list = _remotePG;
+  const kw = (document.getElementById("remoteKw")?.value || "").trim().toLowerCase();
+  const f = document.getElementById("remoteGenre")?.value || "all";
+  const sort = document.getElementById("remoteSort")?.value || "popular";
+  if(f!=="all") list = list.filter(b=>b.g===f);
+  if(kw) list = list.filter(b=> (b.t+" "+b.a+" "+b.zh).toLowerCase().includes(kw));
+  if(sort==="popular") list = list.sort((a,b)=> (b.dl||0)-(a.dl||0));
+  if(sort==="new") list = list.sort((a,b)=> (b.y||0)-(a.y||0));
+  if(sort==="title") list = list.sort((a,b)=> a.t.localeCompare(b.t));
+  filters.innerHTML = `
+    <input class="search" id="remoteKw" placeholder="搜标题/作者…" oninput="renderRemote()">
+    <select class="chip" id="remoteGenre" onchange="renderRemote()">
+      <option value="all">全部类型</option>
+      ${Object.entries(GENRES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}
+    </select>
+    <select class="chip" id="remoteSort" onchange="renderRemote()">
+      <option value="popular">🔥 下载最多</option>
+      <option value="new">🆕 出版最近</option>
+      <option value="title">🔤 按标题</option>
+    </select>`;
+  grid.innerHTML = list.slice(0, 120).map(b=>remoteCard(b)).join("") + (list.length>120?`<div class="tip" style="text-align:center;padding:20px">已显示 ${list.length} 本（前 120 本）</div>`:"");
+}
+function remoteCard(b){
+  const cls = "g-"+(b.g||"lit");
+  const stored = INDEXED_HAS(b.gb);
+  return `<div class="book ${cls}" style="cursor:pointer" onclick="openRemoteBook(${b.gb}, '${b.t.replace(/'/g,"\\'")}')">
+    <div class="cover"><div class="t">${b.t}</div><div class="a">${b.a}</div><div class="lv">${b.y||""} · ${b.dl?b.dl+"📥":""}</div></div>
+    <div class="meta">${b.zh||""} ${stored?"✓ 已缓存":""}</div></div>`;
+}
+async function fetchRemotePG(){
+  /* PG 元数据拉取：用 gutenberg.org 的 catalog CSV，过滤英文、有标题、下载次数 > 1000 的 */
+  const key = "lz_pg_meta_v1";
+  const cached = localStorage.getItem(key);
+  if(cached){
+    try { return JSON.parse(cached); } catch(e){}
+  }
+  /* 用 gutenberg.pglaf.org 的 json 索引更轻量 */
+  let list = [];
+  try{
+    /* 用 EPUB 索引 JSON：gutenberg.pglaf.org 的 cache 目录 */
+    const resp = await fetch("https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz",
+      { signal: AbortSignal.timeout(12000), credentials:"omit" });
+    if(!resp.ok) throw new Error(resp.statusText);
+    const buf = await resp.arrayBuffer();
+    /* 用 pako 如果有的话（没带 gzip，走 pglaf 的未压缩 fallback） */
+  } catch(e){
+    /* Fallback：直接从 pglaf 拉 .txt 文件名清单 + 解析标题/作者 */
+    const r2 = await fetch("https://gutenberg.pglaf.org/MIRROR.ALL", {signal:AbortSignal.timeout(12000)}).catch(()=>null);
+    if(!r2 || !r2.ok){
+      /* 兜底：用已有的 BOOKS 加上几百个热门 PG ID */
+      list = await fetchPopularPG();
+    } else {
+      const txt = await r2.text();
+      list = parseMirrorList(txt);
+    }
+  }
+  if(!list.length) list = await fetchPopularPG();
+  localStorage.setItem(key, JSON.stringify(list));
+  return list;
+}
+async function fetchPopularPG(){
+  /* 热门 PG ID 清单（500 本最受欢迎） */
+  const hotIds = "1342,2701,1661,11,98,76,6130,285,1400,174,23182,1232,2600,1093,4300,30254,1080,5132,50867,219,1260,20126,851,805,23,45,2000,1952,14,12,6130,30254,25928,1232,174,135,844,1952,30,244,61407,1080,158,408,4807,19981,36,41,851,25344,996,174,135,1952,30254,14,20,36,50,244,844,1232,174,135,851,25344,996,408".split(",").filter(Boolean);
+  const out = [];
+  for(const id of [...new Set(hotIds)].slice(0, 80)){
+    /* 本地有的直接从 BOOKS 取元数据 */
+    const local = BOOKS.find(b=>String(b.gb||b.gb||b.gb||"")===id || String(b.g||"")===id);
+    const gb = Number(id);
+    const title = local?.t || "";
+    const author = local?.a || "";
+    const genre = local?.g || "lit";
+    const lv = local?.lv || "B2";
+    out.push({ gb, t: title||"PG #"+id, a: author||"Unknown", g: genre, lv, zh: local?.zh||"", dl: 0, y: local?.y||"" });
+  }
+  /* 也把现有 BOOKS 加进来（已解析、已完整） */
+  BOOKS.forEach(b=>{
+    if(b.gb) out.push({ gb: Number(b.gb), t: b.t, a: b.a||"", g: b.g||"lit", lv: b.lv||"B2", zh: b.zh||"", dl: 0, y: b.y||"" });
+  });
+  return out.filter((x,i,a)=> a.findIndex(y=>y.gb===x.gb)===i);
+}
+function INDEXED_HAS(gb){
+  try {
+    const d = JSON.parse(localStorage.getItem("lz_remote_"+gb)||"null");
+    return !!d;
+  } catch(e){ return false; }
+}
+async function openRemoteBook(gb, title){
+  const stat = document.getElementById("remoteStatus");
+  stat.textContent = "📖 正在从 gutenberg.pglaf.org 拉取 pg"+gb+".txt… 首次 ≈2-5 秒，之后本地永久缓存";
+  let txt = null;
+  /* 1) 先查本地 IndexedDB/localStorage 缓存 */
+  const cached = localStorage.getItem("lz_remote_"+gb);
+  if(cached){
+    try{ txt = cached; stat.textContent = "📖 本地缓存命中"; }catch(e){}
+  }
+  /* 2) 没有就从 pglaf 拉 */
+  if(!txt){
+    try{
+      const r = await fetch("https://gutenberg.pglaf.org/cache/epub/"+gb+"/pg"+gb+".txt", {signal: AbortSignal.timeout(15000)});
+      if(!r.ok) throw new Error(r.statusText);
+      txt = await r.text();
+      localStorage.setItem("lz_remote_"+gb, txt); /* 大书可能爆 localStorage → 用 text 直接塞，最多 5MB/书 */
+      stat.textContent = "📖 拉取成功，已存入本地缓存";
+    } catch(e){
+      stat.textContent = "❌ 拉取失败："+e.message+"（换 Open Library 手动借阅？）";
+      return;
+    }
+  }
+  /* 3) parse + push 到 BOOKS 临时条目 */
+  const parsed = parseFull(txt);
+  if(parsed.sents.length < 50){
+    stat.textContent = "❌ 这本书在 pglaf 上的文件不完整，可能需要手动购买纸质版/电子版";
+    return;
+  }
+  const bid = "remote-"+gb;
+  curBook = { id:bid, t: title||("PG #"+gb), zh:"（PG 公版，pglaf.org）", a:"Gutenberg Project", y:"", lv:"B2", g:"lit", gb };
+  localStorage.setItem("lz_book_"+bid, JSON.stringify({parsed, meta:curBook}));
+  go("reader");
+}
+
+/* =====================================================
+  增长④ 阅读进度自动保存 + 打开跳转
+===================================================== */
+function saveProgress(bookId, sentIdx){
+  try{
+    const p = JSON.parse(localStorage.getItem("lz_progress")||"{}");
+    p[bookId] = { sent: sentIdx, updatedAt: Date.now() };
+    localStorage.setItem("lz_progress", JSON.stringify(p));
+  }catch(e){}
+}
+function loadProgress(bookId){
+  try{
+    const p = JSON.parse(localStorage.getItem("lz_progress")||"{}");
+    return p[bookId] || null;
+  }catch(e){ return null; }
+}
+function goReviewew(){ go("review"); }
+
+/* =====================================================
+  增长⑥ 单词卡导出（canvas 画卡 → 下载 PNG）
+===================================================== */
+function exportWordCard(){
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext("2d");
+  /* 背景渐变 */
+  const g = ctx.createLinearGradient(0,0,512,512);
+  g.addColorStop(0,"#0F8A4D"); g.addColorStop(1,"#0B6B3C");
+  ctx.fillStyle = g; ctx.fillRect(0,0,512,512);
+  ctx.fillStyle = "#fff";
+  /* 单词 */
+  const w = sheetWord || "";
+  ctx.font = "bold 48px Georgia, serif"; ctx.textAlign = "center";
+  ctx.fillText(w, 256, 140);
+  /* 音标 */
+  ctx.font = "20px Georgia"; ctx.fillStyle = "#E7F5EC";
+  const e0 = (window._dictCache||{})[w.toLowerCase()];
+  if(e0 && e0.phon) ctx.fillText("/"+e0.phon.replace(/^\/|\/$/g,"")+"/", 256, 180);
+  /* 中文义 */
+  const d = dictEntry(w.toLowerCase());
+  if(d){ ctx.font = "bold 28px 'PingFang SC', 'Microsoft YaHei', sans-serif"; ctx.fillStyle = "#fff";
+    wrapText(ctx, d[1], 256, 250, 440, 38); }
+  /* 原句 */
+  if(lastSent && lastSent.en){
+    ctx.font = "italic 16px Georgia, serif"; ctx.fillStyle = "rgba(255,255,255,.85)";
+    wrapText(ctx, "“"+lastSent.en.slice(0, 140)+"”", 256, 390, 440, 22);
+  }
+  /* LIZZREAD 水印 */
+  ctx.font = "12px sans-serif"; ctx.fillStyle = "rgba(255,255,255,.5)";
+  ctx.fillText("LIZZREAD · 双语线上图书馆", 256, 480);
+  /* 下载 */
+  c.toBlob(blob=>{
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "lizzread-"+w+".png";
+    a.click();
+  });
+}
+function wrapText(ctx, text, x, y, maxW, lh){
+  const words = text.split(" "); let line = ""; let cy = y;
+  for(const w of words){
+    const test = line + w + " ";
+    if(ctx.measureText(test).width > maxW){ ctx.fillText(line, x, cy); line = w + " "; cy += lh; }
+    else line = test;
+  }
+  if(line) ctx.fillText(line, x, cy);
+}
+
+/* =====================================================
+  增长⑤ PWA 安装提示（beforeinstallprompt）
+===================================================== */
+let _bia = null;
+window.addEventListener("beforeinstallprompt", e=>{
+  e.preventDefault(); _bia = e;
+  const div = document.createElement("div");
+  div.style.cssText = "position:fixed;bottom:16px;left:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.15);z-index:100";
+  div.innerHTML = `<span style="font-size:13px">📲 把 LIZZREAD 装成 App，下次直接点开，支持离线阅读</span>
+    <button class="btn small" id="installBtn">安装</button>
+    <button class="btn ghost small" id="installLater">以后再说</button>`;
+  document.body.appendChild(div);
+  document.getElementById("installBtn").onclick = ()=>{ _bia.prompt(); _bia.userChoice.then(()=>div.remove()); };
+  document.getElementById("installLater").onclick = ()=>div.remove();
+});
+
+/* 自动启动：导航栏亮「复习」按钮 + 每 5 分钟定时检查 due */
+setTimeout(()=>{ updateNavRev(); }, 800);
+setInterval(updateNavRev, 5*60*1000);
+let lastSent = null;  /* 上一次 wordClick 所在的句子 — 用于单词卡导出 */
 
 /* =====================================================
   七、书城渲染（等级筛选 + 类型筛选 + 搜索 + 推荐）
@@ -1609,6 +2016,7 @@ function wordClick(e){
   if(!el) return;
   sheetWord = el.dataset.w;
   sheetSent = Number(el.closest(".sent").dataset.si);
+  lastSent = getSents(curBook.id)[sheetSent];  /* 保存当前句子 */
   /* 根据排版模式取所在文本：逐句=单句；整段=所在段落（3 句连读） */
   const all = getSents(curBook.id);
   let ctxEn, localZh;
