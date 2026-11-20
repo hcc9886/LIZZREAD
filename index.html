@@ -1630,9 +1630,48 @@ function wordClick(e){
   const fsNow = recordLookup(low);
   if(stBefore !== undefined && fsNow.st !== stBefore) openReader(curBook.id);
   document.getElementById("shWord").textContent = sheetWord;
-  /* 平时常用义：本地词典优先 */
-  document.getElementById("shDef").textContent =
-    d ? `${d[0]} ${d[1]}` : "本地词典暂未收录，可点下方「更多释义」";
+  /* 平时常用义：本地词典优先 → 未命中立刻异步机翻存 localStorage（下次秒显） */
+  const zhEl = document.getElementById("shDef");
+  const zhCached = _zhCache[low];        // 缓存的机翻中文义
+  const localZhDef = d ? `${d[0]} ${d[1]}` : "";
+  if(localZhDef){
+    zhEl.textContent = localZhDef;
+  } else if(zhCached){
+    zhEl.textContent = zhCached;
+  } else {
+    zhEl.textContent = "联网查取中…";
+    /* 后台异步查牛津词典 + 机翻成中文，存 localStorage，下次秒显 */
+    Promise.all([
+      fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(sheetWord), {signal: AbortSignal.timeout(3000)})
+        .then(r=>r.ok?r.json():null).catch(()=>null),
+      mtFetch(sheetWord).catch(()=>"")
+    ]).then(([j, mt])=>{
+      let pos="", enDef="";
+      if(j && j[0]){
+        const e0 = j[0];
+        const m0 = (e0.meanings||[])[0];
+        pos = m0 ? m0.partOfSpeech : "";
+        enDef = (m0 && m0.definitions && m0.definitions[0]) ? m0.definitions[0].definition : "";
+      }
+      let zh = mt || "";
+      if(!zh && enDef){ zh = mtFetch(enDef).catch(()=>""); }
+      if(!zh){ zh = "（词典未收录）"; }
+      const out = pos ? `${pos} ${zh}` : zh;
+      _zhCache[low] = out; _saveZhCache();
+      if(zhEl.textContent === "联网查取中…") zhEl.textContent = out;
+      /* 顺便把英英也存进去 */
+      if(j && j[0]){
+        const e0 = j[0];
+        const phon = e0.phonetic || ((e0.phonetics||[]).find(p=>p.text)||{}).text || "";
+        const defs = [];
+        outer: for(const e of j) for(const m of e.meanings) for(const df of m.definitions){
+          defs.push({pos:m.partOfSpeech, en:df.definition, ex:df.example||""});
+          if(defs.length>=5) break outer;
+        }
+        _dictCache[low] = {phon, defs}; _saveEnCache();
+      }
+    });
+  }
   /* 本句语境义：先查 mtCache（跨刷新持久化），命中秒显；未命中占位"翻译中…"后台请求 */
   const ctxEl = document.getElementById("shCtx");
   const cached = mtCache[ctxEn];
@@ -1908,6 +1947,16 @@ function _saveEnCache(){
     localStorage.setItem("lz_encache", JSON.stringify(_dictCache));
   }catch(e){}
 }
+/* 牛津机翻中文义缓存：用户点过一次的生词第二次点秒显 */
+let _zhCache = {};
+try{ _zhCache = JSON.parse(localStorage.getItem("lz_zhcache")||"{}") || {}; }catch(e){ _zhCache = {}; }
+function _saveZhCache(){
+  try{
+    const ks = Object.keys(_zhCache);
+    if(ks.length > 2000) ks.slice(0, ks.length-2000).forEach(k=>delete _zhCache[k]);
+    localStorage.setItem("lz_zhcache", JSON.stringify(_zhCache));
+  }catch(e){}
+}
 async function fetchDict(word){
   if(_dictCache[word]) return renderDefs(word, 1);
   const ctrl = new AbortController();
@@ -2017,7 +2066,8 @@ function showQ(){
   const right = q.o[0];
   const opts = [...q.o].sort(()=>Math.random()-.5);
   document.getElementById("qOpts").innerHTML = opts.map(o=>
-    `<button onclick="pick(this,'${o===right?"1":"0"}')">${o}</button>`).join("");
+    `<button onclick="pick(this,'${o===right?"1":"0"}')">${o}</button>`).join("") +
+    `<button style="margin-top:6px;color:var(--muted)" onclick="pickSkip(this)">🤔 记混了/不确定（跳过）</button>`;
 }
 function pick(btn, ok){
   if(document.getElementById("qOpts").dataset.lock) return;
@@ -2033,6 +2083,22 @@ function pick(btn, ok){
     testQ++;
     if(testQ >= TEST.length) finishTest(); else showQ();
   }, 700);
+}
+function pickSkip(btn){
+  if(document.getElementById("qOpts").dataset.lock) return;
+  document.getElementById("qOpts").dataset.lock = "1";
+  /* 跳过不计入对错——让诚实的用户不受压力 */
+  document.querySelectorAll("#qOpts button").forEach(b=>{
+    if(b.textContent===TEST[testQ].o[0]) b.classList.add("ok");
+    b.disabled = true;
+  });
+  btn.style.background = "var(--surface2)";
+  btn.style.color = "var(--muted)";
+  setTimeout(()=>{
+    delete document.getElementById("qOpts").dataset.lock;
+    testQ++;
+    if(testQ >= TEST.length) finishTest(); else showQ();
+  }, 900);
 }
 function finishTest(){
   let lv = "入门";
