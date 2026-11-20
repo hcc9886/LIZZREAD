@@ -350,7 +350,7 @@ body.no-zh .sent .zh{display:none}
 </div>
 
 <!-- 本地大词典（24 万条，17MB）——阻塞加载，保证点词时立刻有内容 -->
-<script src="./dict.js?v=3"></script>
+<script src="./dict.js?v=4"></script>
 <script>
 /* =====================================================
   一、书库数据：英文书名 / 通行中文译名 / 作者 / 年份 / 难度 / 类型
@@ -810,7 +810,7 @@ const DICT = {
 
 /* ---------- 本地大词典（dict.js 约 24 万常用词，异步加载，点词即显） ---------- */
 let _bigDictLoading = false;
-const _DICT_V = "3";  // dict.js 版本号
+const _DICT_V = "4";
 function loadBigDict(){
   if(window.LIZ_DICT || _bigDictLoading) return;
   _bigDictLoading = true;
