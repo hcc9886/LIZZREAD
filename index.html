@@ -585,13 +585,6 @@ const BOOKS = [
  {id:"sh-shrew", t:"The Taming of the Shrew", zh:"驯悍记", a:"William Shakespeare", y:1592, lv:"B2", g:"drama", d:"泼辣新娘的驯服喜剧。", gb:1508},
  {id:"sh-henryv", t:"Henry V", zh:"亨利五世", a:"William Shakespeare", y:1599, lv:"C1", g:"drama", d:"阿金库尔战役的国王。", gb:1521},
  /* ---- 加缪（全文链接为 Open Library 借阅/检索） ---- */
- {id:"camus-stranger", t:"The Stranger", zh:"局外人", a:"Albert Camus", y:1942, lv:"B1", g:"lit", d:"默尔索与荒诞的开端，加缪入门首选。"},
- {id:"camus-plague", t:"The Plague", zh:"鼠疫", a:"Albert Camus", y:1947, lv:"B2", g:"lit", d:"奥兰城封城纪事，集体抗争的寓言。"},
- {id:"camus-fall", t:"The Fall", zh:"堕落", a:"Albert Camus", y:1956, lv:"C1", g:"lit", d:"阿姆斯特丹酒吧里的独白审判。"},
- {id:"camus-sisyphus", t:"The Myth of Sisyphus", zh:"西西弗神话", a:"Albert Camus", y:1942, lv:"C2", g:"phl", d:"荒诞哲学的散文论述。"},
- {id:"camus-rebel", t:"The Rebel", zh:"反抗者", a:"Albert Camus", y:1951, lv:"C2", g:"phl", d:"反抗的历史与界限。"},
- {id:"camus-exile", t:"Exile and the Kingdom", zh:"流放与王国", a:"Albert Camus", y:1958, lv:"B2", g:"lit", d:"六篇流放主题短篇。"},
- {id:"camus-happydeath", t:"A Happy Death", zh:"快乐的死", a:"Albert Camus", y:1971, lv:"B2", g:"lit", d:"生前未出版的遗作。"},
  /* ---- 世界经典扩充 ---- */
  {id:"warpeace", t:"War and Peace", zh:"战争与和平", a:"Leo Tolstoy", y:1869, lv:"C1", g:"lit", d:"拿破仑战争时期的俄国史诗。", gb:2600},
  {id:"annakarenina", t:"Anna Karenina", zh:"安娜·卡列尼娜", a:"Leo Tolstoy", y:1878, lv:"C1", g:"lit", d:"幸福的家庭都是相似的。", gb:1399},
@@ -727,8 +720,32 @@ const BOOKS = [
  {id:"equiano", t:"The Interesting Narrative of Olaudah Equiano", zh:"奥劳达·埃奎亚诺自述", a:"Olaudah Equiano", y:1789, lv:"B2", g:"phl", d:"18 世纪非洲奴隶贸易亲历者的自传。", gb:15399},
  {id:"erewhon", t:"Erewhon", zh:"埃里汪", a:"Samuel Butler", y:1872, lv:"C1", g:"sci", d:"反转社会规则的乌托邦讽刺小说。", gb:1906},
 
+ /* ---- 扩充公版全集（已下载 books/pg*.txt） ---- */
+{id:"farfrommadding", t:"Far from the Madding Crowd", zh:"远离尘嚣", a:"Thomas Hardy", y:1874, lv:"C1", g:"lit", gb:107, d:"哈代威塞克斯悲剧系列。"},
+{id:"dantecomedy", t:"La Divina Commedia di Dante", zh:"神曲（意大利语原文）", a:"Dante Alighieri", y:1320, lv:"C2", g:"lit", gb:1012, d:"但丁《神曲》意大利语原文。"},
+{id:"plaguejournal", t:"A Journal of the Plague Year", zh:"大疫年纪事", a:"Daniel Defoe", y:1722, lv:"C2", g:"lit", gb:376, d:"笛福以日记体写 1665 年伦敦大瘟疫。"},
+{id:"lostcontinent", t:"The Lost Continent", zh:"失落的大陆", a:"C. J. Cutcliffe Hyne", y:1900, lv:"C1", g:"adv", gb:285, d:"远古文明沉没大陆的冒险。"},
+{id:"justdavid", t:"Just David", zh:"纯粹的大卫", a:"Eleanor H. Porter", y:1916, lv:"B2", g:"lit", gb:440, d:"阳光孤儿大卫治愈整个小镇的心灵小说。"},
+{id:"inlandvoyage", t:"An Inland Voyage", zh:"内陆航行", a:"Robert Louis Stevenson", y:1878, lv:"B2", g:"adv", gb:534, d:"史蒂文森与友人的比利时-法国运河游记。"},
+{id:"captivityrowlandson", t:"Narrative of the Captivity and Restoration of Mary White Rowlandson", zh:"罗兰森被俘记", a:"Mary White Rowlandson", y:1682, lv:"C2", g:"imp", gb:851, d:"美国早期殖民者被印第安人俘虏的真实经历。"},
+{id:"modestproposal", t:"A Modest Proposal", zh:"一个温和的建议", a:"Jonathan Swift", y:1729, lv:"C1", g:"lit", gb:1080, d:"斯威夫特关于爱尔兰贫困的讽刺散文。"},
+{id:"cervantes", t:"Don Quijote", zh:"堂吉诃德", a:"Miguel de Cervantes Saavedra", y:1605, lv:"C2", g:"lit", gb:2000, d:"西方文学第一部现代小说，西班牙语原文。"},
+{id:"heritageofdedlow", t:"The Heritage of Dedlow Marsh and Other Tales", zh:"德洛沼泽遗产及其他故事", a:"Bret Harte", y:1889, lv:"B2", g:"lit", gb:2281, d:"美国西部风情短篇小说集。"},
+{id:"dollshouse", t:"A Doll's House", zh:"玩偶之家", a:"Henrik Ibsen", y:1879, lv:"B2", g:"drama", gb:2542, d:"易卜生经典戏剧，娜拉离家出走。"},
+{id:"forrsyte2", t:"The Forsyte saga, Volume 2", zh:"福尔赛世家 第二卷", a:"John Galsworthy", y:1907, lv:"C1", g:"lit", gb:2594, d:"高尔斯华绥家族史诗第二部。"},
+{id:"equator", t:"Following the Equator: A Journey Around the World", zh:"赤道游记", a:"Mark Twain", y:1897, lv:"B2", g:"adv", gb:2895, d:"马克·吐温环球旅行见闻。"},
+{id:"aesop", t:"Aesop's Fables; a new translation", zh:"伊索寓言", a:"Aesop", y:-550, lv:"B1", g:"fab", gb:11339, d:"寓言故事集。"},
+{id:"hamlet", t:"Hamlet", zh:"哈姆雷特", a:"William Shakespeare", y:1603, lv:"C2", g:"drama", gb:1787, d:"莎士比亚四大悲剧之首。"},
+{id:"scarletletter", t:"The Scarlet Letter", zh:"红字", a:"Nathaniel Hawthorne", y:1850, lv:"C1", g:"lit", gb:25344, d:"霍桑清教徒社会里的罪与救赎。"},
+{id:"biblekjv", t:"The Bible, King James Version, Complete", zh:"圣经（詹姆士王译本）", a:"Various", y:1611, lv:"C2", g:"imp", gb:30, d:"英文世界影响最大的圣经译本。"},
+{id:"songofthelark", t:"The Song of the Lark", zh:"云雀之歌", a:"Willa Cather", y:1915, lv:"C1", g:"lit", gb:44, d:"薇拉·凯瑟写女高音的成长。"},
+{id:"brigadecommander", t:"The Brigade Commander", zh:"旅长", a:"John William De Forest", y:1868, lv:"B2", g:"lit", gb:23182, d:"美国内战小说。"},
+{id:"doctorluke", t:"Doctor Luke of the Labrador", zh:"拉布拉多的卢克医生", a:"Norman Duncan", y:1917, lv:"B2", g:"lit", gb:19981, d:"纽芬兰渔业小镇上的医生。"},
+{id:"caveofgold", t:"The Cave of Gold", zh:"黄金洞", a:"Everett McNeil", y:1921, lv:"B2", g:"adv", gb:20126, d:"西部冒险小说。"},
+{id:"foreignxchange", t:"Elements of Foreign Exchange", zh:"外汇原理", a:"Franklin Escher", y:1918, lv:"C2", g:"imp", gb:29364, d:"金融学经典教材。"},
+{id:"escorial", t:"The Escorial", zh:"埃斯科里亚尔", a:"Albert Frederick Calvert", y:1907, lv:"C2", g:"imp", gb:61407, d:"西班牙埃斯科里亚尔修道院与宫廷史。"},
+
  /* ---- 用户本地提供的书籍（文件不在仓库，仅本地实例可用） ---- */
- {id:"stranger", t:"The Stranger", zh:"局外人", a:"Albert Camus", y:1942, lv:"B2", g:"lit", d:"“今天，妈妈死了。也许是昨天，我不知道。”加缪存在主义代表作。", file:"books/camus_stranger.txt", localOnly:true}
 ];
 
 /* =====================================================
@@ -1425,37 +1442,37 @@ function exportWordCard(){
   const c = document.createElement("canvas");
   c.width = 512; c.height = 512;
   const ctx = c.getContext("2d");
-  /* 背景渐变 */
   const g = ctx.createLinearGradient(0,0,512,512);
   g.addColorStop(0,"#0F8A4D"); g.addColorStop(1,"#0B6B3C");
   ctx.fillStyle = g; ctx.fillRect(0,0,512,512);
   ctx.fillStyle = "#fff";
-  /* 单词 */
   const w = sheetWord || "";
   ctx.font = "bold 48px Georgia, serif"; ctx.textAlign = "center";
   ctx.fillText(w, 256, 140);
-  /* 音标 */
   ctx.font = "20px Georgia"; ctx.fillStyle = "#E7F5EC";
   const e0 = (window._dictCache||{})[w.toLowerCase()];
   if(e0 && e0.phon) ctx.fillText("/"+e0.phon.replace(/^\/|\/$/g,"")+"/", 256, 180);
-  /* 中文义 */
   const d = dictEntry(w.toLowerCase());
   if(d){ ctx.font = "bold 28px 'PingFang SC', 'Microsoft YaHei', sans-serif"; ctx.fillStyle = "#fff";
     wrapText(ctx, d[1], 256, 250, 440, 38); }
-  /* 原句 */
   if(lastSent && lastSent.en){
     ctx.font = "italic 16px Georgia, serif"; ctx.fillStyle = "rgba(255,255,255,.85)";
-    wrapText(ctx, "“"+lastSent.en.slice(0, 140)+"”", 256, 390, 440, 22);
+    wrapText(ctx, "\u201C"+lastSent.en.slice(0, 140)+"\u201D", 256, 390, 440, 22);
   }
-  /* LIZZREAD 水印 */
   ctx.font = "12px sans-serif"; ctx.fillStyle = "rgba(255,255,255,.5)";
   ctx.fillText("LIZZREAD · 双语线上图书馆", 256, 480);
-  /* 下载 */
   c.toBlob(blob=>{
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "lizzread-"+w+".png";
-    a.click();
+    /* 优先 Web Share API，回退下载 */
+    const file = new File([blob], "lizzread-"+w+".png", {type:"image/png"});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({
+        title: w, text: (d?d[1]:"") + " · LIZZREAD 点词查义", files:[file]
+      }).catch(()=>{});
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "lizzread-"+w+".png"; a.click();
+    }
   });
 }
 function wrapText(ctx, text, x, y, maxW, lh){
@@ -1541,6 +1558,18 @@ function renderLibrary(){
     `<div class="empty">没有匹配的书，换个筛选条件试试～</div>`;
 }
 function bookCard(b, rec){
+  /* 阅读进度条 */
+  const prog = loadProgress(b.id);
+  const book = (store.imports.find(x=>x.id===b.id) || BOOKS.find(x=>x.id===b.id) || GUIDES[b.id] || SAMPLES[b.id]);
+  const total = book ? (book.parsed?book.parsed.sents.length: (book.pg?0:0)) : 0;
+  let progPct = "";
+  if(prog && total > 10){
+    const pct = Math.min(100, Math.round(prog.sent / total * 100));
+    progPct = `<div class="meta" style="padding-top:0">📖 已读 ${pct}% · ${new Date(prog.updatedAt).toLocaleDateString()}</div>
+      <div style="height:3px;background:var(--surface2);margin:-8px 10px 6px;border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:var(--brand);border-radius:2px"></div>
+      </div>`;
+  }
   /* 导入书籍：无书皮图，用灰色渐变底 */
   const cov = b.imp
     ? `<span class="lv">导入</span><div class="t">${b.t}</div><div class="a">本地导入 · 点击阅读</div>`
@@ -1552,6 +1581,7 @@ function bookCard(b, rec){
     <div class="meta"><b>${b.zh}</b> · <span class="g">${b.imp?"我的导入":GENRES[b.g]}</span>
       ${rec?`<span class="badge">推荐</span>`:""}
       <br>${b.imp?"✦ 可阅读":(typeof b.gb==="number"?"✦ 可读全文":(GUIDES[b.id]?"✦ 精读导读":(SAMPLES[b.id]?"✦ 可试读":"")))}</div>
+    ${progPct}
   </div>`;
 }
 
@@ -2123,37 +2153,28 @@ function wordClick(e){
   const fsNow = recordLookup(low);
   if(stBefore !== undefined && fsNow.st !== stBefore) openReader(curBook.id);
   document.getElementById("shWord").textContent = sheetWord;
-  /* 平时常用义：本地词典优先 → 未命中立刻异步机翻存 localStorage（下次秒显） */
+  /* 平时常用义：本地词典 → 缓存机翻 → 立刻机翻显示（不再显示“联网查取中”） */
   const zhEl = document.getElementById("shDef");
-  const zhCached = _zhCache[low];        // 缓存的机翻中文义
+  const zhCached = _zhCache[low];
   const localZhDef = d ? `${d[0]} ${d[1]}` : "";
   if(localZhDef){
     zhEl.textContent = localZhDef;
   } else if(zhCached){
     zhEl.textContent = zhCached;
   } else {
-    zhEl.textContent = "联网查取中…";
-    /* 后台异步查牛津词典 + 机翻成中文，存 localStorage，下次秒显 */
-    Promise.all([
-      fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(sheetWord), {signal: AbortSignal.timeout(3000)})
-        .then(r=>r.ok?r.json():null).catch(()=>null),
-      mtFetch(sheetWord).catch(()=>"")
-    ]).then(([j, mt])=>{
-      let pos="", enDef="";
-      if(j && j[0]){
-        const e0 = j[0];
-        const m0 = (e0.meanings||[])[0];
-        pos = m0 ? m0.partOfSpeech : "";
-        enDef = (m0 && m0.definitions && m0.definitions[0]) ? m0.definitions[0].definition : "";
+    /* 第一步：立即 mtFetch 单词本身 → 立刻显示结果（≈300ms） */
+    mtFetch(sheetWord).then(mt=>{
+      if(mt){
+        zhEl.textContent = mt;
+        _zhCache[low] = mt; _saveZhCache();
+      } else {
+        zhEl.textContent = "（自动翻译暂未返回）";
       }
-      let zh = mt || "";
-      if(!zh && enDef){ zh = mtFetch(enDef).catch(()=>""); }
-      if(!zh){ zh = "（词典未收录）"; }
-      const out = pos ? `${pos} ${zh}` : zh;
-      _zhCache[low] = out; _saveZhCache();
-      if(zhEl.textContent === "联网查取中…") zhEl.textContent = out;
-      /* 顺便把英英也存进去 */
-      if(j && j[0]){
+    }).catch(()=>{ zhEl.textContent = "（自动翻译不可用）"; });
+    /* 第二步：后台并行查牛津词典（英文定义 + 音标） */
+    fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(sheetWord), {signal: AbortSignal.timeout(3000)})
+      .then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{
+        if(!j || !j[0]) return;
         const e0 = j[0];
         const phon = e0.phonetic || ((e0.phonetics||[]).find(p=>p.text)||{}).text || "";
         const defs = [];
@@ -2162,8 +2183,7 @@ function wordClick(e){
           if(defs.length>=5) break outer;
         }
         _dictCache[low] = {phon, defs}; _saveEnCache();
-      }
-    });
+      });
   }
   /* 本句语境义：先查 mtCache（跨刷新持久化），命中秒显；未命中占位"翻译中…"后台请求 */
   const ctxEl = document.getElementById("shCtx");
