@@ -13,6 +13,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LIZZREAD · 线上图书馆</title>
 <meta name="theme-color" content="#2F5D50">
+<link rel="preload" href="dict.js?v=5" as="script">
+<script src="dict.js?v=5" defer></script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
@@ -866,7 +868,7 @@ const DICT = {
 
 /* ---------- 本地大词典（dict.js 约 24 万常用词，异步加载，点词即显） ---------- */
 let _bigDictLoading = false;
-const _DICT_V = "4";
+const _DICT_V = "5";
 function loadBigDict(){
   if(window.LIZ_DICT || _bigDictLoading) return;
   _bigDictLoading = true;

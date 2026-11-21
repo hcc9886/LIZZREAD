@@ -5,11 +5,11 @@
    - 远程 PG 正文 → 走 IndexedDB（idbPut/idbGet）
    - 外部 API（词典、MyMemory）→ 网络优先
 */
-const CACHE = "lizzread_v4";
+const CACHE = "lizzread_v5";
 const PRECACHE = [
   "./",
   "./index.html",
-  "./dict.js?v=4",
+  "./dict.js?v=5",
   "./manifest.json",
   "./icon.svg",
 ];
@@ -60,13 +60,13 @@ self.addEventListener("fetch", e=>{
   const u = new URL(e.request.url);
   if(u.origin !== self.location.origin || e.request.method !== "GET") return;
 
-  /* dict.js — cache-first */
+  /* dict.js — cache-first（版本化，v5+） */
   if(u.pathname.endsWith("dict.js")){
     e.respondWith(
       caches.match(e.request).then(r=> r || fetch(e.request).then(res=>{
         const cp = res.clone(); caches.open(CACHE).then(c=> c.put(e.request, cp));
         return res;
-      }).catch(()=> caches.match("./dict.js?v=4")))
+      }).catch(()=> caches.match("./dict.js?v=5")))
     ); return;
   }
 
