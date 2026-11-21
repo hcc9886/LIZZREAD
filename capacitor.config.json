@@ -1,0 +1,25 @@
+{
+  "appId": "com.lizzread.app",
+  "appName": "LIZZREAD",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#F6F7F5"
+  },
+  "ios": {
+    "contentInset": "always",
+    "allowsInlineMediaPlayback": true,
+    "backgroundColor": "#F6F7F5"
+  },
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "icon.svg",
+      "iconColor": "#0F8A4D"
+    }
+  }
+}

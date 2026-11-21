@@ -242,6 +242,7 @@ body.no-zh .sent .zh{display:none}
       <button onclick="go('remote')">🌐 PG 书库</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
+      <button onclick="go('sentcol')">⭐ 金句</button>
       <button onclick="go('review')" id="nav-review" style="display:none">📝 复习</button>
       <button id="nav-sreview" onclick="go('sreview')">生词模式</button>
       <button id="nav-account" onclick="go('account')">账号</button>
@@ -317,6 +318,13 @@ body.no-zh .sent .zh{display:none}
   <section class="view" id="view-collections">
     <h2 class="sec">📚 精选书单合集</h2>
     <div id="collectionsBody"></div>
+  </section>
+
+  <!-- ============ 金句本 ============ -->
+  <section class="view" id="view-sentcol">
+    <h2 class="sec">⭐ 我的金句</h2>
+    <div class="tip" id="sentcolTip">在阅读器里点句子旁边的 ⭐ 就收藏进来，配本句译文和收藏时间。</div>
+    <div class="vlist" id="sentcolList"></div>
   </section>
 
   <!-- ============ 远程 PG 书库（增长①） ============ -->
@@ -1039,6 +1047,7 @@ function go(name){
   if(nb) nb.classList.add("on");
   if(name==="library") renderLibrary();
   if(name==="vocab") renderVocab();
+  if(name==="sentcol") renderSentCol();
   if(name==="sreview") renderSReview();
   if(name==="test") renderTestIntro();
   if(name==="account") renderAccount();
@@ -1630,13 +1639,16 @@ function openBook(id){
         <div class="tags">
           <span class="tag">难度 ${b.lv}</span>
           <span class="tag">${GENRES[b.g]}</span>
-          <span class="tag">点词查义 · 双语对照</span>
+          ${hasFull ? `<span class="tag" id="statsTag">…</span>` : ""}
         </div>
         <p style="margin-bottom:14px">${b.d}</p>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
           ${hasFull ? `<button class="btn" onclick="openFull('${b.id}')">📚 开始阅读（站内全文）</button>` : ""}
           ${hasGuide ? `<button class="btn ${hasFull?"ghost":""}" onclick="openGuide('${b.id}')">📖 精读导读（站内）</button>` : ""}
           ${SAMPLES[b.id] ? `<button class="btn ghost" onclick="openReader('${b.id}')">📝 双语试读</button>` : ""}
+          <button class="btn ghost small" onclick="setAutoVocab(!autoVocabOn());alert('生词自动加入：'+(autoVocabOn()?'ON':'OFF'))">
+            ${autoVocabOn()?"🔔 自动收生词 ON":"🔕 自动收生词 OFF"}
+          </button>
         </div>
       </div>
     </div>
@@ -1644,6 +1656,21 @@ function openBook(id){
       ? "整本阅读全部在站内完成：点词查义、双语对照、生词本、熟练度高亮、听书全部可用，不需要跳转任何外部网站。"
       : (hasGuide ? "该书仍在版权保护期，站内提供原创精读导读（分章英文概要 + 中文讲解 + 名句），同样支持点词查义与朗读。"
                   : "该书暂无可用全文。")}</p>`;
+  /* 异步算统计（因为 parseFull 要拉文件） */
+  if(hasFull){
+    fullCache[b.id] = null; /* 触发 openFull 前会解析一次，这里复用 */
+    fetch("books/pg"+b.gb+".txt").then(r=>r.text()).then(txt=>{
+      const parsed = parseFull(txt);
+      fullCache[b.id] = parsed;
+      const all = parsed.sents;
+      let words = 0; all.forEach(s=>{ words += (s.en||"").trim().split(/\s+/).filter(Boolean).length; });
+      const chars = all.reduce((t,s)=> t + (s.en||"").length, 0);
+      const pages = Math.max(1, Math.ceil(chars / 2500));
+      const minutes = Math.max(1, Math.round(words / 200));
+      const tag = document.getElementById("statsTag");
+      if(tag) tag.textContent = `📖 ${words.toLocaleString()} 词 · 约 ${pages} 页 · ${fmtMin(minutes)} · ${parsed.chapters.length} 章`;
+    }).catch(()=>{});
+  }
   go("book");
 }
 
@@ -2050,6 +2077,7 @@ function openReader(id){
         <div class="zh">${zhBlock("i"+i, [s])}</div>
         <div class="tools">
           <button class="btn ghost small" onclick="speak(${i})">🔊 读这句</button>
+          <button class="btn ghost small" onclick="simClickWord(${i})">⭐ 金句</button>
           <span class="mdot tit">标记整句:</span>
           ${MKS.map((c,n)=>`<button class="mdot" style="background:${c[0]}"
             onclick="markSent(${i},${n+1})" title="标记颜色${n+1}"></button>`).join("")}
@@ -2211,11 +2239,18 @@ function wordClick(e){
       enEl.textContent = d ? "（英英释义联网失败，中文义已显示）" : "联网查询失败，可点下方「更多释义」。";
     });
   }
-  /* 生词本按钮状态 */
+  /* 生词本按钮状态 + 自动加入（开关默认开） */
   const addBtn = document.getElementById("shAdd");
-  addBtn.disabled = store.vocab.some(v=>v.w===low);
-  addBtn.textContent = addBtn.disabled ? "✓ 已在生词本" : "＋ 加入生词本";
+  const alreadyIn = store.vocab.some(v=>v.w===low);
+  addBtn.disabled = alreadyIn;
+  addBtn.textContent = alreadyIn ? "✓ 已在生词本" : "＋ 加入生词本";
   addBtn.onclick = ()=>addVocab(low);
+  /* 自动加入：有本地释义 + 开关开 + 之前没加过 → 立刻收入 */
+  if(!alreadyIn && autoVocabOn() && (d || _zhCache[low])){
+    addVocab(low);
+    addBtn.disabled = true;
+    addBtn.textContent = "✓ 自动加入";
+  }
   renderStateRow(low);
   document.getElementById("shMore").href = "https://dict.youdao.com/w/"+encodeURIComponent(low);
   /* 颜色标记行：当前词的颜色高亮 */
@@ -3005,6 +3040,143 @@ renderVocab();
 /* 预载本地大词典：等页面空闲后加载，点词时基本已就绪 */
 setTimeout(loadBigDict, 200);
 /* 阅读进度：滚动防抖保存（300ms）+ 离开页面前强制保存 */
+let _pgSaveTimer = null;
+window.addEventListener("scroll", ()=>{
+  if(!fullMode || document.getElementById("view-reader").classList.contains("on") === false) return;
+  clearTimeout(_pgSaveTimer);
+  _pgSaveTimer = setTimeout(saveProgressNow, 300);
+}, {passive:true});
+window.addEventListener("beforeunload", saveProgressNow);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") saveProgressNow(); });
+
+/* =====================================================
+  金句收藏（⭐） + 阅读器快捷键 + 划词翻译 + 生词自动加入开关 + 系统暗模式
+===================================================== */
+/* 金句收藏存取 */
+const _SENTCOL_KEY = "lz_sentcol";
+function sentCol(){
+  try{ return JSON.parse(localStorage.getItem(_SENTCOL_KEY)||"[]"); }catch(e){ return []; }
+}
+function saveSentCol(arr){ localStorage.setItem(_SENTCOL_KEY, JSON.stringify(arr.slice(0,500))); }
+function collectSent(){
+  if(!lastSent || !curBook){ alert("点一句话里的任意单词再来 ⭐ 收藏这句"); return; }
+  const list = sentCol();
+  const key = curBook.id + ":" + sheetSent;
+  if(list.find(x=>x.k===key)){ alert("这句已收藏"); return; }
+  list.unshift({
+    k:key, bookId:curBook.id, bookTitle:curBook.t||"",
+    en:lastSent.en, zh:lastSent.zh||"", t:Date.now()
+  });
+  saveSentCol(list);
+  alert("⭐ 已收入金句本（"+list.length+" 条）");
+}
+function removeSent(k){
+  saveSentCol(sentCol().filter(x=>x.k!==k)); renderSentCol();
+}
+function renderSentCol(){
+  const list = sentCol();
+  const tip = document.getElementById("sentcolTip");
+  const body = document.getElementById("sentcolList");
+  if(!list.length){
+    tip.textContent = "金句本是空的。在阅读器里点一句话里的任意单词，再点⭐收藏那句。";
+    body.innerHTML = ""; return;
+  }
+  tip.textContent = "共 "+list.length+" 条 · 按收藏时间倒序";
+  body.innerHTML = list.map(s=>`
+    <div class="sent" style="cursor:default">
+      <div class="en" style="text-align:justify">${s.en}</div>
+      <div class="zh">${s.zh||"（本句译文未缓存）"}</div>
+      <div class="tools">
+        <span style="font-size:12px;color:var(--muted)">📖 ${s.bookTitle} · ${new Date(s.t).toLocaleDateString()}</span>
+        <button class="btn ghost small" onclick="removeSent('${s.k.replace(/'/g,"\\'")}')">🗑 删除</button>
+      </div>
+    </div>`).join("");
+}
+
+/* 阅读器快捷键 + ⭐ 句子收藏辅助 */
+function simClickWord(sentIdx){
+  /* 构造一个模拟的 wordClick：让 lastSent 和 sheetSent 指向这句 */
+  const all = getSents(curBook.id);
+  const s = all[sentIdx];
+  if(!s){ alert("句子未找到"); return; }
+  lastSent = s; sheetSent = sentIdx;
+  /* sheetWord 设成这句里第一个有效词，方便弹层显示 */
+  const m = (s.en||"").match(/[A-Za-z']+/);
+  sheetWord = m ? m[0].toLowerCase() : "";
+  /* 立刻 collect */
+  collectSent();
+}
+function estimateBookStats(bookId){
+  const all = getSents(bookId);
+  if(!all.length) return null;
+  let words = 0; all.forEach(s=>{ const w = (s.en||"").trim().split(/\s+/); words += w.length; });
+  const chars = all.reduce((t,s)=> t + (s.en||"").length, 0);
+  const pages = Math.ceil(chars / 2500);  /* 约 2500 字符/页（传统书籍排法） */
+  const minutes = Math.round(words / 200);  /* 200 wpm 阅读速度 */
+  return { words, chars, pages, minutes };
+}
+function fmtMin(n){
+  if(n < 60) return n+" 分钟";
+  const h = Math.floor(n/60), m = n%60;
+  return h+" 小时"+(m?(" "+m+" 分钟"):"");
+}
+document.addEventListener("keydown", e=>{
+  const isReader = document.getElementById("view-reader").classList.contains("on");
+  if(!isReader) return;
+  /* 空格翻页（注意不拦截输入框） */
+  const tgt = e.target.tagName;
+  if(tgt==="INPUT"||tgt==="TEXTAREA"||tgt==="SELECT") return;
+  const pct = window.innerHeight * 0.8;
+  if(e.code==="Space"){ e.preventDefault(); window.scrollBy(0, pct); return; }
+  if(e.key==="j"){ window.scrollBy(0, 400); return; }
+  if(e.key==="k"){ window.scrollBy(0,-400); return; }
+  if(e.key==="b"){ window.scrollTo(0,0); return; }
+  if(e.key==="e"){ window.scrollTo(0, document.body.scrollHeight); return; }
+  if(e.key==="Escape"){ hideSheet(); return; }
+});
+
+/* 划词整段翻译：用户在阅读器里选中文本时 → 右下角出现小图标 → 点了弹层 */
+document.addEventListener("mouseup", e=>{
+  const isReader = document.getElementById("view-reader").classList.contains("on");
+  if(!isReader) return;
+  const sel = window.getSelection();
+  const text = sel.toString().trim();
+  if(text.length < 4 || text.length > 1200) return;
+  /* 删掉旧浮标 */
+  document.getElementById("lz-sel-bubble")?.remove();
+  const rect = sel.getRangeAt(0).getBoundingClientRect();
+  const b = document.createElement("div");
+  b.id = "lz-sel-bubble";
+  b.textContent = "🌐 翻译选中文本";
+  b.style.cssText = `position:fixed;left:${Math.min(rect.left, window.innerWidth-140)}px;top:${rect.bottom+6}px;
+    background:var(--brand);color:#fff;padding:6px 12px;border-radius:999px;cursor:pointer;font-size:12px;z-index:60;box-shadow:var(--shadow)`;
+  b.onclick = ()=>{
+    b.textContent = "翻译中…";
+    mtFetch(text).then(zh=>{
+      alert("📖 选中译文：\n\n"+zh+"\n\n（原句 " + text.slice(0,80) + (text.length>80?"…":"") + "）");
+      b.remove();
+    }).catch(()=>{ b.textContent="翻译失败"; setTimeout(()=>b.remove(),1500); });
+  };
+  document.body.appendChild(b);
+  setTimeout(()=>{ if(document.getElementById("lz-sel-bubble")===b) b.remove(); }, 4000);
+});
+
+/* 生词自动加入开关：点击单词弹完释义，如果本地词典命中则自动收入生词本 */
+const _AUTO_VOCAB = "lz_auto_vocab";
+function autoVocabOn(){ try{ return JSON.parse(localStorage.getItem(_AUTO_VOCAB)) ?? true; }catch(e){ return true; } }
+function setAutoVocab(v){ localStorage.setItem(_AUTO_VOCAB, JSON.stringify(v)); }
+
+/* 系统暗模式 + 手动覆盖 */
+function applySystemTheme(){
+  const pref = localStorage.getItem("lz_theme");
+  if(pref){ document.body.setAttribute("data-bg", pref); return; }
+  const m = matchMedia("(prefers-color-scheme: dark)");
+  document.body.setAttribute("data-bg", m.matches ? "dark" : "");
+  m.onchange = ()=>{ if(!localStorage.getItem("lz_theme")) applySystemTheme(); };
+}
+applySystemTheme();
+
+/* 保存阅读进度节流 */
 let _pgSaveTimer = null;
 window.addEventListener("scroll", ()=>{
   if(!fullMode || document.getElementById("view-reader").classList.contains("on") === false) return;

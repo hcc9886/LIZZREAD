@@ -1,0 +1,23 @@
+{
+  "name": "lizzread",
+  "version": "1.0.0",
+  "description": "LIZZREAD — 双语线上图书馆（Capacitor 包装，iOS/Android 上架壳）",
+  "main": "index.js",
+  "scripts": {
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android",
+    "dev": "python3 -m http.server 8765 --bind 127.0.0.1"
+  },
+  "keywords": ["capacitor", "lizzread", "reader"],
+  "author": "LIZZREAD",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/local-notifications": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
+  }
+}
