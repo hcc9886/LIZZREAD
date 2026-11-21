@@ -1,8 +1,7 @@
 {
   "appId": "com.lizzread.app",
   "appName": "LIZZREAD",
-  "webDir": ".",
-  "bundledWebRuntime": false,
+  "webDir": "www",
   "android": {
     "allowMixedContent": true,
     "backgroundColor": "#F6F7F5"
