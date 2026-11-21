@@ -3176,15 +3176,7 @@ function applySystemTheme(){
 }
 applySystemTheme();
 
-/* 保存阅读进度节流 */
-let _pgSaveTimer = null;
-window.addEventListener("scroll", ()=>{
-  if(!fullMode || document.getElementById("view-reader").classList.contains("on") === false) return;
-  clearTimeout(_pgSaveTimer);
-  _pgSaveTimer = setTimeout(saveProgressNow, 300);
-}, {passive:true});
-window.addEventListener("beforeunload", saveProgressNow);
-document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") saveProgressNow(); });
+/* 保存阅读进度节流 — 见上方 _pgSaveTimer 已声明 */
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
 if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
   navigator.serviceWorker.register("sw.js").catch(()=>{});
