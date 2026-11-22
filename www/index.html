@@ -21,6 +21,8 @@
 <script src="data/lang-recs.js?v=1"></script>
 <script src="dict.js?v=7" defer></script>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <!-- 句子拼装模块 -->
 <script src="shared/assembly-core.js?v=13" defer></script>
 <script src="shared/importers.js?v=13" defer></script>
@@ -1200,7 +1202,16 @@ async function loadLanguageBooks(code){
       const sc = document.createElement('script');
       sc.src = src;
       sc.onload = () => res(true);
-      sc.onerror = () => res(false);
+      sc.onerror = () => {
+        /* 离线壳（file://）里动态 script 可能被拦：改用同步 XHR 读取已缓存内容 */
+        let ok = false;
+        try{
+          const x = new XMLHttpRequest();
+          x.open("GET", src, false); x.send(null);
+          if((x.status === 200 || x.status === 0) && x.responseText){ (0, eval)(x.responseText); ok = true; }
+        }catch(e){ ok = false; }
+        res(ok);
+      };
       document.head.appendChild(sc);
     });
     (async () => {
@@ -1209,7 +1220,7 @@ async function loadLanguageBooks(code){
       const extra0 = (window['LZ_LANG_' + code.toUpperCase() + '_TR'] || []).map((b, i) => ({
         id: 'T-' + code + '-' + i, t: b.t, zh: b.zh || '', en: b.en || '', a: b.a || '', y: b.y || 0,
         lv: b.lv || 'B2', g: b.g || 'lit', gb: b.gb || 0, az: '', ko: '', d: b.d || '', lang: code,
-        fs: 0, demo: [], translated: 1
+        fs: 0, demo: Array.isArray(b.demo) ? b.demo : [], translated: 1
       })).filter(b => !/\b(English|Anglais|Inglés|Inglese|Englisch)\b/i.test(String(b.t)));
       /* 译本与本土书目合并（同一 GB 号已在部分语言书目里的，保留本土标题），再统一产出 */
       const list = FINISH_MAIN();
@@ -1818,10 +1829,18 @@ async function loadLanguageTranslations(){
 /* =====================================================
   六、视图切换
 ===================================================== */
+const VIEW_ALIAS = { remote:"library", asm:"assembly", sentcol:"sentcol", review:"sreview", wordbook:"vocab", premium:"plan" };
 function go(name){
-  if(name === "remote") name = "library";
+  name = VIEW_ALIAS[name] || name;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
-  document.getElementById("view-"+name).classList.add("on");
+  let target = document.getElementById("view-"+name);
+  if(!target){
+    /* 未知视图（旧链接/拼写差异）：退回书城，避免白屏 */
+    name = "library";
+    target = document.getElementById("view-library");
+    if(typeof toast === "function") toast("这个页面不存在，已回到书城。");
+  }
+  target.classList.add("on");
   document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));
   const nb = document.getElementById("nav-"+name);
   if(nb) nb.classList.add("on");
@@ -2452,6 +2471,7 @@ async function openBook(id){
           <button class="btn ghost small" onclick="setAutoVocab(!autoVocabOn());alert('生词自动加入：'+(autoVocabOn()?'ON':'OFF'))">
             ${autoVocabOn()?"🔔 自动收生词 ON":"🔕 自动收生词 OFF"}
           </button>
+          ${(b.demo && b.demo.length) ? `<button class="btn ghost small" onclick="openDemoReader('${b.id}')">📝 离线样章（无需联网）</button>` : ""}
         </div>
       </div>
     </div>
@@ -2827,6 +2847,19 @@ async function fetchTextProgress(url, onProgress, timeoutMs){
     return new TextDecoder("utf-8").decode(all);
   } finally { clearTimeout(timer); }
 }
+/* 离线样章：用书目自带的 3~5 个真实句子组成一篇短读（不需要网络也能读、能点词） */
+function openDemoReader(id){
+  const b = BOOKS.find(x => x.id === id);
+  if(!b) return;
+  const lines = (b.demo || []).slice(0, 8);
+  if(!lines.length){ toast("这本书没有内置样章，联网后可直接读全文。"); return; }
+  const sents = lines.map(t => ({ en: t, zh: null }));
+  fullCache[id] = { sents, chapters: [{ t: "离线样章", start: 0, end: sents.length }], demo: true };
+  fullMode = { id, chap: 0 };
+  openReader(id);
+  setTimeout(() => autoTranslateOnOpen(id, fullCache[id]), 600);
+}
+
 /* 日语（青空文库）/韩语（无公版全文）语言：按需加载 */
 /* 把 "000148/files/773_14560.html" 编码成单段路径 */
 function splitAzPath(az){
@@ -2865,6 +2898,9 @@ async function loadLanguageText(b, onProgress){
 async function openFull(id){
   curBook = BOOKS.find(x=>x.id===id);
   loadBigDict();
+  if(curBook && curBook.translated && curBook.gb){
+    setTimeout(() => { if(typeof toast === "function") toast("《" + curBook.t + "》为译本条目；正文使用同一部书的原版全文，可逐句翻译对照。"); }, 300);
+  }
   if(!curBook) return;
   const gb = Number(curBook.gb);
   const saved = (store.progress[id] || {});
@@ -2910,6 +2946,8 @@ async function openFull(id){
     fullMode = {id, chap: Math.min(chap, parsed.chapters.length-1)};
     openReader(id);
     setTimeout(()=>{ if(saved.sent) scrollToSent(saved.sent); }, 100);
+    /* 双语对照：渲染完成后自动补当前章译文（受每日额度限制） */
+    setTimeout(() => autoTranslateOnOpen(id, parsed), 1200);
   }catch(e){
     view.innerHTML =
       `<div class="reader"><span class="back" onclick="openBook('${id}')">← 返回详情</span>
@@ -3131,6 +3169,19 @@ function openReader(id){
     }).join("");
   }
   const title = escHtml(dispTitle(curBook)) + (curBook.t && curBook.t!==curBook.zh ? ` <span style="font:400 13px var(--font);color:var(--muted)">${escHtml(curBook.t)}</span>` : "");
+  /* 把已缓存的译文填进正文（数据里有 zh、但模板只渲染了「翻译这句」按钮时） */
+  setTimeout(() => {
+    try{
+      const list = getSents(id);
+      document.querySelectorAll(`#view-reader .sent[data-si]`).forEach(el => {
+        const si = Number(el.dataset.si);
+        const s0 = list[si];
+        if(!s0 || !s0.zh) return;
+        const zh = el.querySelector(".zh");
+        if(zh && zh.dataset.filled !== "1"){ zh.textContent = s0.zh; zh.dataset.filled = "1"; }
+      });
+    }catch(e){}
+  }, 0);
   const chapterTitle = isFull && !isGuide ? (fullCache[id].chapters[fullMode.chap]||{}).t : "";
   const bgDots = BGS.map(([v,label,c])=>`<button class="bgdot ${getPref("bg")===v?"on":""}"
       style="background:${v==="dark"?"#17191B":v==="midnight"?"#0E1420":c}" title="${label}"
@@ -3141,6 +3192,7 @@ function openReader(id){
     <div class="reader">
       <span class="back" onclick="openBook('${id}')">← 返回详情</span>
       <div class="rd-head"><h2>${title} · ${isGuide?"精读导读":(isFull ? "整本阅读" : "双语试读")}</h2></div>
+      ${(curBook && curBook.translated) ? `<div class="tip" style="margin:-4px 0 6px">📗 译本条目：标题为${escHtml((LANG_INFO[activeLang()]||{}).native || "")}译名，正文为《${escHtml(curBook.en || curBook.t)}》原版全文；点「翻译本章」即可逐句对照译文。</div>` : ""}
       ${isFull ? `
       <div class="rd-tools">
         <button class="btn ghost small" onclick="jumpChapter(${fullMode.chap-1})" ${fullMode.chap===0?"disabled":""}>← 上一章</button>
@@ -4040,7 +4092,7 @@ async function mtOnce(key){
 const _txSaveTimers = {};
 async function loadBookTranslations(id, parsed){
   try{
-    const map = await kvGet("txmap_"+id);
+    const map = await kvGet("txmap_" + id + "_" + activeLang() + "_" + showLang());
     if(map && parsed && parsed.sents){
       parsed.sents.forEach(s=>{
         if(!s.zh && map[s.en] && _isUsableZh(s.en, map[s.en])) s.zh = map[s.en];
@@ -4056,8 +4108,70 @@ function saveBookTranslations(id, parsed){
   _txSaveTimers[id] = setTimeout(async()=>{
     const map = {};
     parsed.sents.forEach(s=>{ if(s.zh) map[s.en] = s.zh; });
-    await kvSet("txmap_"+id, map);
+    await kvSet("txmap_" + id + "_" + activeLang() + "_" + showLang(), map);
   }, 400);
+}
+
+/* 打开书时自动准备译文：只翻当前章、受每日额度限制、失败静默 */
+let _autoTxBusy = false;
+async function autoTranslateOnOpen(id, parsed){
+  if(_autoTxBusy) return;
+  if(isOfflineMode()) return;
+  if(showLang() === activeLang()) return;             /* 同一语言不需要翻译 */
+  const cur = getSents(id);
+  if(!cur || !cur.length) return;
+  const rng = (typeof currentChapterRange === "function" && fullCache[id]) ? currentChapterRange() : [0, Math.min(cur.length, 40)];
+  if(!rng || rng[1] <= rng[0]) return;
+  const miss = [];
+  const quota = freeQuotaLeft();
+  for(let i = rng[0]; i < Math.min(rng[1], rng[0] + 40); i++){
+    const s = cur[i];
+    if(s && s.en && !s.zh) miss.push(s);
+    if(miss.length >= Math.min(20, Math.max(1, quota))) break;
+  }
+  if(!miss.length){ if(!store.showzh) store.showzh = true; return; }
+  if(quota <= 0){
+    setTimeout(() => { try{ toast("译文额度已用完（免费版每天 " + langQuota() + " 句，会员不限量），可先阅读原文或升级会员。"); }catch(e){} }, 1200);
+    return;
+  }
+  _autoTxBusy = true;
+  try{
+    let map = null;
+    try{
+      if(hasLocalAPI) map = await apiTranslateTexts(miss.map(s => s.en));
+    }catch(e){ map = null; }
+    if(!map || !Object.keys(map).length){
+      /* 离线壳或服务端不可用：逐句走浏览器直连机翻（Google/MyMemory） */
+      map = {};
+      for(const s of miss.slice(0, 8)){
+        try{
+          const t = await mtFetch(s.en).catch(() => null);
+          if(t) map[s.en] = t;
+        }catch(e){}
+      }
+    }
+    if(map){
+      let n = 0;
+      miss.forEach(s => {
+        const t = map[s.en];
+        if(t && (typeof lzUsableZh === "function" ? lzUsableZh(s.en, t) : t) && t !== s.en){ s.zh = t; n++; }
+      });
+      if(n){
+        store.showzh = true;
+        saveBookTranslations(id, parsed);
+        /* 不整页重绘：把译文填进每句已有的 .zh 区（原本放的是「翻译这句」按钮） */
+        cur.forEach((s, si) => {
+          if(!s.zh) return;
+          document.querySelectorAll(`#view-reader .sent[data-si="${si}"]`).forEach(el => {
+            const zh = el.querySelector(".zh");
+            if(!zh || zh.dataset.filled === "1") return;
+            zh.textContent = s.zh;
+            zh.dataset.filled = "1";
+          });
+        });
+      }
+    }
+  }catch(e){} finally { _autoTxBusy = false; }
 }
 
 /* 预翻译当前书：加载全文后从第 1 章开始逐章翻译（用户可随时停止/离开） */
@@ -4435,10 +4549,22 @@ async function zhMultiGloss(word){
   }catch(e){}
   return null;
 }
+/* 是否能用本机服务端（网页版 yes，打包成 App 后没有） */
+let hasLocalAPI = /^https?:/.test(location.protocol);
+async function probeLocalAPI(){
+  try{
+    const r = await fetch("./api/health", {signal: AbortSignal.timeout(2500)});
+    hasLocalAPI = r.ok;
+  }catch(e){ hasLocalAPI = false; }
+  if(!hasLocalAPI){ console.info("[LIZZREAD] 离线壳模式：词典与翻译走浏览器直连"); }
+  return hasLocalAPI;
+}
 /* 服务端多语言词典（Bing 代理），带本地 IndexedDB 缓存 */
 async function fetchWordServer(word, lang){
   lang = lang || activeLang();
+  /* Capacitor 离线壳（capacitor://localhost / file://）没有本机服务：直接返回 null，交给浏览器直连机翻 */
   if(!/^https?:/.test(location.protocol)) return null;
+  if(typeof hasLocalAPI !== "undefined" && !hasLocalAPI) return null;
   try{
     const r = await fetch("./api/word?lang=" + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(glossLang()), {signal: AbortSignal.timeout(8000)});
     if(!r.ok) return null;
@@ -5197,7 +5323,9 @@ function escHtml(t){ return String(t==null?"":t).replace(/[&<>"']/g, c=>({"&":"&
 function escAttr(t){ return escHtml(t).replace(/`/g,"&#96;"); }
 function asmBookTitle(bookId){
   const gb = Number(String(bookId).replace(/^book0*/, "")) || 0;
-  const b = BOOKS.find(x=>x.gb===gb);
+  /* 句库是英语书，标题要从英语书库里找，避免切换学习语言后显示成别国书名 */
+  const pool = (window.LZ_BOOKS_EN && window.LZ_BOOKS_EN.length) ? window.LZ_BOOKS_EN : BOOKS;
+  const b = pool.find(x => x.gb === gb);
   return b ? dispTitle(b) : bookId;
 }
 function renderAssembly(){
@@ -5386,7 +5514,8 @@ function asmToggleAnswer(){
   asmRenderStage();
 }
 function asmT(key, fb){
-  const code = activeLang();
+  /* 拼装练习目前只有英语句库，所以标题按英语固定；其他语言也保持英语，避免中英混排 */
+  const code = "en";
   const T = {
     de:{meaning:"Bedeutung des Satzes",context:"Im Text",usage:"Anderswo gebraucht"},
     fr:{meaning:"Sens de la phrase",context:"Dans le texte",usage:"Ailleurs"},
@@ -5439,7 +5568,8 @@ function asmRenderStage(){
   const remaining = asmState.shuffled.filter(c=>!used.has(c));
   stage.innerHTML = `
     <div class="asm-sent">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${asmState.custom?"来自当前阅读":"📖 "+escHtml(asmBookTitle(asmState.bookId))} · ${s.level||"B1"}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${asmState.custom?"来自当前阅读":"📖 "+escHtml(asmBookTitle(asmState.bookId))} · ${s.level||"B1"}
+        <span class="lang-badge" style="margin-left:6px">练习语言：English（句库目前只覆盖英语原著）</span></div>
       <div id="asmSentReveal">${asmTextUnlocked ? `<button class="btn ghost small" onclick="asmToggleText()">隐藏原句</button>` : `<span style="color:var(--muted)">原句已隐藏（先看中文意思，自己拼出英文）</span><button class="btn ghost small" style="margin-left:8px" onclick="asmToggleText()">看原句</button>`}</div>
       ${asmTextUnlocked ? `<div id="asmSentText" style="font:16px/1.65 var(--serif);margin-top:6px">${escHtml(s.text)}</div>` : ""}
       <div class="asm-zh" id="asmZh">${s.zh ? ("💬 "+escHtml(s.zh)) : `<button class="btn ghost small" onclick="asmTranslate()">🌐 翻译这句话</button>`}</div>
@@ -7088,6 +7218,7 @@ applyPrefs();
 })();
 /* 初始化语言模式：加载当前学习语言书库并刷新界面文案 */
 (async function bootLanguage(){
+  try{ await probeLocalAPI(); }catch(e){}
   try{
     await refreshBooksForLang();
     _langBooted = true;
@@ -7231,8 +7362,18 @@ window.__cacheSentenceZh = function(sentence, zh){
 
 /* 保存阅读进度节流 — 见上方 _pgSaveTimer 已声明 */
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
-if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1")){
+  navigator.serviceWorker.register("sw.js").then(() => {
+    /* 给 iOS/Android 的「添加到主屏」提示：iOS 无 beforeinstallprompt，改为手动引导 */
+    if(!matchMedia("(display-mode: standalone)").matches && /iPad|iPhone|iPod/.test(navigator.userAgent)){
+      setTimeout(() => {
+        const seen = localStorage.getItem("lz_ios_hint");
+        if(seen) return;
+        localStorage.setItem("lz_ios_hint", "1");
+        try{ toast("iOS：点浏览器「分享」→「添加到主屏幕」，即可当 App 使用。"); }catch(e){}
+      }, 6000);
+    }
+  }).catch(()=>{});
 }
 </script>
 </body>

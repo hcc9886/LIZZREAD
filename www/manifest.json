@@ -1,12 +1,27 @@
 {
-  "name": "LIZZREAD · 线上图书馆",
+  "name": "LIZZREAD · 8 语言阅读器",
   "short_name": "LIZZREAD",
-  "description": "英文名著双语阅读 · 点词查义 · 生词复习",
+  "description": "8 门语言（英/中/德/法/意/西/日/韩）经典原著阅读 · 点词多语言释义 · 分级推荐 · 生词复习",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#F6F1E7",
-  "theme_color": "#2F5D50",
+  "background_color": "#F6F7F5",
+  "theme_color": "#0F8A4D",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
-  ]
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": [
+    "education",
+    "books"
+  ],
+  "lang": "zh-CN"
 }

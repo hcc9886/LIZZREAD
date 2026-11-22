@@ -5,12 +5,27 @@
    - 字体/词典 → cache-first，首次出现时缓存
    - 外部翻译/词典 API → 不缓存（译文由 IndexedDB 持久化，离线读本地译文）
 */
-const CACHE = "lizzread_v21";
+const CACHE = "lizzread_v22";
 const PRECACHE = [
   "./",
   "./index.html",
+  "./data/lang-de.js",
+  "./data/lang-fr.js",
+  "./data/lang-it.js",
+  "./data/lang-es.js",
+  "./data/lang-ja.js",
+  "./data/lang-ko.js",
+  "./data/lang-de-tr.js",
+  "./data/lang-fr-tr.js",
+  "./data/lang-it-tr.js",
+  "./data/lang-es-tr.js",
+  "./data/lang-ja-tr.js",
+  "./data/lang-ko-tr.js",
+  "./data/lang-zh-tr.js",
   "./manifest.json",
   "./icon.svg",
+  "./icon-512.png",
+  "./icon-192.png",
   "./data/catalog.js",
   "./data/lang-manifest.js",
   "./data/books-en.js",
