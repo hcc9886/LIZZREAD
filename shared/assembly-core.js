@@ -1,264 +1,275 @@
 /* =====================================================================
    LIZZREAD —— 句子拼装核心（assembly-core.js）
-   自包含模块，无外部依赖。检测到 window.SharedStore 则自动接入。
-   功能：归一化、Levenshtein 距离、意群切分、拼装判定、IndexedDB 日志
+   自包含模块，无外部依赖。检测到 window.SharedStore 则自动接入共享日志层。
+   能力：归一化、Levenshtein、意群切分、角色标注、拼装判定、IndexedDB 日志、
+        句子表懒加载（Cache API + 内存）、按 sentence_id 打开拼装。
+   数据协议见 sentences/*.json 与 sentences/index.json。
    ===================================================================== */
 
 (function(global){
   'use strict';
 
+  const DATA_ROOT = './sentences/';
+  const INDEX_URL = DATA_ROOT + 'index.json';
+
   /* ---------- 1. 归一化 ---------- */
   function normalize(s){
-    return String(s||"").trim().toLowerCase()
-      .replace(/[^\w\s']/g,'')   // 去标点，保留字母数字下划线和撇号
-      .replace(/\s+/g,' ')        // 合并空白
+    return String(s == null ? '' : s).trim().toLowerCase()
+      .replace(/[^\w\s']/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 
-  /* ---------- 2. Levenshtein 距离 ---------- */
+  /* ---------- 2. Levenshtein ---------- */
   function levenshtein(a, b){
     a = normalize(a); b = normalize(b);
     if(a === b) return 0;
     if(!a.length) return b.length;
     if(!b.length) return a.length;
     const m = a.length, n = b.length;
-    const dp = Array.from({length: m+1}, () => new Array(n+1).fill(0));
-    for(let i=0;i<=m;i++) dp[i][0] = i;
-    for(let j=0;j<=n;j++) dp[0][j] = j;
-    for(let i=1;i<=m;i++){
-      for(let j=1;j<=n;j++){
+    /* 双行滚动，千句批量判定也不卡 */
+    let prev = new Array(n + 1);
+    let cur = new Array(n + 1);
+    for(let j = 0; j <= n; j++) prev[j] = j;
+    for(let i = 1; i <= m; i++){
+      cur[0] = i;
+      for(let j = 1; j <= n; j++){
         const cost = a[i-1] === b[j-1] ? 0 : 1;
-        dp[i][j] = Math.min(
-          dp[i-1][j]+1,      // 删除
-          dp[i][j-1]+1,      // 插入
-          dp[i-1][j-1]+cost  // 替换
-        );
+        cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + cost);
       }
+      [prev, cur] = [cur, prev];
     }
-    return dp[m][n];
+    return prev[n];
   }
 
-  /* ---------- 3. 意群切分规则（第一版：表层线索） ---------- */
+  /* ---------- 3. 意群切分（2-5 块） ---------- */
   const PREPOSITIONS = new Set([
-    "in","on","at","to","for","with","by","of","about","from","into",
-    "through","over","under","above","below","between","among","around",
-    "behind","before","beyond","during","except","inside","near","off",
-    "onto","out","outside","past","since","toward","towards","upon","via","within","without"
+    'in','on','at','to','for','with','by','of','about','from','into',
+    'through','over','under','above','below','between','among','around',
+    'behind','before','beyond','during','except','inside','near','off',
+    'onto','out','outside','past','since','toward','towards','upon','via','within','without'
   ]);
   const CLAUSE_MARKERS = new Set([
-    "that","which","who","whom","whose","when","where","why","how",
-    "if","because","although","though","while","whereas","unless",
-    "until","since","so","as","than"
+    'that','which','who','whom','whose','when','where','why','how',
+    'if','because','although','though','while','whereas','unless',
+    'until','as','than'
   ]);
-  const CONJUNCTIONS = new Set([
-    "and","but","or","nor","yet","so"
-  ]);
+  const CONJUNCTIONS = new Set(['and','but','or','nor','yet','so']);
+  const BE_VERBS = new Set(['is','are','was','were','be','been','being','am']);
+  const AUX_VERBS = new Set(['have','has','had','do','does','did','will','would','shall','should','can','could','may','might','must']);
+
+  function wordsOf(text){ return String(text || '').trim().split(/\s+/).filter(Boolean); }
+  function bare(w){ return String(w || '').toLowerCase().replace(/[^\w']/g, ''); }
+  function isVerbLike(w){
+    const x = bare(w);
+    if(!x) return false;
+    if(BE_VERBS.has(x) || AUX_VERBS.has(x)) return true;
+    if(/^(is|are|was|were|has|have|had|does|do|did)$/.test(x)) return true;
+    /* 规则动词：-s / -ed / -ing；排除常见名词复数（粗略但够用） */
+    if(/(ed|ing)$/.test(x) && x.length > 4) return true;
+    if(/s$/.test(x) && !/(ss|us|is)$/.test(x) && x.length > 3) return true;
+    return false;
+  }
+  function isContent(w){ return /[A-Za-z]/.test(w) && !PREPOSITIONS.has(bare(w)) && !CONJUNCTIONS.has(bare(w)); }
+
+  /* 粗切：标点边界（逗号、分号、破折号、冒号） */
+  function punctSplit(raw){
+    const parts = [];
+    let last = 0;
+    const re = /([,;:—–]|\s-\s)/g;
+    let m;
+    while((m = re.exec(raw)) !== null){
+      const cut = m.index + m[0].length;
+      const piece = raw.slice(last, cut).trim();
+      if(piece) parts.push(piece);
+      last = cut;
+    }
+    if(last < raw.length){
+      const tail = raw.slice(last).trim();
+      if(tail) parts.push(tail);
+    }
+    return parts.length ? parts : [raw.trim()];
+  }
+
+  /* 按从句/介词/连词/不定式再切一刀 */
+  function refine(piece){
+    const words = wordsOf(piece);
+    if(words.length <= 3) return [piece];
+    const out = [];
+    let cur = [];
+    for(let i = 0; i < words.length; i++){
+      const w = words[i];
+      const low = bare(w);
+      const prev = cur.length ? bare(cur[cur.length - 1]) : '';
+      let splitBefore = false;
+      if(cur.length >= 2){
+        if(CLAUSE_MARKERS.has(low) && !(low === 'as' && prev === 'such')) splitBefore = true;
+        else if(PREPOSITIONS.has(low)) splitBefore = true;
+        else if(CONJUNCTIONS.has(low)) splitBefore = true;
+        else if(low === 'to' && i + 1 < words.length && !PREPOSITIONS.has(bare(words[i+1])) && !/^[A-Z]/.test(words[i+1])) splitBefore = true;
+      }
+      if(splitBefore && cur.length >= 2){
+        out.push(cur.join(' '));
+        cur = [w];
+      } else {
+        cur.push(w);
+      }
+    }
+    if(cur.length) out.push(cur.join(' '));
+    return out;
+  }
+
+  function mergeShort(chunks, minWords){
+    const out = [];
+    for(const c of chunks){
+      if(!out.length){ out.push(c); continue; }
+      const prevWords = wordsOf(out[out.length - 1]).length;
+      const curWords = wordsOf(c).length;
+      if(curWords < minWords && prevWords + curWords <= 7){
+        out[out.length - 1] = out[out.length - 1] + ' ' + c;
+      } else {
+        out.push(c);
+      }
+    }
+    /* 合并后仍只剩 1 块的长句：按动词/介词位置再切 */
+    if(out.length === 1){
+      const words = wordsOf(out[0]);
+      if(words.length >= 5){
+        let at = -1;
+        for(let i = 2; i < words.length - 1; i++){
+          if(PREPOSITIONS.has(bare(words[i])) || CONJUNCTIONS.has(bare(words[i])) || CLAUSE_MARKERS.has(bare(words[i]))){ at = i; break; }
+        }
+        if(at < 0) at = Math.ceil(words.length / 2);
+        out.length = 0;
+        out.push(words.slice(0, at).join(' '), words.slice(at).join(' '));
+      }
+    }
+    return out;
+  }
 
   function splitIntoChunks(text){
-    const raw = String(text||"").trim();
+    const raw = String(text || '').trim();
     if(!raw) return [];
-
-    // 步骤 1：按标点粗切
-    let parts = [raw];
-
-    // 按逗号、分号、破折号切分（保留标点在块尾）
-    const punctRe = /([,;—–]|\s+-\s+)/g;
-    const punctSplit = [];
-    parts.forEach(p => {
-      let last = 0;
-      let m;
-      while((m = punctRe.exec(p)) !== null){
-        punctSplit.push(p.slice(last, m.index + m[0].length).trim());
-        last = m.index + m[0].length;
-      }
-      if(last < p.length) punctSplit.push(p.slice(last).trim());
-    });
-    parts = punctSplit.filter(Boolean);
-
-    // 步骤 2：按从句引导词、介词边界进一步切分
-    const refined = [];
-    parts.forEach(p => {
-      const words = p.split(/\s+/).filter(Boolean);
-      if(words.length <= 4){ refined.push(p); return; }
-
-      let current = [];
-      words.forEach((w, i) => {
-        const lower = w.toLowerCase().replace(/[^\w']/g,'');
-        // 检测切分点
-        const shouldSplitBefore = (() => {
-          // 句首跳过
-          if(current.length === 0) return false;
-          // 从句引导词前切分（that/which/who/when/where/because/although/while）
-          if(CLAUSE_MARKERS.has(lower)) return true;
-          // 介词短语边界切分（但不是句首）
-          if(PREPOSITIONS.has(lower) && current.length >= 2) return true;
-          // 并列连词（and/but/or）前切分
-          if(CONJUNCTIONS.has(lower) && current.length >= 2) return true;
-          // 不定式 to + 动词
-          if(lower === "to" && i+1 < words.length && /^[a-z]+$/.test(words[i+1].toLowerCase().replace(/[^\w']/g,''))){
-            return true;
-          }
-          return false;
-        })();
-
-        if(shouldSplitBefore && current.length > 0){
-          refined.push(current.join(" ").trim());
-          current = [w];
-        } else {
-          current.push(w);
-        }
-      });
-      if(current.length > 0) refined.push(current.join(" ").trim());
-    });
-    parts = refined.filter(Boolean);
-
-    // 步骤 3：合并相邻过短的块（保证每块至少 2 词，总共 2-5 块）
-    parts = mergeShortChunks(parts, 2);
-
-    // 步骤 4：如果总块数 > 5，合并最短的相邻对
+    let parts = punctSplit(raw);
+    if(parts.length === 1 && wordsOf(raw).length > 18){
+      const refined = refine(raw);
+      if(refined.length > 1) parts = refined;
+    } else if(parts.length > 1){
+      const refined = [];
+      for(const p of parts) refined.push(...refine(p));
+      if(refined.length >= 2) parts = refined;
+    }
+    parts = parts.map(p => p.trim()).filter(Boolean);
+    parts = mergeShort(parts, 2);
+    /* 超过 5 块：合并最短的相邻块 */
     while(parts.length > 5){
-      let minIdx = 0, minLen = Infinity;
-      for(let i=0;i<parts.length-1;i++){
-        const l = parts[i].split(/\s+/).length + parts[i+1].split(/\s+/).length;
-        if(l < minLen){ minLen = l; minIdx = i; }
+      let idx = 0, best = Infinity;
+      for(let i = 0; i < parts.length - 1; i++){
+        const len = wordsOf(parts[i]).length + wordsOf(parts[i+1]).length;
+        if(len < best){ best = len; idx = i; }
       }
-      parts = parts.slice(0,minIdx)
-        .concat([parts[minIdx]+" "+parts[minIdx+1]])
-        .concat(parts.slice(minIdx+2));
+      parts.splice(idx, 2, parts[idx] + ' ' + parts[idx+1]);
     }
-
-    // 步骤 5：如果总块数 < 2，强制再切一次
-    if(parts.length <= 1){
-      const words = raw.split(/\s+/);
-      const mid = Math.ceil(words.length/2);
-      parts = [words.slice(0,mid).join(" "), words.slice(mid).join(" ")];
+    /* 少于 2 块：长句强制二分 */
+    if(parts.length === 1 && wordsOf(raw).length >= 5){
+      const words = wordsOf(raw);
+      const at = Math.ceil(words.length / 2);
+      parts = [words.slice(0, at).join(' '), words.slice(at).join(' ')];
     }
-
     return parts;
   }
 
-  function mergeShortChunks(chunks, minWords){
-    const result = [];
-    let buffer = null;
-    chunks.forEach(c => {
-      const n = c.split(/\s+/).length;
-      if(buffer){
-        const bn = buffer.split(/\s+/).length;
-        if(bn < minWords || n < minWords){
-          buffer = buffer + " " + c;
-        } else {
-          result.push(buffer);
-          buffer = c;
-        }
-      } else {
-        buffer = n < minWords ? c : c;
-      }
-    });
-    if(buffer) result.push(buffer);
-    return result;
-  }
-
-  /* ---------- 4. 块角色标注（简化版） ---------- */
+  /* ---------- 4. 意群角色 ---------- */
   function chunkRoles(chunks){
-    return chunks.map(c => {
-      const lower = c.toLowerCase();
-      const firstWord = lower.split(/\s+/)[0] || "";
-      if(PREPOSITIONS.has(firstWord)) return "prep_phrase";
-      if(CLAUSE_MARKERS.has(firstWord)) return "clause";
-      if(CONJUNCTIONS.has(firstWord)) return "conjunction";
-      if(/^(is|are|was|were|be|been|being|am)$/.test(firstWord)) return "copular";
-      if(/^(have|has|had|do|does|did|will|would|shall|should|can|could|may|might|must)$/.test(firstWord)) return "auxiliary";
-      return "content";
+    return (chunks || []).map((c, idx) => {
+      const words = wordsOf(c);
+      if(!words.length) return 'content';
+      const first = bare(words[0]);
+      if(PREPOSITIONS.has(first)) return 'prep_phrase';
+      if(CLAUSE_MARKERS.has(first)) return 'clause';
+      if(CONJUNCTIONS.has(first)) return 'conjunction';
+      if(first === 'to' && words.length > 1) return 'infinitive';
+      if(/ing$/.test(first) && first.length > 4) return 'participle';
+      if(BE_VERBS.has(first)) return 'copular';
+      if(AUX_VERBS.has(first)) return 'auxiliary';
+      /* 首块含动词 → predicate；只有主语 → subject */
+      const hasVerb = words.some(isVerbLike);
+      if(hasVerb && (idx === 0 || idx === 1)) return 'predicate';
+      if(idx === 0) return 'subject';
+      if(hasVerb) return 'predicate';
+      return 'content';
     });
   }
 
   /* ---------- 5. 拼装判定 ---------- */
   function judgeAssembly(userChunks, targetChunks){
-    const u = (userChunks||[]).map(normalize).filter(Boolean);
-    const t = (targetChunks||[]).map(normalize).filter(Boolean);
+    const u = (userChunks || []).map(normalize);
+    const t = (targetChunks || []).map(normalize);
 
-    // 全对
-    if(u.length === t.length && u.every((x,i) => x === t[i])){
-      return { result: "EXACT", errorType: null, hint: "完全正确！" };
+    if(u.length === t.length && u.every((x, i) => x === t[i])){
+      return { result:'EXACT', errorType:null, hint:'完全正确，语序与意群都对了。', details:[] };
     }
-
-    // 逐位检查
-    let spellingErrors = 0, orderErrors = 0, otherErrors = 0;
-    const hints = [];
-    const matchedTargetIdx = new Set();
-
-    for(let i=0;i<Math.max(u.length, t.length);i++){
-      const uc = u[i] || "";
-      const tc = t[i] || "";
-
-      if(uc === tc){ matchedTargetIdx.add(i); continue; }
-
-      // 拼写错误检查（Levenshtein ≤ 2 且单词数相同）
-      const uWords = uc.split(/\s+/).filter(Boolean);
-      const tWords = tc.split(/\s+/).filter(Boolean);
-      if(uWords.length === tWords.length && uWords.length > 0){
-        const dist = levenshtein(uc, tc);
-        if(dist <= 2){
-          spellingErrors++;
-          hints.push(`第 ${i+1} 块拼写接近，应为：「${tc}」`);
-          matchedTargetIdx.add(i);
-          continue;
-        }
-      }
-
-      // 顺序错误检查：在 target 中找到当前 user 块
-      const foundIdx = t.findIndex((tt, j) => !matchedTargetIdx.has(j) && tt === uc);
-      if(foundIdx >= 0){
-        orderErrors++;
-        hints.push(`「${uc}」应在第 ${foundIdx+1} 位`);
-        matchedTargetIdx.add(foundIdx);
-        continue;
-      }
-
-      // 也检查拼写接近的 target 块
-      const fuzzyIdx = t.findIndex((tt, j) => !matchedTargetIdx.has(j) && levenshtein(uc, tt) <= 2);
-      if(fuzzyIdx >= 0){
-        spellingErrors++;
-        hints.push(`「${uc}」拼写接近，应为：「${t[fuzzyIdx]}」`);
-        matchedTargetIdx.add(fuzzyIdx);
-        continue;
-      }
-
-      otherErrors++;
-    }
-
-    // 单词数不一致 = 漏/多块
     if(u.length !== t.length){
-      if(u.length < t.length){
-        hints.unshift(`少了 ${t.length - u.length} 个意群块`);
-      } else {
-        hints.unshift(`多了 ${u.length - t.length} 个意群块`);
-      }
+      const diff = t.length - u.length;
+      return {
+        result: diff < 0 ? 'OTHER' : 'OTHER',
+        errorType: diff < 0 ? 'extra' : 'missing',
+        hint: diff > 0 ? `少了 ${diff} 个意群块：这句话一共 ${t.length} 块。` : `多了 ${-diff} 个意群块：这句话只需 ${t.length} 块。`,
+        details: []
+      };
     }
 
-    // 错误分类优先级：拼写 → 顺序 → 其他
-    if(spellingErrors > 0 && orderErrors === 0 && otherErrors === 0){
-      return { result: "SPELLING", errorType: "spelling", hint: hints.join("；") || "有拼写小错误" };
+    const details = [];
+    let spelling = 0, order = 0, other = 0;
+    const matched = new Set();
+    for(let i = 0; i < t.length; i++){
+      const uc = u[i], tc = t[i];
+      if(uc === tc){ matched.add(i); continue; }
+      const uWords = wordsOf(uc), tWords = wordsOf(tc);
+      /* 拼写近似（词数相同、编辑距离 ≤2、首字母相同） */
+      if(uWords.length === tWords.length && levenshtein(uc, tc) <= 2 && uc[0] === tc[0]){
+        spelling++;
+        matched.add(i);
+        details.push({ index:i, type:'spelling', hint:`第 ${i+1} 块有个小拼写问题，正确写法是「${targetChunks[i]}」。` });
+        continue;
+      }
+      /* 顺序错：当前块属于其他位置 */
+      const j = t.findIndex((tt, k) => k !== i && !matched.has(k) && tt === uc);
+      if(j >= 0){
+        order++;
+        matched.add(j);
+        details.push({ index:i, type:'order', hint:`「${targetChunks[i]}」应该放在第 ${i+1} 位；你把「${userChunks[i]}」放这里了，它属于第 ${j+1} 位。` });
+        continue;
+      }
+      other++;
+      details.push({ index:i, type:'other', hint:`第 ${i+1} 块应该是「${targetChunks[i]}」。` });
     }
-    if(orderErrors > 0 && spellingErrors === 0 && otherErrors === 0){
-      return { result: "ORDER_ERROR", errorType: "order", hint: hints.join("；") || "顺序不对" };
-    }
-    if(spellingErrors > 0 || orderErrors > 0){
-      return { result: "MIXED", errorType: "mixed", hint: hints.join("；") || "有拼写和顺序错误" };
-    }
-    return { result: "OTHER", errorType: "other", hint: hints.join("；") || "不完全对，再试试" };
+
+    let result, errorType, hint;
+    if(spelling === 0 && order === 0 && other === 0) result = 'EXACT';
+    else if(spelling > 0 && order === 0 && other === 0){ result = 'SPELLING'; errorType = 'spelling'; }
+    else if(order > 0 && spelling === 0 && other === 0){ result = 'ORDER_ERROR'; errorType = 'order'; }
+    else { result = 'MIXED'; errorType = 'mixed'; }
+    hint = details.length ? details[0].hint : '再试一次，注意意群边界与语序。';
+    if(details.length > 1) hint += `（共 ${details.length} 处可改进）`;
+    return { result, errorType, hint, details };
   }
 
-  /* ---------- 6. IndexedDB 日志 ---------- */
+  /* ---------- 6. 日志（IndexedDB + 可选 SharedStore） ---------- */
   let _dbPromise = null;
   function openDB(){
     if(_dbPromise) return _dbPromise;
     _dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open("lizzread_local", 1);
+      const req = indexedDB.open('lizzread_local', 2);
       req.onupgradeneeded = e => {
         const db = e.target.result;
-        if(!db.objectStoreNames.contains("assembly_log")){
-          db.createObjectStore("assembly_log", {keyPath:"log_id"});
+        if(!db.objectStoreNames.contains('assembly_log')){
+          db.createObjectStore('assembly_log', {keyPath:'log_id'});
+        }
+        if(!db.objectStoreNames.contains('assembly_log_v2')){
+          const st = db.createObjectStore('assembly_log_v2', {keyPath:'log_id'});
+          st.createIndex('by_sentence', 'sentence_id', {unique:false});
+          st.createIndex('by_time', 'timestamp', {unique:false});
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -269,58 +280,145 @@
 
   function recordAssembly(log){
     const full = Object.assign({
-      log_id: "a_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8),
+      log_id: 'a_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8),
       timestamp: Date.now()
-    }, log);
-
-    // 写本地 IndexedDB
+    }, log || {});
+    if(full.duration_ms == null && full.durationMs != null) full.duration_ms = full.durationMs;
     openDB().then(db => {
-      const tx = db.transaction("assembly_log", "readwrite");
-      tx.objectStore("assembly_log").put(full);
+      const tx = db.transaction('assembly_log_v2', 'readwrite');
+      tx.objectStore('assembly_log_v2').put(full);
     }).catch(()=>{});
-
-    // 若存在 SharedStore 则同时写共享表
-    if(global.SharedStore && typeof global.SharedStore.recordAssembly === "function"){
+    if(global.SharedStore && typeof global.SharedStore.recordAssembly === 'function'){
       try{ global.SharedStore.recordAssembly(full); }catch(e){}
     }
     return full;
   }
 
-  /* ---------- 7. 句子加载（懒加载 + 缓存） ---------- */
-  const _sentenceCache = {};
-  function loadBookSentences(bookId){
-    if(_sentenceCache[bookId]) return Promise.resolve(_sentenceCache[bookId]);
-    // 先查 Cache API
-    if("caches" in window){
-      return caches.match("./sentences/" + bookId + ".json").then(resp => {
-        if(resp) return resp.json();
-        return fetch("./sentences/" + bookId + ".json")
-          .then(r => r.ok ? r.json() : [])
-          .catch(() => []);
-      }).then(data => {
-        _sentenceCache[bookId] = data;
-        return data;
-      });
+  function recentLogs(limit){
+    return openDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('assembly_log_v2', 'readonly');
+      const st = tx.objectStore('assembly_log_v2');
+      const req = st.index('by_time').openCursor(null, 'prev');
+      const out = [];
+      req.onsuccess = e => {
+        const cur = e.target.result;
+        if(cur && out.length < (limit || 20)){ out.push(cur.value); cur.continue(); }
+        else resolve(out);
+      };
+      req.onerror = () => reject(req.error);
+    })).catch(() => []);
+  }
+
+  /* ---------- 7. 句子表懒加载 ---------- */
+  const _packCache = Object.create(null);
+  let _indexPromise = null;
+
+  function loadIndex(){
+    if(!_indexPromise){
+      _indexPromise = fetch(INDEX_URL, {cache:'force-cache'})
+        .then(r => r.ok ? r.json() : {})
+        .catch(() => ({}));
     }
-    return fetch("./sentences/" + bookId + ".json")
+    return _indexPromise;
+  }
+
+  function loadBookSentences(bookId){
+    if(!bookId) return Promise.resolve([]);
+    if(_packCache[bookId]) return Promise.resolve(_packCache[bookId]);
+    const url = DATA_ROOT + bookId + '.json';
+    const read = () => fetch(url, {cache:'force-cache'})
       .then(r => r.ok ? r.json() : [])
       .catch(() => []);
+    let p;
+    if(global.caches && caches.open){
+      p = caches.open('lizzread_sentences_v2')
+        .then(cache => cache.match(url).then(res => {
+          if(res) return res.json();
+          return read().then(data => {
+            if(data && data.length){
+              cache.put(url, new Response(JSON.stringify(data), {headers:{'Content-Type':'application/json'}})).catch(()=>{});
+            }
+            return data;
+          });
+        }))
+        .catch(read);
+    } else p = read();
+    return p.then(data => {
+      _packCache[bookId] = Array.isArray(data) ? data : [];
+      return _packCache[bookId];
+    });
   }
 
-  /* ---------- 8. 暴露接口 ---------- */
+  async function loadSentence(sentenceId){
+    if(!sentenceId) return null;
+    /* 快路径：sentence_id 前缀就是书 id，不必加载 4MB 的 index.json */
+    const m = String(sentenceId).match(/^(book\d+)_s\d+/);
+    if(m){
+      const arr = await loadBookSentences(m[1]);
+      const hit = arr.find(s => s && s.sentence_id === sentenceId);
+      if(hit) return hit;
+    }
+    const index = await loadIndex();
+    const file = index[sentenceId];
+    if(file){
+      const bookId = String(file).replace(/\.json$/i, '');
+      const arr = await loadBookSentences(bookId);
+      return arr.find(s => s && s.sentence_id === sentenceId) || null;
+    }
+    return null;
+  }
+
+  /* ---------- 8. 初始化 + 打开拼装 ---------- */
+  function initReaderAssembly(){
+    /* 首屏不加载 4MB index：只用 books.json 判断数据是否可用 */
+    return fetch(DATA_ROOT + 'books.json?v=2', {cache:'force-cache'})
+      .then(r => r.ok ? r.json() : [])
+      .catch(() => [])
+      .then(list => {
+        global.LZAssembly = global.LZAssembly || {};
+        global.LZAssembly.books = list;
+        global.LZAssembly.indexLoaded = true;
+        return list;
+      });
+  }
+
+  async function openAssembly(sentenceId){
+    const s = await loadSentence(sentenceId);
+    if(!s){
+      if(global.AssemblyPanel && global.AssemblyPanel.toast) global.AssemblyPanel.toast('这句还没有拼装数据，可在阅读器里点「🧩 拼一句」实时生成。');
+      else console.warn('assembly: sentence not found', sentenceId);
+      return;
+    }
+    /* 取同书相邻句，给面板「联系本文」用 */
+    const m = String(sentenceId).match(/^(book\d+)_/);
+    let ctx = null;
+    if(m){
+      const arr = await loadBookSentences(m[1]);
+      const i = arr.findIndex(x => x && x.sentence_id === sentenceId);
+      if(i >= 0){
+        ctx = {
+          prev: arr[i-1] ? arr[i-1].text : '',
+          next: arr[i+1] ? arr[i+1].text : '',
+          chapter: '',
+          word: (s.target_words && s.target_words[0]) || ''
+        };
+      }
+    }
+    if(global.AssemblyPanel && global.AssemblyPanel.openAssembly){
+      global.AssemblyPanel.openAssembly(s, (s.target_words && s.target_words[0]) || null, ctx);
+    }
+  }
+
+  /* ---------- 9. 暴露接口 ---------- */
   const AssemblyCore = {
-    normalize,
-    levenshtein,
-    splitIntoChunks,
-    chunkRoles,
-    judgeAssembly,
-    recordAssembly,
-    loadBookSentences
+    version: '2.0.0',
+    normalize, levenshtein, splitIntoChunks, chunkRoles,
+    judgeAssembly, recordAssembly, recentLogs,
+    loadBookSentences, loadSentence, loadIndex, initReaderAssembly, openAssembly,
+    packCache: _packCache,
+    DATA_ROOT
   };
-
-  if(typeof module !== "undefined" && module.exports){
-    module.exports = AssemblyCore;
-  }
+  if(typeof module !== 'undefined' && module.exports) module.exports = AssemblyCore;
   global.AssemblyCore = AssemblyCore;
 
-})(typeof window !== "undefined" ? window : globalThis);
+})(typeof window !== 'undefined' ? window : globalThis);

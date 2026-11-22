@@ -7,7 +7,10 @@
     "cap:sync": "npx cap sync",
     "cap:ios": "npx cap open ios",
     "cap:android": "npx cap open android",
-    "dev": "python3 -m http.server 8765 --bind 127.0.0.1"
+    "dev": "node server.js 8765",
+    "serve": "node server.js 8765",
+    "build:sentences": "node scripts/build-sentences.js",
+    "build:catalog": "python3 scripts/build-catalog.py"
   },
   "keywords": [
     "capacitor",

@@ -1,7 +1,11 @@
-# Locally-provided books (user imported; may be under copyright)
-books/camus_stranger.txt
-books/_local_*.txt
-books/*_local.txt
+node_modules/
+node_modules_deleted/
+.android/
+.ios/
+.backup/
+*.part-*
+sentences/zh-cache.json
 
-# OS
+# OS / editor
 .DS_Store
+*.swp

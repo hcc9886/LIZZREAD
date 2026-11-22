@@ -1,0 +1,7 @@
+# Locally-provided books (user imported; may be under copyright)
+books/camus_stranger.txt
+books/_local_*.txt
+books/*_local.txt
+
+# OS
+.DS_Store
