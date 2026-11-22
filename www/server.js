@@ -22,9 +22,11 @@ const METRICS = Object.create(null);
 const TX_CACHE_MAX = 20000;
 const REDEEM_FILE = path.join(ROOT, 'data', 'redemptions.json');
 const REDEEM_CODES = {
-  'wansuiwansuiwanwansui1313113': {plan:'permanent', days:0},
-  'nulixuexiya2027':             {plan:'year',      days:366},
-  'lizzzhaohaoyon!!!':            {plan:'month',     days:31}
+  'wansuiwansuiwanwansui1313113': {plan:'permanent', days:0,   scope:'all'},
+  'nulixuexiya2027':             {plan:'year',      days:366, scope:'all'},
+  'lizzzhaohaoyon!!!':            {plan:'month',     days:31,  scope:'one'},
+  /* 班级版：最多 30 台设备（老师+学生），一年内有效 */
+  'lizzread-class-2026':         {plan:'all_year',  days:366, scope:'all', seats:30}
 };
 function readRedeemed(){
   try{ return JSON.parse(fs.readFileSync(REDEEM_FILE, 'utf8')) || {}; }catch(e){ return {}; }
@@ -483,21 +485,29 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     const used = readRedeemed();
-    if(used[code]){
-      const same = used[code].device === device;
-      sendJSON(res, 409, {
-        ok:false,
-        message: same ? '这个激活码已经在本机使用过了（一机一码一次）' : '这个激活码已经在另一台设备使用过了（一机一码一次）',
-        plan: used[code].plan,
-        at: used[code].at
-      });
+    const now = Date.now();
+    const seats = Math.max(1, Number(def.seats || 1));
+    /* 多人码（班级版）：登记设备列表，最多 seats 台 */
+    const entry = used[code] || (used[code] = {devices: [], plan: def.plan, at: now, expires: def.days ? now + def.days * 86400000 : 0});
+    const devs = entry.devices || (entry.devices = entry.device ? [entry.device] : []);
+    if(!devs.includes(device)){
+      if(devs.length >= seats){
+        sendJSON(res, 409, {ok:false, message:'这个激活码的名额已满（' + seats + ' 台设备），请联系购买者扩容', plan: entry.plan, at: entry.at});
+        return;
+      }
+      devs.push(device);
+      entry.devices = devs;
+      entry.device = entry.device || device;
+    } else if(seats === 1 && entry.device !== device){
+      sendJSON(res, 409, {ok:false, message:'这个激活码已经在另一台设备使用过了（一机一码一次）', plan: entry.plan, at: entry.at});
       return;
     }
-    const now = Date.now();
-    const expires = def.days ? now + def.days * 86400000 : 0;
-    used[code] = {device, plan:def.plan, at:now, expires};
+    if(entry.expires && entry.expires < now){
+      sendJSON(res, 409, {ok:false, message:'这个激活码已过期', plan: entry.plan, at: entry.at});
+      return;
+    }
     writeRedeemed(used);
-    sendJSON(res, 200, {ok:true, plan:def.plan, expires, at:now});
+    sendJSON(res, 200, {ok:true, plan: def.plan, expires: entry.expires, at: now, seats, used: devs.length});
     return;
   }
 

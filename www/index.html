@@ -690,6 +690,8 @@ var BOOKS = window.LZ_BOOKS_EN || [];
     added++;
   }
   window.LZ_CATALOG_ADDED = added;
+  /* 记下合并后的英语书库快照，切回英语时用它重建（避免被其他语言覆盖） */
+  window.LZ_BOOKS_EN = BOOKS.slice();
   console.log("书库已合并：" + BOOKS.length + " 本（新增 " + added + " 本公版书）");
 })();
 
@@ -1179,7 +1181,7 @@ async function loadLanguageBooks(code){
   if(_langBooks[code]) return _langBooks[code];
   if(_langLoading[code]) return _langLoading[code];
   _langLoading[code] = new Promise((resolve) => {
-    const finish = () => {
+    const FINISH_MAIN = () => {
       const raw = window['LZ_LANG_' + code.toUpperCase()] || [];
       const bad = /\b(English|Anglais|Inglés|Inglese|Englisch)\b/i;
       const list = raw.filter(b => !bad.test(String(b.t + ' ' + (b.a || '')))).map((b, i) => ({
@@ -1189,19 +1191,48 @@ async function loadLanguageBooks(code){
         d: b.d || '', lang: code, fs: b.fs ? 1 : 0,
         demo: Array.isArray(b.demo) ? b.demo : (b.demo ? [b.demo] : [])
       }));
-      _langBooks[code] = list;
-      resolve(list);
+      return list;
     };
+    const finish = () => { const list = FINISH_MAIN(); _langBooks[code] = list; resolve(list); };
     if(window['LZ_LANG_' + code.toUpperCase()]) return finish();
-    const sc = document.createElement('script');
-    sc.src = 'data/lang-' + code + '.js?v=2';
-    sc.onload = finish;
-    sc.onerror = () => { _langBooks[code] = []; resolve([]); };
-    document.head.appendChild(sc);
+    /* 先加载译本（经典著作的日/韩/中等译本），再加载本语言书目，两者合并后才算加载完成 */
+    const loadScript = (src) => new Promise((res) => {
+      const sc = document.createElement('script');
+      sc.src = src;
+      sc.onload = () => res(true);
+      sc.onerror = () => res(false);
+      document.head.appendChild(sc);
+    });
+    (async () => {
+      await loadScript('data/lang-' + code + '-tr.js?v=1');
+      await loadScript('data/lang-' + code + '.js?v=2');
+      const extra0 = (window['LZ_LANG_' + code.toUpperCase() + '_TR'] || []).map((b, i) => ({
+        id: 'T-' + code + '-' + i, t: b.t, zh: b.zh || '', en: b.en || '', a: b.a || '', y: b.y || 0,
+        lv: b.lv || 'B2', g: b.g || 'lit', gb: b.gb || 0, az: '', ko: '', d: b.d || '', lang: code,
+        fs: 0, demo: [], translated: 1
+      })).filter(b => !/\b(English|Anglais|Inglés|Inglese|Englisch)\b/i.test(String(b.t)));
+      /* 译本与本土书目合并（同一 GB 号已在部分语言书目里的，保留本土标题），再统一产出 */
+      const list = FINISH_MAIN();
+      const seen = new Set(list.map(b => String(b.gb || "")));
+      const add = extra0.filter(b => !seen.has(String(b.gb || "")));
+      _langBooks[code] = list.concat(add);
+      resolve(_langBooks[code]);
+    })();
   });
   return _langLoading[code];
 }
 function showLang(){ return getPref("show") || "zh"; }
+/* 点词释义语言（桥接）：默认跟随展示语言，可单独指定为英/中/日/韩… */
+function glossLang(){
+  const g = getPref("gloss") || "auto";
+  return g === "auto" ? showLang() : g;
+}
+function setGlossLang(code){
+  setPref("gloss", code);
+  toast("释义语言：" + (code === "auto" ? "跟随展示语言" : ((SHOW_LANGS.find(x => x.code === code) || {}).name || code)));
+  renderLangChips();
+  renderLibrary();
+}
 function langCodes(){ return LANGS.map(x=>x.code); }
 /* UI 文案：学习语言界面（主）+ 展示语言（覆盖） */
 function L(k, fb){
@@ -1417,14 +1448,20 @@ let BOOKS_LANG = [];          /* 当前学习语言的书库（英文=BOOKS，�
 let BOOKS_EN = null;          /* 英文原始书库（导入合并过） */
 let _langBooted = false;
 function langSwitcherHtml(){
-  return LANGS.map(x => `<button class="chip ${activeLang()===x.code?'on':''}" onclick="setLang('${x.code}')"
-    title="${x.name}">${x.native}${x.count ? `<span class="lang-badge">${x.count}</span>` : ""}</button>`).join("");
+  return LANGS.map(x => {
+    const paid = langIsPaid(x.code);
+    const lv = x.lvLabel || "";
+    return `<button class="chip ${activeLang()===x.code?'on':''}" onclick="setLang('${x.code}')"
+      title="${x.name} · ${escHtml(lv)}${paid ? " · 已解锁" : ""}">${x.native}${x.count ? `<span class="lang-badge">${x.count}</span>` : ""}${paid && x.code !== "en" ? " ✓" : ""}</button>`;
+  }).join("");
 }
 function renderLangChips(){
   const el = document.getElementById("langChips");
   if(!el) return;
-  el.innerHTML = `<span class="tip" style="margin:0">学习语言</span>` + langSwitcherHtml() +
-    `<button class="btn ghost small" onclick="openLangPanel()">⚙ 语言设置</button>`;
+  const info = LANG_INFO[activeLang()] || {};
+  el.innerHTML = `<span class="tip" style="margin:0;flex:0 0 auto">学习语言</span>` + langSwitcherHtml() +
+    `<span class="lang-badge" style="flex:0 0 auto;background:var(--brand-soft);color:var(--brand-deep)">${escHtml(info.lvLabel || "CEFR A1-C2")}</span>` +
+    `<button class="btn ghost small" style="flex:0 0 auto" onclick="openLangPanel()">⚙ 语言设置</button>`;
 }
 function updateLangPill(){
   const main = document.getElementById("langPillMain");
@@ -1464,6 +1501,7 @@ async function setLang(code, opts){
   _langBooted = true;
   applyLangUI();
   await refreshBooksForLang();
+  noteSecondLang(code);
   if(opts.keepView !== true) go(opts.view || "library");
   else renderLibrary();
 }
@@ -1478,9 +1516,9 @@ async function setShowLang(code){
 async function refreshBooksForLang(){
   const code = activeLang();
   if(code === "en"){
-    if(!BOOKS_EN) BOOKS_EN = BOOKS.slice();
-    BOOKS_LANG = BOOKS_EN;
-    BOOKS = BOOKS_EN;
+    if(!_langBooks.en) _langBooks.en = (window.LZ_BOOKS_EN || []).map(b => b);
+    BOOKS_LANG = _langBooks.en;
+    BOOKS = _langBooks.en;
     return;
   }
   const list = await loadLanguageBooks(code);
@@ -1511,10 +1549,16 @@ function openLangPanel(){
       <div class="lang-row">
         ${SHOW_LANGS.map(x => `<button class="chip ${showLang()===x.code?'on':''}" onclick="pickShowLang('${x.code}')">${x.name}</button>`).join("")}
       </div>
+      <div style="font:600 13px var(--font);margin:14px 0 6px">点词释义语言（母语桥接）</div>
+      <div class="lang-row">
+        <button class="chip ${(getPref("gloss")||"auto")==="auto"?'on':''}" onclick="setGlossLang('auto')">跟随展示语言</button>
+        ${SHOW_LANGS.map(x => `<button class="chip ${glossLang()===x.code && (getPref("gloss")||"auto")!=="auto"?'on':''}" onclick="setGlossLang('${x.code}')">${x.name}</button>`).join("")}
+      </div>
       <div class="lang-row" style="margin-top:14px">
         <button class="btn ghost small" onclick="closeLangPanel();openTransferDialog()">🔁 生词转语言</button>
         <button class="btn ghost small" onclick="closeLangPanel();openCompareDialog()">📖 多语言对照</button>
         <button class="btn ghost small" onclick="closeLangPanel();startTutorial()">🎓 本语言带练</button>
+        <button class="btn ghost small" onclick="shareLangLink()">🔗 分享本语言链接</button>
       </div>
       <div class="paywall-note" style="margin-top:14px">
         每个学习语言的每日免费翻译额度不同：英语 ${(LANG_INFO.en||{}).quota||120} 句，其他语言 ${(LANG_INFO.de||{}).quota||40} 句左右；会员不限量。
@@ -1644,6 +1688,108 @@ async function renderCompare(){
         <span class="tag" style="flex:0 0 auto">${(LANG_INFO[r.code]||{}).native || r.code}</span>
         <span style="font:14px/1.6 var(--serif)">${escHtml(r.text || "（未返回）")}</span></div>`).join("")}
     </div>`;
+}
+/* 等级升级考试：每级 12 题，通过即记录等级并可分享证书 */
+let _examState = null;
+function examPool(){
+  const lv = store.level || TIERS()[0];
+  const idx = Math.max(0, TIERS().indexOf(lv));
+  return { from: TIERS()[idx], to: TIERS()[Math.min(TIERS().length - 1, idx + 1)] };
+}
+async function openExam(){
+  const {from, to} = examPool();
+  const all = TEST();
+  const pick = all.filter(q => q.tier === to).concat(all.filter(q => q.tier === from)).slice(0, 12);
+  if(pick.length < 6){ toast("这个等级的题目还不够，先做一次词汇测试吧。"); return; }
+  _examState = { questions: pick, i: 0, right: 0, from, to };
+  let el = document.getElementById("examSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "examSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  renderExam();
+}
+function renderExam(){
+  const el = document.getElementById("examSheet");
+  const st = _examState;
+  if(!el || !st) return;
+  if(st.i >= st.questions.length){
+    const pass = st.right >= Math.ceil(st.questions.length * 0.75);
+    el.innerHTML = `<div class="box" style="text-align:center">
+      <h3>${pass ? "🎉 升级成功！" : "还差一点"}</h3>
+      <div class="sub">答对 ${st.right}/${st.questions.length} 题（75% 通过）</div>
+      <div class="result-lv" style="font:800 48px var(--serif);color:var(--brand)">${pass ? st.to : st.from}</div>
+      ${pass ? `<div class="sub">已记录到你的${(LANG_INFO[activeLang()]||{}).native}等级，书城会优先推荐 ${st.to} 的书。</div>` : `<div class="sub">再练一周，重考一次就能过。</div>`}
+      <div class="lang-row" style="justify-content:center;margin-top:12px">
+        ${pass ? `<button class="btn" onclick="shareCertificate('${st.to}')">📤 分享证书</button>` : ""}
+        <button class="btn ghost" onclick="document.getElementById('examSheet').style.display='none'">关闭</button>
+      </div></div>`;
+    if(pass) store.level = st.to;
+    return;
+  }
+  const q = st.questions[st.i];
+  const opts = q.o.slice().sort(() => Math.random() - .5);
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center">
+      <h3>📜 等级升级考试 ${st.from} → ${st.to}</h3>
+      <button style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer" onclick="document.getElementById('examSheet').style.display='none'">×</button>
+    </div>
+    <div class="sub">第 ${st.i + 1}/${st.questions.length} 题 · 难度 ${escHtml(q.tier)}</div>
+    <div class="test-card" style="box-shadow:none;border:none;margin:8px 0;padding:12px">
+      <div class="word" style="font:700 30px var(--serif);margin:6px 0 12px">${escHtml(q.w)}</div>
+      <div class="opts">${opts.map(o => `<button onclick="examAnswer(this,${JSON.stringify(o) === JSON.stringify(q.o[0])})">${escHtml(o)}</button>`).join("")}</div>
+    </div></div>`;
+}
+function examAnswer(btn, ok){
+  const st = _examState; if(!st) return;
+  if(ok) st.right++;
+  btn.style.background = ok ? "var(--brand-soft)" : "color-mix(in srgb,var(--danger) 12%,var(--surface))";
+  setTimeout(() => { st.i++; renderExam(); }, 260);
+}
+function shareCertificate(level){
+  const txt = `我在 LIZZREAD 挑战 ${(LANG_INFO[activeLang()]||{}).native} ${level} 等级成功！ ${location.origin}?lang=${activeLang()}`;
+  if(navigator.share){ navigator.share({title:"LIZZREAD 等级证书", text: txt, url: location.href}).catch(()=>{}); }
+  else{ copyText(txt); toast("证书文案已复制，去粘贴分享吧"); }
+}
+/* 分享：生成带语言参数的直达链接 */
+/* 班级 / 小组：导出与合并生词本（老师汇总全班用） */
+function exportClassVocab(){
+  const all = {};
+  LANGS.forEach(x => {
+    const k = "lz_" + (ACCOUNT ? ACCOUNT.name + "_" : "") + "vocab_" + x.code;
+    try{ const v = JSON.parse(localStorage.getItem(k) || "[]"); if(v.length) all[x.code] = v; }catch(e){}
+  });
+  const blob = new Blob([JSON.stringify({user: ACCOUNT ? ACCOUNT.name : "guest", kind:"lizzread-class-vocab", at: Date.now(), langs: all}, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "lizzread-班级生词-" + (ACCOUNT ? ACCOUNT.name : "guest") + ".json";
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("已导出，发给老师汇总即可");
+}
+function importClassVocab(){ document.getElementById("classVocabFile").click(); }
+async function onClassVocabFile(inp){
+  const f = inp.files && inp.files[0];
+  if(!f) return;
+  try{
+    const j = JSON.parse(await f.text());
+    let n = 0;
+    const langs = j.langs || {};
+    for(const [code, list] of Object.entries(langs)){
+      const k = "lz_" + (ACCOUNT ? ACCOUNT.name + "_" : "") + "vocab_" + code;
+      let mine = [];
+      try{ mine = JSON.parse(localStorage.getItem(k) || "[]"); }catch(e){}
+      for(const v of list){
+        if(!mine.some(x => x.w === v.w)){ mine.unshift(Object.assign({}, v, {src:"班级"})); n++; }
+      }
+      localStorage.setItem(k, JSON.stringify(mine));
+    }
+    toast("已合并 " + n + " 个同学生词（按语言分开）");
+    if(document.getElementById("view-plan").classList.contains("on")) renderPlan();
+  }catch(e){ toast("文件读取失败：" + e.message); }
+  inp.value = "";
+}
+function shareLangLink(){
+  const u = location.origin + location.pathname + "?lang=" + activeLang() + "&show=" + showLang();
+  copyText(u);
+  toast("已复制直达链接：" + u);
 }
 function toggleNavMore(){
   const nav = document.getElementById("mainNav");
@@ -2142,7 +2288,8 @@ function renderRecs(){
     return `<div class="rec-block" style="margin:6px 0 14px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <b style="font:600 14px var(--font);color:var(--brand-deep)">${escHtml(info.label || info.lvLabel || "等级")} ${escHtml(lv)} · ${L("library.rec","这个等级读什么")}</b>
-        <button class="btn ghost small" style="margin-left:auto" onclick="setLv('${escHtml(lv)}')">只看 ${escHtml(lv)}</button>
+        <button class="btn ghost small" style="margin-left:auto" onclick="openExam()">📜 升级考试</button>
+        <button class="btn ghost small" onclick="setLv('${escHtml(lv)}')">只看 ${escHtml(lv)}</button>
       </div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
         ${books.map(b => `<div onclick="openBook('${b.id}')" style="flex:0 0 132px;cursor:pointer;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)">
@@ -2225,6 +2372,7 @@ function bookCard(b, rec){
     <div class="cover ${isImp?"g-imp":"g-"+b.g}">${cov}<span class="ctag">${isImp?"MY IMPORT":escHtml(GENRES()[b.g]||"CLASSICS")}</span></div>
     <div class="meta"><b>${escHtml(dispTitle(b))}</b>${b.zh && b.t && b.zh!==b.t ? `<br><span class="muted" style="font-size:11px">${escHtml(b.t)}</span>`:""}
       ${(b.en && b.lang !== "en") ? `<div class="dim" style="font-size:12px;color:var(--muted);margin-top:2px">${escHtml(b.en)}</div>` : ""}
+      ${b.translated ? `<div class="lang-badge" style="margin:2px 0 0">译本</div>` : ""}
       <br><span class="g">${isImp?L("genres.imp","我的导入"):escHtml(GENRES()[b.g]||"")}</span>
       ${rec?`<span class="badge">推荐</span>`:""}
       <br>${isImp?"✦ 可阅读":(hasFull?"✦ 可读全文":(GUIDES[b.id]?"✦ 精读导读":(SAMPLES[b.id]?"✦ 可试读":"")))}</div>
@@ -2284,6 +2432,7 @@ async function openBook(id){
         <h2>${escHtml(b.t)}${b.zh && b.zh!==b.t ? " · "+escHtml(b.zh) : ""}</h2>
         <div class="by">${escHtml(dispAuthor(b))} · ${escHtml(dispYear(b))}</div>
         ${(b.en && b.lang !== "en") ? `<div class="dim" style="font-size:13px;color:var(--muted);margin-top:2px">${escHtml(b.en)}</div>` : ""}
+        ${b.translated ? `<div class="lang-badge">译本 · 原作非${escHtml((LANG_INFO[b.lang]||{}).native || "")}</div>` : ""}
         <div class="tags">
           <span class="tag">难度 ${b.lv}</span>
           <span class="tag">${GENRES()[b.g]||"经典"}</span>
@@ -3445,6 +3594,14 @@ function wordClick(e){
   document.getElementById("sheet").classList.add("on");
   document.getElementById("mask").classList.add("on");
 }
+function foldGloss(btn){
+  const box = btn.closest("#shGlossBox") || document.getElementById("shGlossBox");
+  if(!box) return;
+  const folded = box.querySelectorAll('[data-folded="1"]');
+  const open = folded.length && folded[0].style.display === "none";
+  folded.forEach(el => { el.style.display = open ? "flex" : "none"; });
+  btn.textContent = open ? "收起释义" : ("展开全部 " + (box.querySelectorAll(".gloss-row").length) + " 种");
+}
 /* 所有语言通用：点词时补一行「各国语言怎么说」 */
 const _multiGlossCache = {};
 async function fillMultiGloss(word){
@@ -3459,8 +3616,9 @@ async function fillMultiGloss(word){
       .map(([c, v]) => `<div style="display:flex;gap:8px;align-items:baseline;padding:2px 0">
         <span class="tag" style="flex:0 0 auto">${escHtml((SHOW_LANGS.find(x => x.code === c) || {}).name || c)}</span>
         <span style="font:14px/1.6 var(--font)">${escHtml(v)}</span></div>`).join("");
-    cur.innerHTML = rows ? `<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:6px">
-      <div class="dim" style="margin-bottom:2px">各国语言怎么说</div>${rows}</div>` : "";
+    cur.innerHTML = rows ? `<details style="margin-top:8px;border-top:1px dashed var(--border);padding-top:6px">
+      <summary style="cursor:pointer;color:var(--brand-deep);font-size:13px">各家语言怎么说（点开）</summary>
+      <div>${rows}</div></details>` : "";
   };
   if(_multiGlossCache[key]) return render(_multiGlossCache[key]);
   try{
@@ -3496,7 +3654,7 @@ function renderZhSheet(low, word, ctxEn){
       else ctxEl.textContent = "（正在翻译这句…）";
       ctxTranslate(ctxEn, "").then(t => { mtCache[ctxEn] = t; if(ctxEl) ctxEl.textContent = t; }).catch(()=>{});
     }
-    /* 各国语言释义：放在主面板，不折叠（学汉语最需要） */
+    /* 各国语言释义：默认折叠显示前 3 行，展开看全部 */
     const host = document.getElementById("shGlossBox") || document.getElementById("shDef");
     if(host){
       const rows = g ? (() => {
@@ -3507,9 +3665,13 @@ function renderZhSheet(low, word, ctxEn){
           if(groups.has(v)) groups.get(v).push(x.name); else groups.set(v, [x.name]);
         });
         if(!groups.size) return "";
-        return [...groups.entries()].map(([v, names]) => `<div style="display:flex;gap:8px;align-items:baseline;padding:2px 0">
+        const all = [...groups.entries()];
+        const head = all.slice(0, 3), tail = all.slice(3);
+        const rowHtml = ([v, names], hidden) => `<div class="gloss-row" ${hidden ? 'data-folded="1" style="display:none;align-items:baseline;gap:8px;padding:2px 0"' : 'style="display:flex;align-items:baseline;gap:8px;padding:2px 0"'}>
             <span class="tag" style="flex:0 0 auto">${escHtml(names.join(" · "))}</span>
-            <span style="font:14px/1.6 var(--font)">${escHtml(v)}</span></div>`).join("");
+            <span style="font:14px/1.6 var(--font)">${escHtml(v)}</span></div>`;
+        return head.map(x => rowHtml(x, false)).join("") + tail.map(x => rowHtml(x, true)).join("") +
+          (tail.length ? `<button class="btn ghost small" style="margin-top:4px" onclick="this.previousElementSibling&&0;foldGloss(this)">展开全部 ${all.length} 种</button>` : "");
       })() : "";
       if(g && !Object.values(g).some(v => v && !/^[\u4e00-\u9fff]+$/.test(v) && v !== word)) { /* 无外文差异时保留原样 */ }
       const enDef = enInfo && enInfo.en ? `<div class="dim" style="margin-top:4px">英英：${escHtml(enInfo.zh || "")}</div>` : "";
@@ -4278,7 +4440,7 @@ async function fetchWordServer(word, lang){
   lang = lang || activeLang();
   if(!/^https?:/.test(location.protocol)) return null;
   try{
-    const r = await fetch("./api/word?lang=" + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(showLang()), {signal: AbortSignal.timeout(8000)});
+    const r = await fetch("./api/word?lang=" + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(glossLang()), {signal: AbortSignal.timeout(8000)});
     if(!r.ok) return null;
     const j = await r.json();
     return j && j.gloss && j.gloss.length ? j : null;
@@ -5773,12 +5935,46 @@ function openKpi(){
 ===================================================== */
 const LZ_PRO_KEY = "lz_pro_v1";
 const PLAN_DEF = {
-  free:      { name:"免费版",   price:0,  unit:"",     days:0,   months:0 },
-  month:     { name:"月度会员", price:12, unit:"/月",  days:31,  months:1 },
-  quarter:   { name:"季度会员", price:30, unit:"/季",  days:92,  months:3 },
-  year:      { name:"年度会员", price:98, unit:"/年",  days:366, months:12 },
-  permanent: { name:"永久会员", price:0,  unit:"内测", days:0,   months:0 }
+  free:      { name:"免费版",     price:0,  unit:"",     days:0,   months:0,  scope:"free" },
+  lang:      { name:"单语言会员", price:12, unit:"/月",  days:31,  months:1,  scope:"one" },
+  all_month: { name:"全语言月度", price:25, unit:"/月",  days:31,  months:1,  scope:"all" },
+  all_quarter:{name:"全语言季度", price:60, unit:"/季",  days:92,  months:3,  scope:"all" },
+  all_year:  { name:"全语言年度", price:168,unit:"/年",  days:366, months:12, scope:"all" },
+  month:     { name:"全语言月度", price:12, unit:"/月", days:31, months:1, scope:"all" },
+  quarter:   { name:"全语言季度", price:30, unit:"/季", days:92, months:3,  scope:"all" },
+  year:      { name:"全语言年度", price:98, unit:"/年", days:366, months:12, scope:"all" },
+  permanent: { name:"永久会员",   price:0,  unit:"内测", days:0,   months:0,  scope:"all", permanent:1 }
 };
+/* 学期计划包（季度卡 + 16 周书单打卡） */
+const SEMESTER_PLAN = [
+  {w:1,  task:"定级测试 + 选 1 本 A1/N5/HSK1 起步书", done:false},
+  {w:2,  task:"每天 10 分钟点词，累计 50 个生词", done:false},
+  {w:3,  task:"读完一本短篇（≤ 60 分钟）", done:false},
+  {w:4,  task:"整章翻译 1 章，做一次生词复习", done:false},
+  {w:5,  task:"句子拼装 20 句，正确率 ≥ 80%", done:false},
+  {w:6,  task:"换一本同级不同作者的书开读", done:false},
+  {w:7,  task:"生词本清一次：会的标掌握，不会的留", done:false},
+  {w:8,  task:"中期自测：重做词汇测试，看等级变化", done:false},
+  {w:9,  task:"读完第二本（≥ 90 分钟）", done:false},
+  {w:10, task:"挑战一本下一等级的书的前 3 章", done:false},
+  {w:11, task:"整书预翻译 1 本，离线带走", done:false},
+  {w:12, task:"跟读朗读 10 句（听书 + 复述）", done:false},
+  {w:13, task:"生词复习全部清空到期队列", done:false},
+  {w:14, task:"读完第三本，写 3 句摘抄", done:false},
+  {w:15, task:"期末词汇测试，记录等级", done:false},
+  {w:16, task:"复盘：导出学习报告 + 定下学期目标", done:false}
+];
+function semesterState(){
+  try{ return JSON.parse(localStorage.getItem(pk(langKey("semester"))) || "null") || {start:Date.now(), steps:{}}; }
+  catch(e){ return {start:Date.now(), steps:{}}; }
+}
+function semesterToggle(w){
+  const st = semesterState();
+  st.steps = st.steps || {};
+  st.steps[w] = !st.steps[w];
+  try{ localStorage.setItem(pk(langKey("semester")), JSON.stringify(st)); }catch(e){}
+  renderPlan();
+}
 const FREE_PRESET_LIMIT = 1;        /* 免费版可用预设词表数量 */
 const FREE_EXTRA_LANGS = 1;         /* 免费版可额外启用的非英语学习语言数量 */
 function enabledExtraLangs(){
@@ -5786,12 +5982,20 @@ function enabledExtraLangs(){
 }
 function langUnlocked(code){
   if(code === "en") return true;
-  if(isPro()) return true;
-  return enabledExtraLangs().includes(code);
+  if(isAllLang()) return true;
+  if(proScope() === "one" && proLang() === code) return true;
+  /* 免费/单语言：英语 + 1 门自选语言可浏览；其他语言可读但额度更低，不再阻断 */
+  if(enabledExtraLangs().includes(code)) return true;
+  return true;
 }
 function unlockLang(code){
   if(code === "en" || isPro()) return true;
   return enabledExtraLangs().includes(code);
+}
+function noteSecondLang(code){
+  if(proScope() === "one" && proLang() && proLang() !== code && proLang() !== "en"){
+    try{ toast(((LANG_INFO[code]||{}).native||code) + " 不在你的单语言会员里，按免费额度翻译；升级全语言套餐即可全部解锁。"); }catch(e){}
+  }
 }
 function noteLangLimit(code){
   /* 免费版：额外语言只提示额度，不弹付费墙、不打断浏览 */
@@ -5825,7 +6029,12 @@ function proState(){
     return o;
   }catch(e){ return null; }
 }
-function isPro(){ return !!proState(); }
+/* 权益：单语言会员只解锁指定学习语言；全语言会员解锁全部 */
+function proScope(){ const st = proState(); return st ? (st.scope || (st.plan === "lang" ? "one" : "all")) : "free"; }
+function proLang(){ const st = proState(); return st ? (st.lang || "") : ""; }
+function isPro(){ return !!proState(); }  /* 兼容旧调用：任意付费方案 */
+function isAllLang(){ return proScope() === "all"; }
+function hasAnyPaid(){ return !!proState(); }
 function planLabel(){
   const st = proState();
   if(!st) return "免费版";
@@ -5842,9 +6051,11 @@ function activatePro(plan, source){
 }
 /* 三个内测码：大小写不敏感；一机一码一次（本机 + 服务端双记录） */
 const REDEEM_CODES = {
-  "wansuiwansuiwanwansui1313113": {plan:"permanent", days:0,    label:"永久会员"},
-  "nulixuexiya2027":             {plan:"year",      days:366,  label:"年度会员（1 年）"},
-  "lizzzhaohaoyon!!!":            {plan:"month",     days:31,   label:"月度会员（1 个月）"}
+  "wansuiwansuiwanwansui1313113": {plan:"permanent", days:0,    label:"永久会员（全部语言）"},
+  "nulixuexiya2027":             {plan:"year",      days:366,  label:"全语言年度（1 年）"},
+  "lizzzhaohaoyon!!!":            {plan:"month",     days:31,   label:"单语言月度（1 个月）", scope:"one"},
+  /* 演示/推广码：班级版（30 台设备共用，见 server 登记） */
+  "lizzread-class-2026":         {plan:"all_year",  days:366,  label:"班级版年度（全部语言）"}
 };
 function normalizeCode(c){ return String(c||"").trim().toLowerCase(); }
 function deviceId(){
@@ -5861,8 +6072,10 @@ function localRedeemed(){
   try{ return JSON.parse(localStorage.getItem("lz_redeemed_codes") || "{}") || {}; }catch(e){ return {}; }
 }
 function saveLocalRedeemed(o){ try{ localStorage.setItem("lz_redeemed_codes", JSON.stringify(o)); }catch(e){} }
-function applyPro(plan, expires, source){
-  const st = {plan, expires: expires || 0, permanent: plan === "permanent" || !expires, at: Date.now(), source: source || "activation"};
+function applyPro(plan, expires, source, lang){
+  const def = PLAN_DEF[plan] || {};
+  const st = {plan, scope: def.scope || "all", lang: lang || "", expires: expires || 0,
+              permanent: plan === "permanent" || !expires, at: Date.now(), source: source || "activation"};
   localStorage.setItem(pk("pro"), JSON.stringify(st));
   updatePlanBadge();
   if(document.getElementById("view-plan") && document.getElementById("view-plan").classList.contains("on")) renderPlan();
@@ -5917,7 +6130,7 @@ async function activateCode(code, silent){
   }
   used[c] = {at: now, plan: serverPlan || def.plan, device: did};
   saveLocalRedeemed(used);
-  applyPro(serverPlan || def.plan, expires, "code:" + c);
+  applyPro(serverPlan || def.plan, expires, "code:" + c, def.scope === "one" ? (PAYMENT_LANGS.lang || activeLang()) : "");
   if(!silent) toast("激活成功：" + (PLAN_DEF[serverPlan || def.plan]?.name || def.label) + (expires ? "，有效期至 " + new Date(expires).toLocaleDateString() : "，永久有效") + "。");
   return true;
 }
@@ -5925,9 +6138,16 @@ function updatePlanBadge(){
   const btn = document.getElementById("nav-plan");
   if(btn) btn.textContent = isPro() ? "💎 会员 ✓" : "💎 会员";
 }
+function langIsPaid(code){
+  const c = code || activeLang();
+  if(isAllLang()) return true;
+  if(proScope() === "one") return proLang() === c || c === "en";
+  return false;
+}
 function freeQuotaLeft(){
-  if(isPro()) return Infinity;
-  const q = langQuota();
+  if(langIsPaid()) return Infinity;
+  let q = langQuota();
+  if(activeLang() !== "en" && !enabledExtraLangs().includes(activeLang())) q = Math.round(q * 0.6);
   return Math.max(0, q - ((statsToday().translated) || 0));
 }
 function consumeTranslate(n){
@@ -5990,62 +6210,101 @@ async function paywallActivate(){
   if(await activateCode(v)) closePaywall();
 }
 /* 真实支付链接（接入商户后填入，例如微信/支付宝/Paddle/Lemon Squeezy 收银台） */
-const PAYMENT_LINKS = { month: "", year: "" };
-function selectCheckout(plan){
-  if(isPro()){
-    toast("你已经是" + planLabel() + "，无需重复开通。");
-    return;
-  }
-  if(PAYMENT_LINKS[plan]){
-    window.open(PAYMENT_LINKS[plan], "_blank", "noopener");
-    return;
-  }
+const PAYMENT_LINKS = { lang: "", all_month: "", all_quarter: "", all_year: "", month: "", quarter: "", year: "" };
+const PAYMENT_LANGS = {};
+let _pendingPlan = null;
+function pickLangPlan(code){
+  _pendingPlan = "lang";
+  PAYMENT_LANGS["lang"] = code;
+  showCheckoutSheet("lang");
+}
+function showCheckoutSheet(plan){
+  const def = PLAN_DEF[plan];
+  const lang = PAYMENT_LANGS[plan] || activeLang();
   const el = ensurePaywall();
   el.innerHTML = `
     <div class="box">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="font:700 20px var(--serif)">开通 ${PLAN_DEF[plan].name}</div>
+        <div style="font:700 20px var(--serif)">开通 ${def.name}${def.scope === "one" ? " · " + ((LANG_INFO[lang]||{}).native || lang) : ""}</div>
         <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin:12px 0">
-        <div class="plan-price">¥${PLAN_DEF[plan].price}<small>${PLAN_DEF[plan].unit}</small></div>
-        <span style="color:var(--muted);font-size:12px">服务期 ${PLAN_DEF[plan].days} 天</span>
+        <div class="plan-price">¥${def.price}<small>${def.unit}</small></div>
+        <span style="color:var(--muted);font-size:12px">服务期 ${def.days} 天</span>
       </div>
       <div class="plan-feat">
+        <li class="ok">${def.scope === "all" ? "全部 8 门学习语言" : "选定 1 门语言（英语已免费）"}</li>
         <li class="ok">不限量整章翻译 / 整书预翻译</li>
         <li class="ok">全部书籍离线下载</li>
         <li class="ok">学习报告导出</li>
         <li class="ok">句子拼装完整记录与统计</li>
+        ${def.scope === "all" ? '<li class="ok">学期计划包（16 周书单打卡）</li><li class="ok">班级/小组共用一份生词本</li>' : ""}
       </div>
       <div class="paywall-note">
         <b>支付方式</b>：微信支付 / 支付宝 / 银行卡（正式通道接入中）。<br>
         当前为内测：可直接用激活码开通，权益立即生效并保存在本机账号。
         <div class="share-link-box">
           <input class="code-input" id="paywallCode" placeholder="输入内测码（大小写不敏感，一机一码一次）">
-          <button class="btn small" onclick="paywallActivate()">激活</button>
+          <button class="btn small" onclick="paywallActivate('${plan}','${lang}')">激活</button>
         </div>
-        <div style="margin-top:8px;color:var(--muted)">每个内测码只能在一台设备上使用一次；如提示已被使用，说明该码已在其他设备激活。</div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost small" onclick="closePaywall();go('plan')">查看全部权益 →</button>
+        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥60/季）</button>` : ""}
       </div>
     </div>`;
   el.classList.add("on");
+}
+function selectCheckout(plan){
+  const def = PLAN_DEF[plan];
+  if(!def) return;
+  if(def.scope === "one"){
+    /* 单语言会员：先选一门语言 */
+    const el = ensurePaywall();
+    el.innerHTML = `<div class="box">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font:700 20px var(--serif)">单语言会员 ¥${def.price}/月</div>
+        <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <div class="tip" style="margin:10px 0">选一门语言，这门语言不限量翻译 + 整书预翻译 + 全部离线。英语始终免费。</div>
+      <div class="lang-grid">
+        ${LANGS.map(x => `<div class="lang-card" onclick="pickLangPlan('${x.code}')">
+          <b>${x.native}</b><span>${x.zh || x.name}</span></div>`).join("")}
+      </div>
+      <div class="paywall-note" style="margin-top:12px">想同时学多门？<a href="#" onclick="closePaywall();selectCheckout('all_quarter');return false;" style="color:var(--brand-deep)">看全语言套餐 →</a></div>
+    </div>`;
+    el.classList.add("on");
+    return;
+  }
+  if(isPro() && proScope() === "all"){
+    toast("你已经是" + planLabel() + "，全部语言都已解锁。");
+    return;
+  }
+  if(PAYMENT_LINKS[plan]){
+    window.open(PAYMENT_LINKS[plan], "_blank", "noopener");
+    return;
+  }
+  showCheckoutSheet(plan);
 }
 
 function renderPlan(){
   const body = document.getElementById("planBody");
   const st = proState();
-  const current = st ? (PLAN_DEF[st.plan]?.name || "会员") : "免费版";
-  const exp = st && st.expires ? new Date(st.expires).toLocaleDateString() : (st ? "永久有效" : "");
+  const current = st ? planLabel() : "免费版";
   const freeLeft = freeQuotaLeft();
+  const sem = semesterState();
+  const doneW = Object.values(sem.steps || {}).filter(Boolean).length;
   body.innerHTML = `
-    <h2 class="sec">💎 会员与订阅 <span class="tip" style="display:inline">基础功能永久免费；翻译与离线重度使用可升级</span></h2>
+    <h2 class="sec">💎 会员与订阅 <span class="tip" style="display:inline">阅读与查词永久免费；翻译、离线、多语言按需订阅</span></h2>
     <div class="report-hero">
-      <h3>当前：${current}${st ? (st.expires ? " · 有效期至 " + exp : " · 永久有效") : ""}</h3>
+      <h3>当前：${current}</h3>
       <p>${st
-        ? "会员权益已生效：不限量翻译、整书预翻译、全部离线下载、报告导出。"
-        : "免费版可用：全部 3700+ 本书阅读、点词查义、每日 "+FREE_TRANSLATE_DAILY+" 句翻译、3 本离线书。"}</p>
+        ? (proScope() === "all" ? "全语言会员：8 门语言不限量翻译、整书预翻译、全部离线、学期计划包、班级共享。" :
+           "单语言会员：" + ((LANG_INFO[proLang()]||{}).native || proLang() || "已选语言") + " 不限量翻译与离线；其他语言按免费额度。")
+        : "免费版：英语 120 句/天，其他语言 25–40 句/天；1 门自选语言 8 折额度，其他语言 6 折。"}</p>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <span class="current-plan">今日剩余翻译 ${freeLeft === Infinity ? "不限" : freeLeft + " 句"}</span>
-        <button class="btn ghost small" onclick="go('report')">查看学习报告</button>
+        <button class="btn ghost small" onclick="openKpi()">学习数据看板</button>
         <button class="btn ghost small" onclick="go('settings')">个性化设置</button>
       </div>
     </div>
@@ -6054,70 +6313,100 @@ function renderPlan(){
         <div class="plan-name">免费版</div>
         <div class="plan-price">¥0</div>
         <div class="plan-feat">
-          <li class="ok">全部 3700+ 本公版书</li>
-          <li class="ok">点词查义 · 本地 24 万词典</li>
-          <li class="ok">每日 ${FREE_TRANSLATE_DAILY} 句整章翻译</li>
+          <li class="ok">全部 7600+ 本公版书（8 门语言）</li>
+          <li class="ok">点词查义 + 多国语言释义</li>
+          <li class="ok">英语 ${(LANG_INFO.en||{}).quota||120} 句/天 · 其他语言 25–40 句/天</li>
           <li class="ok">句子拼装基础练习</li>
           <li class="ok">离线保存 ${FREE_OFFLINE_BOOKS} 本</li>
-          <li class="ok">学习语言：英语免费 + ${FREE_EXTRA_LANGS} 门自选</li>
-          <li class="ok">预设词表 ${FREE_PRESET_LIMIT} 组</li>
-          <li class="no">整书预翻译</li>
-          <li class="no">批量离线下载</li>
+          <li class="ok">英语免费 + ${FREE_EXTRA_LANGS} 门自选语言（8 折额度）</li>
+          <li class="no">整书预翻译 / 批量离线</li>
         </div>
-        <button class="btn ghost" onclick="go('library')">${st?"继续使用免费版":"当前方案"}</button>
-      </div>
-      <div class="plan-card">
-        <div class="plan-name">月度会员</div>
-        <div class="plan-price">¥12<small>/月</small></div>
-        <div class="plan-feat">
-          <li class="ok">全部 7 门学习语言</li>
-          <li class="ok">不限量整章翻译</li>
-          <li class="ok">整书预翻译（一键全本）</li>
-          <li class="ok">全部书籍离线下载</li>
-          <li class="ok">学习报告导出</li>
-          <li class="ok">句子拼装完整记录</li>
-          <li class="ok">优先使用新功能</li>
-        </div>
-        <button class="btn" onclick="selectCheckout('month')">开通月度 ¥12</button>
-      </div>
-      <div class="plan-card">
-        <div class="plan-name">季度会员</div>
-        <div class="plan-price">¥30<small>/季</small></div>
-        <div class="plan-feat">
-          <li class="ok">月度会员全部权益</li>
-          <li class="ok">折合约 ¥10/月</li>
-          <li class="ok">适合一个学期的精读</li>
-          <li class="ok">不限量翻译 + 离线</li>
-          <li class="ok">拼装完整记录</li>
-        </div>
-        <button class="btn" onclick="selectCheckout('quarter')">开通季度 ¥30</button>
+        <button class="btn ghost" onclick="go('library')">${st ? "继续使用免费额度" : "当前方案"}</button>
       </div>
       <div class="plan-card hot">
-        <span class="tagline">推荐 · 最划算</span>
-        <div class="plan-name">年度会员</div>
-        <div class="plan-price">¥98<small>/年</small></div>
+        <span class="tagline">按需订阅</span>
+        <div class="plan-name">单语言会员</div>
+        <div class="plan-price">¥12<small>/月</small></div>
         <div class="plan-feat">
-          <li class="ok">月度会员全部权益</li>
-          <li class="ok">折合 ¥8.2/月</li>
-          <li class="ok">一年内新功能免费</li>
-          <li class="ok">支持独立开发 · 无广告</li>
-          <li class="ok">离线库与译文库优先</li>
-          <li class="ok">学习数据可导出备份</li>
+          <li class="ok">选定 1 门语言（英语已免费）</li>
+          <li class="ok">该语言不限量整章翻译</li>
+          <li class="ok">该语言全部书籍离线</li>
+          <li class="ok">学习报告导出</li>
+          <li class="ok">句子拼装完整记录</li>
         </div>
-        <button class="btn" onclick="selectCheckout('year')">开通年度 ¥98</button>
+        <button class="btn" onclick="selectCheckout('lang')">选语言开通 ¥12</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">全语言 · 月度</div>
+        <div class="plan-price">¥25<small>/月</small></div>
+        <div class="plan-feat">
+          <li class="ok">全部 8 门学习语言</li>
+          <li class="ok">不限量翻译 + 整书预翻译</li>
+          <li class="ok">学期计划包</li>
+        </div>
+        <button class="btn ghost" onclick="selectCheckout('all_month')">开通 ¥25</button>
+      </div>
+      <div class="plan-card hot">
+        <span class="tagline">推荐 · 一个学期</span>
+        <div class="plan-name">全语言 · 季度</div>
+        <div class="plan-price">¥60<small>/季</small></div>
+        <div class="plan-feat">
+          <li class="ok">全部 8 门学习语言</li>
+          <li class="ok">不限量翻译 + 全部离线</li>
+          <li class="ok">学期计划包（16 周书单打卡）</li>
+          <li class="ok">班级/小组共用生词本（5 个名额）</li>
+        </div>
+        <button class="btn" onclick="selectCheckout('all_quarter')">开通 ¥60</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">全语言 · 年度</div>
+        <div class="plan-price">¥168<small>/年</small></div>
+        <div class="plan-feat">
+          <li class="ok">季度会员全部权益</li>
+          <li class="ok">折合 ¥14/月</li>
+          <li class="ok">一年内新功能免费</li>
+          <li class="ok">班级共享 20 个名额</li>
+        </div>
+        <button class="btn" onclick="selectCheckout('all_year')">开通 ¥168</button>
+      </div>
+    </div>
+    <div class="settings-card">
+      <h3>🎓 学期计划包 <span class="tip" style="display:inline">${(LANG_INFO[activeLang()]||{}).native} · 已完成 ${doneW}/16 周</span></h3>
+      <div class="sub">16 周打卡清单，按你的学习语言单独保存；完成情况进入学习报告。</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px;margin-top:8px">
+        ${SEMESTER_PLAN.map(p => {
+          const on = !!(sem.steps || {})[p.w];
+          return `<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:${on ? "var(--brand-soft)" : "var(--surface2)"}">
+            <input type="checkbox" ${on ? "checked" : ""} onchange="semesterToggle(${p.w})" style="margin-top:2px">
+            <span style="font-size:13px;line-height:1.5"><b>第 ${p.w} 周</b> ${escHtml(p.task)}</span></label>`;
+        }).join("")}
+      </div>
+    </div>
+    <div class="settings-card">
+      <h3>🏫 班级 / 小组版</h3>
+      <div class="sub">老师用同一个激活码最多开到 30 台设备，全班共用一份生词本与拼装记录看板。</div>
+      <div class="share-link-box">
+        <input class="code-input" id="classCode" placeholder="班级激活码（如 lizzread-class-2026）" value="lizzread-class-2026">
+        <button class="btn small" onclick="activateClass()">开通班级版</button>
+      </div>
+      <div class="paywall-note">个人用户请勿使用班级码；班级码按设备计数，30 个名额用完后会提示已满。</div>
+      <div class="lang-row" style="margin-top:10px">
+        <button class="btn ghost small" onclick="exportClassVocab()">⬇️ 导出我的生词（交老师汇总）</button>
+        <button class="btn ghost small" onclick="importClassVocab()">⬆️ 导入班级生词包</button>
+        <input type="file" id="classVocabFile" accept=".json" style="display:none" onchange="onClassVocabFile(this)">
+        <button class="btn ghost small" onclick="go('report')">📊 看班级学习看板</button>
       </div>
     </div>
     <div class="settings-card">
       <h3>激活码开通（内测）</h3>
-      <div class="sub">正式支付通道接入前，使用内测码即可开通；每个码只能在一台设备上使用一次，权益保存在本机账号，清空浏览器数据会丢失权益。</div>
+      <div class="sub">正式支付通道接入前，用内测码开通；权益保存在本机账号，清空浏览器数据会丢失权益。</div>
       <div class="share-link-box">
-        <input class="code-input" id="planCode" placeholder="输入内测码（大小写不敏感，一机一码一次）">
+        <input class="code-input" id="planCode" placeholder="输入内测码（大小写不敏感）">
         <button class="btn" onclick="planActivate()">立即激活</button>
-
       </div>
       <div class="paywall-note">
-        <b>关于价格</b>：¥12/月、¥30/季、¥98/年，均为含税价格；免费版不限制阅读与查词，只对机器翻译和批量离线做用量限制，避免服务器成本失控。<br>
-        <b>为什么这样分层</b>：阅读和查词是学习的基础，永久免费；翻译与离线是持续产生成本的服务，用订阅覆盖成本，同时保证产品没有广告。
+        <b>价格</b>：单语言 ¥12/月；全语言 ¥25/月、¥60/季、¥168/年（含税）。<br>
+        <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
     </div>
     <div class="settings-card">
@@ -6125,17 +6414,18 @@ function renderPlan(){
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="color:var(--muted);text-align:left">
-            <th style="padding:8px 6px">功能</th><th>免费</th><th>月度 ¥12</th><th>季度 ¥30</th><th>年度 ¥98</th><th>永久</th></tr></thead>
+            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥12</th><th>全语言 ¥25/月</th><th>全语言 ¥60/季</th><th>全语言 ¥168/年</th></tr></thead>
           <tbody>
             ${[
-              ["学习语言","英+1","全部","全部","全部","全部"],
-              ["3700+ 本书阅读","✓","✓","✓","✓","✓"],
-              ["点词查义 / 词典","✓","✓","✓","✓","✓"],
-              ["每日整章翻译",FREE_TRANSLATE_DAILY+" 句","不限","不限","不限","不限"],
+              ["学习语言","英 + 1 自选","英 + 1 门","全部 8 门","全部 8 门","全部 8 门"],
+              ["7600+ 本公版书阅读","✓","✓","✓","✓","✓"],
+              ["点词 / 多国语言释义","✓","✓","✓","✓","✓"],
+              ["每日翻译额度","英 120 · 其他 25-40","选定语言不限","不限","不限","不限"],
               ["整书预翻译","—","✓","✓","✓","✓"],
               ["离线整书",FREE_OFFLINE_BOOKS+" 本","不限","不限","不限","不限"],
-              ["预设词表",FREE_PRESET_LIMIT+" 组","全部","全部","全部","全部"],
-              ["句子意群拼装","基础","完整记录","完整记录","完整记录","完整记录"],
+              ["句子拼装","基础","完整记录","完整记录","完整记录","完整记录"],
+              ["学期计划包","—","—","✓","✓","✓"],
+              ["班级共享生词本","—","—","—","5 个名额","20 个名额"],
               ["学习报告导出","—","✓","✓","✓","✓"]
             ].map(r=>`<tr style="border-top:1px solid var(--border)">
               <td style="padding:8px 6px">${r[0]}</td>
@@ -6145,6 +6435,10 @@ function renderPlan(){
       </div>
     </div>`;
   updatePlanBadge();
+}
+async function activateClass(){
+  const v = document.getElementById("classCode")?.value || "lizzread-class-2026";
+  if(await activateCode(v)){ toast("班级版已开通（" + planLabel() + "）"); renderPlan(); }
 }
 async function planActivate(){
   const v = document.getElementById("planCode")?.value;
@@ -6208,6 +6502,10 @@ function renderReport(){
         </div>`).join("") : `<div class="tip">还没有阅读中的书。书城任选一本开始，进度会自动保存。</div>`}
     </div>
     <div class="settings-card">
+      <h3>各语言翻页 / 查词 / 翻译</h3>
+      <div class="statgrid" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr));margin-bottom:10px">
+        ${Object.entries(all.byLang || {}).map(([code, lb]) => `<div class="statbox"><b>${(lb.lookups||0)}</b><span>${escHtml((LANG_INFO[code]||{}).native || code)} 次查词</span></div>`).join("") || '<div class="tip">还没有记录</div>'}
+      </div>
       <h3>各语言学习时长</h3>
       <div class="statgrid" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">
         ${Object.entries(all.byLang || {}).map(([code, lb]) => `<div class="statbox"><b>${Math.round((lb.readMs||0)/60000)}</b><span>${escHtml((LANG_INFO[code]||{}).native || code)} 分钟</span></div>`).join("") || '<div class="tip">还没有记录</div>'}
@@ -6778,6 +7076,16 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", ()=>{
   if(getPref("bg") === "auto") applyPrefs();
 });
 applyPrefs();
+/* URL 分享：?lang=de&show=en 直接进入指定语言书库（可分享、可被搜索引擎收录） */
+(function applyUrlLang(){
+  try{
+    const q = new URLSearchParams(location.search);
+    const lang = (q.get("lang") || "").toLowerCase();
+    const show = (q.get("show") || "").toLowerCase();
+    if(lang && (window.LZ_LANGS || []).some(x => x.code === lang)){ setPref("lang", lang); }
+    if(show && SHOW_LANGS.some(x => x.code === show)){ setPref("show", show); }
+  }catch(e){}
+})();
 /* 初始化语言模式：加载当前学习语言书库并刷新界面文案 */
 (async function bootLanguage(){
   try{

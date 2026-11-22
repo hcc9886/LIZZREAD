@@ -690,6 +690,8 @@ var BOOKS = window.LZ_BOOKS_EN || [];
     added++;
   }
   window.LZ_CATALOG_ADDED = added;
+  /* 记下合并后的英语书库快照，切回英语时用它重建（避免被其他语言覆盖） */
+  window.LZ_BOOKS_EN = BOOKS.slice();
   console.log("书库已合并：" + BOOKS.length + " 本（新增 " + added + " 本公版书）");
 })();
 
@@ -1179,7 +1181,7 @@ async function loadLanguageBooks(code){
   if(_langBooks[code]) return _langBooks[code];
   if(_langLoading[code]) return _langLoading[code];
   _langLoading[code] = new Promise((resolve) => {
-    const finish = () => {
+    const FINISH_MAIN = () => {
       const raw = window['LZ_LANG_' + code.toUpperCase()] || [];
       const bad = /\b(English|Anglais|Inglés|Inglese|Englisch)\b/i;
       const list = raw.filter(b => !bad.test(String(b.t + ' ' + (b.a || '')))).map((b, i) => ({
@@ -1189,32 +1191,33 @@ async function loadLanguageBooks(code){
         d: b.d || '', lang: code, fs: b.fs ? 1 : 0,
         demo: Array.isArray(b.demo) ? b.demo : (b.demo ? [b.demo] : [])
       }));
-      _langBooks[code] = list;
-      resolve(list);
+      return list;
     };
+    const finish = () => { const list = FINISH_MAIN(); _langBooks[code] = list; resolve(list); };
     if(window['LZ_LANG_' + code.toUpperCase()]) return finish();
-    const sc = document.createElement('script');
-    /* 译本：经典著作的日/韩/中等译本（不要求原作是该语言），与本土书目合并 */
-    sc.src = 'data/lang-' + code + '.js?v=2';
-    sc.onload = () => {
-      finish();
-      const tr = document.createElement('script');
-      tr.src = 'data/lang-' + code + '-tr.js?v=1';
-      tr.onload = () => {
-        const extra = (window['LZ_LANG_' + code.toUpperCase() + '_TR'] || []).map((b, i) => ({
-          id: 'T-' + code + '-' + i, t: b.t, zh: b.zh || '', en: b.en || '', a: b.a || '', y: b.y || 0,
-          lv: b.lv || 'B2', g: b.g || 'lit', gb: b.gb || 0, az: '', ko: '', d: b.d || '', lang: code,
-          fs: 0, demo: [], translated: 1
-        }));
-        if(extra.length){
-          _langBooks[code] = _langBooks[code].concat(extra).filter(b => !/\b(English|Anglais|Inglés|Inglese|Englisch)\b/i.test(String(b.t)));
-        }
-      };
-      tr.onerror = () => {};
-      document.head.appendChild(tr);
-    };
-    sc.onerror = () => { _langBooks[code] = []; resolve([]); };
-    document.head.appendChild(sc);
+    /* 先加载译本（经典著作的日/韩/中等译本），再加载本语言书目，两者合并后才算加载完成 */
+    const loadScript = (src) => new Promise((res) => {
+      const sc = document.createElement('script');
+      sc.src = src;
+      sc.onload = () => res(true);
+      sc.onerror = () => res(false);
+      document.head.appendChild(sc);
+    });
+    (async () => {
+      await loadScript('data/lang-' + code + '-tr.js?v=1');
+      await loadScript('data/lang-' + code + '.js?v=2');
+      const extra0 = (window['LZ_LANG_' + code.toUpperCase() + '_TR'] || []).map((b, i) => ({
+        id: 'T-' + code + '-' + i, t: b.t, zh: b.zh || '', en: b.en || '', a: b.a || '', y: b.y || 0,
+        lv: b.lv || 'B2', g: b.g || 'lit', gb: b.gb || 0, az: '', ko: '', d: b.d || '', lang: code,
+        fs: 0, demo: [], translated: 1
+      })).filter(b => !/\b(English|Anglais|Inglés|Inglese|Englisch)\b/i.test(String(b.t)));
+      /* 译本与本土书目合并（同一 GB 号已在部分语言书目里的，保留本土标题），再统一产出 */
+      const list = FINISH_MAIN();
+      const seen = new Set(list.map(b => String(b.gb || "")));
+      const add = extra0.filter(b => !seen.has(String(b.gb || "")));
+      _langBooks[code] = list.concat(add);
+      resolve(_langBooks[code]);
+    })();
   });
   return _langLoading[code];
 }
@@ -1513,9 +1516,9 @@ async function setShowLang(code){
 async function refreshBooksForLang(){
   const code = activeLang();
   if(code === "en"){
-    if(!BOOKS_EN) BOOKS_EN = BOOKS.slice();
-    BOOKS_LANG = BOOKS_EN;
-    BOOKS = BOOKS_EN;
+    if(!_langBooks.en) _langBooks.en = (window.LZ_BOOKS_EN || []).map(b => b);
+    BOOKS_LANG = _langBooks.en;
+    BOOKS = _langBooks.en;
     return;
   }
   const list = await loadLanguageBooks(code);
@@ -2369,6 +2372,7 @@ function bookCard(b, rec){
     <div class="cover ${isImp?"g-imp":"g-"+b.g}">${cov}<span class="ctag">${isImp?"MY IMPORT":escHtml(GENRES()[b.g]||"CLASSICS")}</span></div>
     <div class="meta"><b>${escHtml(dispTitle(b))}</b>${b.zh && b.t && b.zh!==b.t ? `<br><span class="muted" style="font-size:11px">${escHtml(b.t)}</span>`:""}
       ${(b.en && b.lang !== "en") ? `<div class="dim" style="font-size:12px;color:var(--muted);margin-top:2px">${escHtml(b.en)}</div>` : ""}
+      ${b.translated ? `<div class="lang-badge" style="margin:2px 0 0">译本</div>` : ""}
       <br><span class="g">${isImp?L("genres.imp","我的导入"):escHtml(GENRES()[b.g]||"")}</span>
       ${rec?`<span class="badge">推荐</span>`:""}
       <br>${isImp?"✦ 可阅读":(hasFull?"✦ 可读全文":(GUIDES[b.id]?"✦ 精读导读":(SAMPLES[b.id]?"✦ 可试读":"")))}</div>
@@ -2428,6 +2432,7 @@ async function openBook(id){
         <h2>${escHtml(b.t)}${b.zh && b.zh!==b.t ? " · "+escHtml(b.zh) : ""}</h2>
         <div class="by">${escHtml(dispAuthor(b))} · ${escHtml(dispYear(b))}</div>
         ${(b.en && b.lang !== "en") ? `<div class="dim" style="font-size:13px;color:var(--muted);margin-top:2px">${escHtml(b.en)}</div>` : ""}
+        ${b.translated ? `<div class="lang-badge">译本 · 原作非${escHtml((LANG_INFO[b.lang]||{}).native || "")}</div>` : ""}
         <div class="tags">
           <span class="tag">难度 ${b.lv}</span>
           <span class="tag">${GENRES()[b.g]||"经典"}</span>
@@ -6497,6 +6502,10 @@ function renderReport(){
         </div>`).join("") : `<div class="tip">还没有阅读中的书。书城任选一本开始，进度会自动保存。</div>`}
     </div>
     <div class="settings-card">
+      <h3>各语言翻页 / 查词 / 翻译</h3>
+      <div class="statgrid" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr));margin-bottom:10px">
+        ${Object.entries(all.byLang || {}).map(([code, lb]) => `<div class="statbox"><b>${(lb.lookups||0)}</b><span>${escHtml((LANG_INFO[code]||{}).native || code)} 次查词</span></div>`).join("") || '<div class="tip">还没有记录</div>'}
+      </div>
       <h3>各语言学习时长</h3>
       <div class="statgrid" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">
         ${Object.entries(all.byLang || {}).map(([code, lb]) => `<div class="statbox"><b>${Math.round((lb.readMs||0)/60000)}</b><span>${escHtml((LANG_INFO[code]||{}).native || code)} 分钟</span></div>`).join("") || '<div class="tip">还没有记录</div>'}
