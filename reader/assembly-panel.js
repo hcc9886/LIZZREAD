@@ -531,6 +531,8 @@
   function next(){
     if(!state) return;
     const bookId = state.sentence.book_id;
+    /* 没有书内句子包（导入书/离线壳）时，用当前句所在章节的相邻句作「下一句」 */
+    if(!bookId || typeof BOOKS_SENT_POOL !== 'function') return;
     if(AC && bookId){
       AC.loadBookSentences(bookId).then(arr => {
         const pool = arr.filter(s => s.text && s.text.length > 18 && /[A-Za-z]{4,}/.test(s.text));

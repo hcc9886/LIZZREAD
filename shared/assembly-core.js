@@ -324,6 +324,7 @@
 
   function loadBookSentences(bookId){
     if(!bookId) return Promise.resolve([]);
+    if(!isWebScheme()) return Promise.resolve([]);
     if(_packCache[bookId]) return Promise.resolve(_packCache[bookId]);
     const url = DATA_ROOT + bookId + '.json';
     const read = () => fetch(url, {cache:'force-cache'})
@@ -369,8 +370,20 @@
   }
 
   /* ---------- 8. 初始化 + 打开拼装 ---------- */
+  function isWebScheme(){
+    return typeof location !== 'undefined' && location.protocol && /^https?:$/.test(location.protocol);
+  }
   function initReaderAssembly(){
+    if(!isWebScheme()){
+      global.LZAssembly = global.LZAssembly || {};
+      global.LZAssembly.books = global.LZAssembly.books || [];
+      return Promise.resolve(global.LZAssembly);
+    }
     /* 首屏不加载 4MB index：只用 books.json 判断数据是否可用 */
+    if(typeof location !== 'undefined' && location.protocol && !/^https?:$/.test(location.protocol)){
+      global.LZAssembly = global.LZAssembly || {}; global.LZAssembly.books = [];
+      return Promise.resolve([]);
+    }
     return fetch(DATA_ROOT + 'books.json?v=2', {cache:'force-cache'})
       .then(r => r.ok ? r.json() : [])
       .catch(() => [])

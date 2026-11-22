@@ -20,13 +20,13 @@
 <script src="data/i18n.js?v=2"></script>
 <script src="data/lang-recs.js?v=1"></script>
 <script src="dict.js?v=7" defer></script>
-<link rel="manifest" href="manifest.json">
+<script>if(/^https?:$/.test(location.protocol)){document.write('<link rel="manifest" href="manifest.json">');}</script>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <!-- 句子拼装模块 -->
-<script src="shared/assembly-core.js?v=13" defer></script>
-<script src="shared/importers.js?v=13" defer></script>
-<script src="reader/assembly-panel.js?v=13" defer></script>
+<script src="shared/assembly-core.js?v=14" defer></script>
+<script src="shared/importers.js?v=14" defer></script>
+<script src="reader/assembly-panel.js?v=14" defer></script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 /* ---------- 全局变量（默认 纯白 主题） ---------- */
@@ -1684,6 +1684,7 @@ async function renderCompare(){
     if(code === activeLang()) text = src;
     else {
       try{
+        if(!hasLocalAPI) return {};
         const r = await fetch("./api/translate", {method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({texts:[src], from: activeLang(), to: code})});
         const j = await r.json();
@@ -2876,6 +2877,7 @@ async function loadLanguageText(b, onProgress){
     for(let attempt = 0; attempt < 3; attempt++){
       try{
         if(attempt) await new Promise(r => setTimeout(r, 800 * attempt));
+        if(!hasLocalAPI) throw new Error("离线壳没有青空文库代理，请联网后在网页版阅读");
         const r = await fetch("./api/az/" + splitAzPath(b.az), {signal: AbortSignal.timeout(180000)});
         if(r.ok){
           const t = await r.text();
@@ -3675,6 +3677,7 @@ async function fillMultiGloss(word){
   if(_multiGlossCache[key]) return render(_multiGlossCache[key]);
   try{
     const tos = SHOW_LANGS.map(x => x.code).filter(c => c !== lc);
+    if(!hasLocalAPI) return;
     const r = await fetch("./api/word?lang=" + encodeURIComponent(lc) + "&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
     if(r.ok){
       const j = await r.json();
@@ -4544,6 +4547,7 @@ async function zhEntry(word){
 async function zhMultiGloss(word){
   const tos = ["zh"].concat(SHOW_LANGS.map(x => x.code).filter(c => c !== "zh"));
   try{
+    if(!hasLocalAPI) return null;
     const r = await fetch("./api/word?lang=zh&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
     if(r.ok){ const j = await r.json(); if(j && j.gloss) return j.gloss; }
   }catch(e){}
@@ -4552,6 +4556,7 @@ async function zhMultiGloss(word){
 /* 是否能用本机服务端（网页版 yes，打包成 App 后没有） */
 let hasLocalAPI = /^https?:/.test(location.protocol);
 async function probeLocalAPI(){
+  if(!/^https?:/.test(location.protocol)){ hasLocalAPI = false; return false; }
   try{
     const r = await fetch("./api/health", {signal: AbortSignal.timeout(2500)});
     hasLocalAPI = r.ok;
@@ -4566,6 +4571,7 @@ async function fetchWordServer(word, lang){
   if(!/^https?:/.test(location.protocol)) return null;
   if(typeof hasLocalAPI !== "undefined" && !hasLocalAPI) return null;
   try{
+    if(!hasLocalAPI) return null;
     const r = await fetch("./api/word?lang=" + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(glossLang()), {signal: AbortSignal.timeout(8000)});
     if(!r.ok) return null;
     const j = await r.json();
@@ -5310,8 +5316,10 @@ function asmSaveStats(st){ try{ localStorage.setItem(ASM_STATS_KEY, JSON.stringi
 async function loadAsmBooks(){
   if(asmBooks) return asmBooks;
   try{
-    const r = await fetch("./sentences/books.json?v=2", {cache:"force-cache"});
-    if(r.ok) asmBooks = await r.json();
+    if(/^https?:/.test(location.protocol)){
+      const r = await fetch("./sentences/books.json?v=2", {cache:"force-cache"});
+      if(r.ok) asmBooks = await r.json();
+    }
   }catch(e){}
   if(!asmBooks){
     /* 离线兜底：直接列内置书 */
@@ -5360,7 +5368,8 @@ function renderAssembly(){
       <div id="asmLogs" class="tip">加载中…</div>
     </div>
     <p class="tip">数据来自 ${(asmBooks||[]).length || "280"}+ 本公版书的 13 万句预制句子包；新书/导入书可在阅读器里点「🧩 拆解本句」即时生成意群。</p>`;
-  loadAsmBooks().then(list=>{
+  (loadAsmBooks() || Promise.resolve([])).then(raw => {
+    const list = Array.isArray(raw) ? raw : [];
     const sel = document.getElementById("asmBook");
     if(!sel) return;
     const sorted = list.map(x=>{
@@ -5371,7 +5380,8 @@ function renderAssembly(){
     sel.innerHTML = `<option value="">— 从 ${list.length} 本有句子包的书里选 —</option>` +
       sorted.map(o=>`<option value="${o.x.bookId}">${o.title}（${o.n} 句）</option>`).join("");
     if(asmState && asmState.bookId) sel.value = asmState.bookId;
-    if(!asmState) asmNewRandom();
+    if(!asmState && list.length) asmNewRandom();
+    if(!list.length && stage) stage.innerHTML = `<div class="empty">当前为离线壳/无句子数据模式：从书城打开一本书后点「🧩 拆解本句」即可练习。</div>`;
   });
   if(asmState) asmRenderStage();
   loadAsmLogs();
@@ -5379,7 +5389,9 @@ function renderAssembly(){
 async function loadAsmLogs(){
   const el = document.getElementById("asmLogs");
   if(!el) return;
-  const logs = await (window.AssemblyCore && AssemblyCore.recentLogs ? AssemblyCore.recentLogs(12) : Promise.resolve([]));
+  let logs = [];
+  try{ logs = (window.AssemblyCore && AssemblyCore.recentLogs) ? (await AssemblyCore.recentLogs(12)) || [] : []; }catch(e){ logs = []; }
+  if(!Array.isArray(logs)) logs = [];
   if(!logs.length){ el.innerHTML = "还没有记录。选一句开始拼装，提交后会自动记在这里（本机 IndexedDB）。"; return; }
   const resMap = {EXACT:"✅ 正确",SPELLING:"📝 拼写",ORDER_ERROR:"🔀 顺序",MIXED:"⚠️ 混合",OTHER:"❌ 其他"};
   el.innerHTML = logs.map(l => `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border);font-size:12px">
@@ -7287,6 +7299,14 @@ async function openAssemblyForCurrentWord(){
     word: sheetWord
   };
   window.AssemblyPanel.openAssembly(best, sheetWord, ctx);
+}
+/* 是否存在本书的预制句子包（离线壳/导入书没有） */
+function BOOKS_SENT_POOL(bookId){
+  try{
+    if(!/^https?:/.test(location.protocol)) return false;
+    if(!window.LZAssembly || !Array.isArray(window.LZAssembly.books) || !window.LZAssembly.books.length) return false;
+    return window.LZAssembly.books.some(b => b && b.bookId === bookId);
+  }catch(e){ return false; }
 }
 /* 运行时动态构建句子对象（无需预制 JSON） */
 function buildSentenceFromReader(bookId, sentIdx, word){
