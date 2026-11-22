@@ -3,17 +3,21 @@
   "appName": "LIZZREAD",
   "webDir": "www",
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "backgroundColor": "#F6F7F5"
   },
   "ios": {
     "contentInset": "always",
     "allowsInlineMediaPlayback": true,
-    "backgroundColor": "#F6F7F5"
+    "backgroundColor": "#F6F7F5",
+    "limitsNavigationsToAppBoundDomains": false
   },
   "server": {
     "androidScheme": "https",
-    "iosScheme": "https"
+    "iosScheme": "https",
+    "allowNavigation": [
+      "*"
+    ]
   },
   "plugins": {
     "LocalNotifications": {

@@ -1685,7 +1685,7 @@ async function renderCompare(){
     else {
       try{
         if(!hasLocalAPI) return {};
-        const r = await fetch("./api/translate", {method:"POST", headers:{"Content-Type":"application/json"},
+        const r = await fetch(apiUrl("api/translate"), {method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({texts:[src], from: activeLang(), to: code})});
         const j = await r.json();
         text = (j.translations || {})[src] || "";
@@ -2773,7 +2773,7 @@ async function loadBookText(b, onProgress){
     let lastErr = null;
     if(/^https?:/.test(location.protocol)){
       try{
-        const t = await fetchTextProgress("./api/pg/" + gb, onProgress, 150000);
+        const t = await fetchTextProgress(apiUrl("api/pg/") + gb, onProgress, 150000);
         if(t && t.length > 2000 && !t.startsWith('{"error"')){
           try{ await idbPut(gb, t, t.length, b.t); }catch(e){}
           return t;
@@ -2878,7 +2878,7 @@ async function loadLanguageText(b, onProgress){
       try{
         if(attempt) await new Promise(r => setTimeout(r, 800 * attempt));
         if(!hasLocalAPI) throw new Error("离线壳没有青空文库代理，请联网后在网页版阅读");
-        const r = await fetch("./api/az/" + splitAzPath(b.az), {signal: AbortSignal.timeout(180000)});
+        const r = await fetch(apiUrl("api/az/") + splitAzPath(b.az), {signal: AbortSignal.timeout(180000)});
         if(r.ok){
           const t = await r.text();
           if(t && t.length > 400 && !/^\s*\{/.test(t)) return t;
@@ -3678,7 +3678,7 @@ async function fillMultiGloss(word){
   try{
     const tos = SHOW_LANGS.map(x => x.code).filter(c => c !== lc);
     if(!hasLocalAPI) return;
-    const r = await fetch("./api/word?lang=" + encodeURIComponent(lc) + "&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
+    const r = await fetch(apiUrl("api/word?lang=") + encodeURIComponent(lc) + "&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
     if(r.ok){
       const j = await r.json();
       if(j && j.gloss){ _multiGlossCache[key] = j.gloss; render(j.gloss); }
@@ -3917,7 +3917,7 @@ function _stripBadTrans(t){
 /* 本机翻译代理：浏览器直连失败时的同源兜底（服务端用 MyMemory） */
 async function apiTranslateTexts(texts){
   try{
-    const r = await fetch("./api/translate", {
+    const r = await fetch(apiUrl("api/translate"), {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({texts: texts.map(t=>_normText(t)).filter(Boolean).slice(0,40), from: activeLang(), to: showLang()})
@@ -4548,21 +4548,56 @@ async function zhMultiGloss(word){
   const tos = ["zh"].concat(SHOW_LANGS.map(x => x.code).filter(c => c !== "zh"));
   try{
     if(!hasLocalAPI) return null;
-    const r = await fetch("./api/word?lang=zh&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
+    const r = await fetch(apiUrl("api/word?lang=zh&word=") + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
     if(r.ok){ const j = await r.json(); if(j && j.gloss) return j.gloss; }
   }catch(e){}
   return null;
 }
-/* 是否能用本机服务端（网页版 yes，打包成 App 后没有） */
-let hasLocalAPI = /^https?:/.test(location.protocol);
-async function probeLocalAPI(){
-  if(!/^https?:/.test(location.protocol)){ hasLocalAPI = false; return false; }
+/* Capacitor 打包版：把 /api 请求交给原生层转发（CapacitorHttp / 自定义 WebViewClient），避免 CORS 与混合内容限制 */
+(function installNativeBridge(){
+  const native = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+    || location.protocol === "capacitor:" || location.protocol === "ionic:";
+  if(!native) return;
+  window.__LZ_NATIVE = true;
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    let url = typeof input === "string" ? input : ((input && input.url) || "");
+    if(!/^(\.\/|\.\.\/)?api\//.test(url)) return origFetch(input, init);
+    let base = "";
+    try{ base = localStorage.getItem("lz_api_base") || ""; }catch(e){}
+    if(!base) return origFetch(input, init);          /* 未配置后端：走浏览器直连机翻 */
+    url = base.replace(/\/$/, "") + "/" + url.replace(/^\.?\//, "");
+    return origFetch(url, init);
+  };
+})();
+/* 后端地址：网页版用同源；打包成 App 时用设置里的「服务端地址」，没有则走浏览器直连机翻 */
+const API_BASE = (function(){
   try{
-    const r = await fetch("./api/health", {signal: AbortSignal.timeout(2500)});
+    if(/^https?:$/.test(location.protocol)) return "./";
+    const saved = localStorage.getItem("lz_api_base");
+    return saved ? (saved.replace(/\/$/, "") + "/") : "";
+  }catch(e){ return "./"; }
+})();
+function apiUrl(path){ return (API_BASE || "") + path.replace(/^\.?\//, ""); }
+let hasLocalAPI = false;   /* 由 probeLocalAPI() 决定 */
+async function probeLocalAPI(){
+  try{
+    const r = await fetch(apiUrl("api/health"), {signal: AbortSignal.timeout(2500)});
     hasLocalAPI = r.ok;
   }catch(e){ hasLocalAPI = false; }
-  if(!hasLocalAPI){ console.info("[LIZZREAD] 离线壳模式：词典与翻译走浏览器直连"); }
+  if(!hasLocalAPI){
+    console.info("[LIZZREAD] 未连接后端：词典与翻译走浏览器直连（可在设置里填写服务端地址）");
+  }
   return hasLocalAPI;
+}
+/* 设置里保存服务端地址（打包成 App 后指向已部署的后端） */
+function setApiBase(url){
+  try{
+    const v = String(url || "").trim().replace(/\/$/, "");
+    if(v){ localStorage.setItem("lz_api_base", v); } else { localStorage.removeItem("lz_api_base"); }
+  }catch(e){}
+  toast("已保存服务端地址，正在重新连接…");
+  setTimeout(() => location.reload(), 700);
 }
 /* 服务端多语言词典（Bing 代理），带本地 IndexedDB 缓存 */
 async function fetchWordServer(word, lang){
@@ -4572,7 +4607,7 @@ async function fetchWordServer(word, lang){
   if(typeof hasLocalAPI !== "undefined" && !hasLocalAPI) return null;
   try{
     if(!hasLocalAPI) return null;
-    const r = await fetch("./api/word?lang=" + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(glossLang()), {signal: AbortSignal.timeout(8000)});
+    const r = await fetch(apiUrl("api/word?lang=") + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(glossLang()), {signal: AbortSignal.timeout(8000)});
     if(!r.ok) return null;
     const j = await r.json();
     return j && j.gloss && j.gloss.length ? j : null;
@@ -5807,6 +5842,41 @@ function renderSettings(){
       <div class="pref-row"><label>教程</label>
         <button class="btn ghost small" onclick="go('guide')">🎓 打开新手教程</button>
         <button class="btn ghost small" onclick="showOnboarding(true)">▶ 重播引导</button></div>
+    </div>
+    <div class="settings-card">
+      <h3>🌉 释义语言（母语桥接）</h3>
+      <div class="sub">点词时优先显示哪门语言的释义：学中文的日本学生可只看日中，学英语的中国学生看英中。</div>
+      <div class="lang-row">
+        <button class="chip ${(getPref("gloss")||"auto")==="auto"?"on":""}" onclick="setGlossLang('auto')">跟随展示语言</button>
+        ${SHOW_LANGS.map(x=>`<button class="chip ${(getPref("gloss")||"auto")===x.code?"on":""}" onclick="setGlossLang('${x.code}')">${x.name}</button>`).join("")}
+      </div>
+    </div>
+    <div class="settings-card">
+      <h3>🔌 后端连接</h3>
+      <div class="sub">网页版自动用本机服务；打包成 App 后可指向已部署的服务端（词典代理 / 青空文库 / 激活码）。留空则用浏览器直连机翻。</div>
+      <div class="share-link-box">
+        <input class="code-input" id="apiBaseInput" placeholder="https://你的后端域名" value="${escAttr(getPref("apibase")||"")}">
+        <button class="btn small" onclick="setApiBase(document.getElementById('apiBaseInput').value)">保存并重连</button>
+      </div>
+      <div class="tip" style="margin-top:6px">当前状态：${hasLocalAPI ? "✅ 已连接（" + escHtml(API_BASE || "./") + "）" : "⚪ 未连接后端，走浏览器直连机翻"}</div>
+    </div>
+    <div class="settings-card">
+      <h3>📶 离线</h3>
+      <div class="sub">已缓存的书、译文、句子包，断网后仍可阅读与复习。</div>
+      <div class="lang-row">
+        <button class="btn ghost small" onclick="downloadAll()">⬇️ 离线下载常用书</button>
+        <button class="btn ghost small" onclick="go('library')">去书城挑书</button>
+        <button class="btn ghost small" onclick="go('sreview')">去复习生词</button>
+      </div>
+    </div>
+    <div class="settings-card">
+      <h3>ℹ️ 关于 LIZZREAD</h3>
+      <div class="sub">版本 2.0 · 8 门语言经典阅读器 · 书源 Project Gutenberg / 青空文库（均为公版）</div>
+      <div class="lang-row">
+        <a class="btn ghost small" href="privacy.html" target="_blank" rel="noopener">隐私政策</a>
+        <a class="btn ghost small" href="https://www.gutenberg.org" target="_blank" rel="noopener">书籍来源</a>
+        <button class="btn ghost small" onclick="copyText('LIZZREAD')">复制应用名</button>
+      </div>
     </div>`;
   refreshCacheSize();
 }
@@ -6042,7 +6112,7 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("pagehide", () => { readerTimerStop(); saveProgressNow(); });
 /* 匿名使用计数（只上报事件名，不含任何个人数据） */
 function metric(name){
-  try{ if(/^https?:/.test(location.protocol)) navigator.sendBeacon("./api/metrics?n=" + encodeURIComponent(activeLang() + "_" + name)); }catch(e){}
+  try{ if(/^https?:/.test(location.protocol)) navigator.sendBeacon(apiUrl("api/metrics?n=") + encodeURIComponent(activeLang() + "_" + name)); }catch(e){}
 }
 /* KPI 看板：本机的学习事件汇总（运营用） */
 function openKpi(){
@@ -6241,7 +6311,7 @@ async function activateCode(code, silent){
   let serverOk = false, serverMsg = "", serverExpires = 0, serverPlan = def.plan;
   if(/^https?:/.test(location.protocol)){
     try{
-      const r = await fetch("./api/redeem", {
+      const r = await fetch(apiUrl("api/redeem"), {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({code:c, device:did})
@@ -6397,9 +6467,34 @@ function showCheckoutSheet(plan){
     </div>`;
   el.classList.add("on");
 }
+const COMMERCE = (function(){
+  try{ return localStorage.getItem("lz_commerce") || "auto"; }catch(e){ return "auto"; }
+})();
+/* 商店版：打包壳内默认隐藏外部支付与激活码（合规 3.1.1）；网页版不受影响 */
+function isStoreBuild(){
+  if(COMMERCE === "web") return false;
+  if(COMMERCE === "store") return true;
+  return window.__LZ_NATIVE === true;
+}
 function selectCheckout(plan){
   const def = PLAN_DEF[plan];
   if(!def) return;
+  if(isStoreBuild()){
+    /* App Store 合规：App 内不出现任何外部支付 / 激活码入口 */
+    const el = ensurePaywall();
+    el.innerHTML = `<div class="box">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font:700 20px var(--serif)">${def.name}</div>
+        <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">
+        App 内购买正在接入中。当前版本你可以继续使用免费额度；如需立即开通，请到网页版（${escHtml(location.hostname)}）用内测码激活，激活后本机同步生效。
+      </p>
+      <button class="btn ghost small" onclick="closePaywall()">返回</button>
+    </div>`;
+    el.classList.add("on");
+    return;
+  }
   if(def.scope === "one"){
     /* 单语言会员：先选一门语言 */
     const el = ensurePaywall();
@@ -6539,7 +6634,7 @@ function renderPlan(){
         <button class="btn ghost small" onclick="go('report')">📊 看班级学习看板</button>
       </div>
     </div>
-    <div class="settings-card">
+    ${isStoreBuild() ? "" : `<div class="settings-card">
       <h3>激活码开通（内测）</h3>
       <div class="sub">正式支付通道接入前，用内测码开通；权益保存在本机账号，清空浏览器数据会丢失权益。</div>
       <div class="share-link-box">
@@ -6550,7 +6645,7 @@ function renderPlan(){
         <b>价格</b>：单语言 ¥12/月；全语言 ¥25/月、¥60/季、¥168/年（含税）。<br>
         <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
-    </div>
+    </div>`}
     <div class="settings-card">
       <h3>权益对照</h3>
       <div style="overflow-x:auto">
