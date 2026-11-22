@@ -151,6 +151,10 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .rd-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
 .bgdot{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0}
 .bgdot.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+/* 阅读器底部 sticky 进度条 */
+.rd-foot{position:sticky;bottom:0;z-index:30;background:color-mix(in srgb,var(--surface) 95%,transparent);backdrop-filter:blur(6px);border-top:1px solid var(--border);padding:8px 14px;margin-top:18px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.rd-foot .prog{flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.rd-foot .prog i{display:block;height:100%;background:var(--brand);transition:width .2s}
 .sent{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border);
   border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;transition:background .2s}
 .sent .en{font:17px/1.7 var(--serif)}
@@ -2128,8 +2132,15 @@ function openReader(id){
         : "点词查义 · 划选短语整段翻译 · 「机翻本章」自动翻译全章后随对照开关显示。"}</p>`
       : `<p class="tip">点击任意英文单词：自动弹出「本句语境义 + 平时常用义 + 英英释义」，可朗读、标记颜色、收入生词本。</p>`}
       ${html}
+      ${isFull ? `<div class="rd-foot" id="rdFoot">
+        <span id="rdFootLeft">—</span>
+        <div class="prog"><i id="rdFootBar" style="width:0%"></i></div>
+        <span id="rdFootRight">Space 翻页 · j/k 翻行 · ⭐ 金句</span>
+      </div>` : ""}
     </div>`;
   go("reader");
+  /* 异步更新进度条 */
+  if(isFull) setTimeout(updateRdFoot, 100);
 }
 /* 逐句 / 整段 排版切换 */
 function toggleMode(){
@@ -2161,8 +2172,7 @@ function wordClick(e){
   if(!el) return;
   sheetWord = el.dataset.w;
   sheetSent = Number(el.closest(".sent").dataset.si);
-  lastSent = getSents(curBook.id)[sheetSent];  /* 保存当前句子 */
-  /* 根据排版模式取所在文本：逐句=单句；整段=所在段落（3 句连读） */
+  lastSent = getSents(curBook.id)[sheetSent];
   const all = getSents(curBook.id);
   let ctxEn, localZh;
   if(store.mode === "para"){
@@ -2178,7 +2188,24 @@ function wordClick(e){
   lastCtxZh = localZh;
   const low = sheetWord.toLowerCase().replace(/[^a-z'-]/g,"");
   const d = dictEntry(low);
-  /* M2：记录查词次数并自动升级熟练度（跨阈值时刷新正文高亮） */
+  /* 专有名词跳过：首字母大写 + dict 未命中 → 直接 mtFetch 不查词典 */
+  const isProper = /^[A-Z][a-z]+$/.test(sheetWord) && !d;
+  if(isProper){
+    /* 首字母大写且 dict 未命中 → 不 recordLookup，直接 mtFetch */
+    showSheet(sheetWord);
+    const zhEl = document.getElementById("shDef");
+    zhEl.textContent = "（专有名词/人名/地名 → 机翻中…）";
+    mtFetch(sheetWord).then(mt=>{
+      if(mt){ zhEl.textContent = mt; _zhCache[low] = mt; _saveZhCache(); }
+      else zhEl.textContent = "（专有名词未识别）";
+    }).catch(()=>{ zhEl.textContent = "（专有名词未识别）"; });
+    document.getElementById("shAdd").disabled = true;
+    document.getElementById("shAdd").textContent = "（专有名词未加入）";
+    document.getElementById("shMore").href = "https://dict.youdao.com/w/"+encodeURIComponent(low);
+    document.getElementById("sheet").style.display = "block";
+    document.getElementById("sheet").classList.add("on");
+    return;
+  }
   const stBefore = (wordStates()[stemOf(low)]||{}).st;
   const fsNow = recordLookup(low);
   if(stBefore !== undefined && fsNow.st !== stBefore) openReader(curBook.id);
@@ -3047,7 +3074,37 @@ window.addEventListener("scroll", ()=>{
   if(!fullMode || document.getElementById("view-reader").classList.contains("on") === false) return;
   clearTimeout(_pgSaveTimer);
   _pgSaveTimer = setTimeout(saveProgressNow, 300);
+  updateRdFoot();
 }, {passive:true});
+/* 阅读器底部 sticky 进度条 */
+function updateRdFoot(){
+  const bar = document.getElementById("rdFootBar");
+  const left = document.getElementById("rdFootLeft");
+  if(!bar || !left) return;
+  if(!fullMode || !fullCache[curBook.id]) return;
+  const total = fullCache[curBook.id].parsed.sents.length;
+  const sent = fullMode.sent;
+  const pct = total > 10 ? Math.min(100, Math.round(sent/total*100)) : 0;
+  bar.style.width = pct + "%";
+  const chap = fullCache[curBook.id].chapters[fullMode.chap];
+  left.textContent = `📖 第 ${fullMode.chap+1}/${fullCache[curBook.id].chapters.length} 章 · ${chap?t.t||"":"?"} · 已读 ${pct}%`;
+}
+/* 每日打卡：每天打开书城 + 查 3 个词 → 连签 +1 */
+function dailyStreak(){
+  const KEY = "lz_streak";
+  let s = { date:"", count:0, streak:0 };
+  try{ s = JSON.parse(localStorage.getItem(KEY)||"null") || s; }catch(e){}
+  const today = new Date().toISOString().slice(0,10);
+  if(s.date === today) return;  /* 今天已打卡 */
+  /* 连续：昨天也打过 */
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if(s.date === yesterday){ s.streak++; } else { s.streak = 1; }
+  s.date = today;
+  localStorage.setItem(KEY, JSON.stringify(s));
+  /* 首次打开书城时弹出 */
+  const show = document.getElementById("streakShow");
+  if(show){ show.textContent = "🔥 连签 " + s.streak + " 天"; show.style.display = "inline"; }
+}
 window.addEventListener("beforeunload", saveProgressNow);
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") saveProgressNow(); });
 
