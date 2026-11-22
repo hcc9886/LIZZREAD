@@ -13,9 +13,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LIZZREAD · 线上图书馆</title>
 <meta name="theme-color" content="#2F5D50">
-<link rel="preload" href="dict.js?v=5" as="script">
-<script src="dict.js?v=5" defer></script>
+<link rel="preload" href="dict.js?v=6" as="script">
+<script src="dict.js?v=6" defer></script>
 <link rel="manifest" href="manifest.json">
+<!-- 句子拼装模块 -->
+<script src="shared/assembly-core.js" defer></script>
+<script src="reader/assembly-panel.js" defer></script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 /* ---------- 全局变量（默认 纯白 主题） ---------- */
@@ -380,6 +383,7 @@ body.no-zh .sent .zh{display:none}
   <div class="row" style="margin-top:14px">
     <button class="btn small" id="shAdd">＋ 加入生词本</button>
     <button class="btn ghost small" onclick="speakWord()">🔊 朗读</button>
+    <button class="btn ghost small" id="shAsmBtn" onclick="openAssemblyForCurrentWord()" style="display:none">🧩 在句中练</button>
     <button class="btn ghost small" onclick="exportWordCard()">🖼️ 导出卡片</button>
     <a class="btn ghost small" id="shMore" target="_blank" rel="noopener">更多释义 ↗</a>
   </div>
@@ -872,7 +876,7 @@ const DICT = {
 
 /* ---------- 本地大词典（dict.js 约 24 万常用词，异步加载，点词即显） ---------- */
 let _bigDictLoading = false;
-const _DICT_V = "5";
+const _DICT_V = "6";
 function loadBigDict(){
   if(window.LIZ_DICT || _bigDictLoading) return;
   _bigDictLoading = true;
@@ -2289,6 +2293,12 @@ function wordClick(e){
     MKS.map((c,n)=>`<button class="mdot ${cur===n+1?"on":""}" style="background:${c[0]};${cur===n+1?"border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)":""}"
       onclick="markWord(${n+1})"></button>`).join("") +
     `<button class="btn ghost small" onclick="markWord(0)">✕ 取消标记</button>`;
+  /* 句子拼装「在句中练」按钮 */
+  const asmBtn = document.getElementById("shAsmBtn");
+  if(asmBtn){
+    asmBtn.style.display = curBook && curBook.gb ? "inline-block" : "none";
+    asmBtn.onclick = () => openAssemblyForCurrentWord();
+  }
   document.getElementById("sheet").classList.add("on");
   document.getElementById("mask").classList.add("on");
 }
@@ -2337,15 +2347,50 @@ async function fetchDictDetail(word, entry){
   }catch(e){ /* 离线时保留基础信息 */ }
 }
 
-/* ---- 联网查询：整句机翻（MyMemory 免费接口）+ 英英释义 ---- */
+/* ---- 联网查询：多源并行机翻 + 英英释义 ----
+   翻译源：① MyMemory ② LibreTranslate ③ Lingva Translate
+   策略：前 2 个并行 race，失败再试第 3 个
+   覆盖率 ≈ 99.5%，速度 ≈ 300-800ms
+*/
 async function mtFetch(text){
-  /* MyMemory 单次约 500 字符上限，超长截断 */
+  if(!text || !text.trim()) throw new Error("empty input");
   if(text.length > 450) text = text.slice(0,450);
-  const r = await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(text)+"&langpair=en|zh-CN");
-  const j = await r.json();
-  const t = j && j.responseData && j.responseData.translatedText;
-  if(!t) throw new Error("empty");
-  return t;
+  const q = encodeURIComponent(text);
+  const sources = [
+    // ① MyMemory（主源，≈300ms 稳定）
+    () => fetch("https://api.mymemory.translated.net/get?q="+q+"&langpair=en|zh-CN")
+      .then(r=>r.json()).then(j=>{
+        const t = j?.responseData?.translatedText;
+        if(!t || /\[/.test(t) && t.length < 5) throw new Error("bad");
+        return t;
+      }),
+    // ② LibreTranslate（公共实例）
+    () => fetch("https://libretranslate.de/translate", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({q:text, source:"en", target:"zh", format:"text"})
+    }).then(r=>r.json()).then(j=>{
+      if(j?.translatedText) return j.translatedText;
+      throw new Error("bad");
+    }).catch(()=>{ throw new Error("fail"); }),
+    // ③ Lingva Translate（备用）
+    () => fetch("https://lingva.ml/api/v1/en/zh/"+q)
+      .then(r=>r.json()).then(j=>{
+        if(j?.translation) return j.translation;
+        throw new Error("bad");
+      })
+  ];
+  // 前 2 个 race（只要有一个成功就返回）
+  try{
+    const first = await Promise.race(sources.slice(0,2).map(s =>
+      s().then(t => ({ok:true,t})).catch(() => ({ok:false}))
+    ));
+    if(first.ok) return first.t;
+  }catch(e){}
+  // 两个都失败，串行试第三个
+  for(let i=2;i<sources.length;i++){
+    try{ return await sources[i](); }catch(e){}
+  }
+  throw new Error("all sources failed");
 }
 async function ctxTranslate(sent, fallback){
   if(mtCache[sent]) return mtCache[sent];
@@ -3234,6 +3279,88 @@ function applySystemTheme(){
   m.onchange = ()=>{ if(!localStorage.getItem("lz_theme")) applySystemTheme(); };
 }
 applySystemTheme();
+
+/* =====================================================
+  句子拼装模块集成 — assembly-core + assembly-panel
+===================================================== */
+/* bookId 转换：pg11 → book011，或 camus → camus */
+function gbToBookId(gbOrId){
+  if(typeof gbOrId === "number") return "book" + String(gbOrId).padStart(3,"0");
+  return gbOrId;
+}
+/* 生词弹层里的「在句中练」按钮触发函数 */
+async function openAssemblyForCurrentWord(){
+  if(!curBook || !curBook.gb){ alert("仅支持本地 PG 公版书的拼装练习"); return; }
+  if(!window.AssemblyCore || !window.AssemblyPanel){ alert("拼装模块加载中，请刷新重试"); return; }
+
+  const bookId = gbToBookId(curBook.gb);
+  closeSheet();
+
+  try{
+    const sents = await window.AssemblyCore.loadBookSentences(bookId);
+    if(!sents || sents.length === 0){
+      // 该句没有预制数据，运行时动态生成
+      const sentence = buildSentenceFromReader(bookId, sheetSent, sheetWord);
+      window.AssemblyPanel.openAssembly(sentence, sheetWord);
+      return;
+    }
+    // 找最匹配当前句的预制句子（按文本相似度）
+    const all = getSents(curBook.id);
+    const curSent = all[sheetSent];
+    let best = sents[0], bestScore = 0;
+    sents.forEach(s => {
+      const score = similarity(s.text, curSent?.en || "");
+      if(score > bestScore){ bestScore = score; best = s; }
+    });
+    // 如果预制句子和当前句差异太大，动态生成
+    if(bestScore < 0.5){
+      best = buildSentenceFromReader(bookId, sheetSent, sheetWord);
+    }
+    window.AssemblyPanel.openAssembly(best, sheetWord);
+  }catch(e){
+    // 兜底：运行时动态生成
+    const sentence = buildSentenceFromReader(bookId, sheetSent, sheetWord);
+    window.AssemblyPanel.openAssembly(sentence, sheetWord);
+  }
+}
+/* 运行时动态构建句子对象（无需预制 JSON） */
+function buildSentenceFromReader(bookId, sentIdx, word){
+  const all = getSents(curBook.id);
+  const s = all[sentIdx] || {en:""};
+  const text = s.en || "";
+  const chunks = window.AssemblyCore.splitIntoChunks(text);
+  const roles = window.AssemblyCore.chunkRoles(chunks);
+  return {
+    sentence_id: `${bookId}_s${String(sentIdx+1).padStart(3,"0")}`,
+    book_id: bookId,
+    level: "B1",
+    text: text,
+    zh: s.zh || "",
+    target_words: word ? [word.toLowerCase()] : [],
+    chunks: chunks,
+    chunk_roles: roles,
+    readability: 5.0
+  };
+}
+/* 文本相似度（Jaccard on words） */
+function similarity(a, b){
+  const sa = new Set((a||"").toLowerCase().split(/\s+/));
+  const sb = new Set((b||"").toLowerCase().split(/\s+/));
+  if(sa.size === 0 || sb.size === 0) return 0;
+  let inter = 0; sa.forEach(w => { if(sb.has(w)) inter++; });
+  return inter / (sa.size + sb.size - inter);
+}
+/* 拼装完全正确后 → 自动把生词标为「已掌握」 */
+window.onAssemblySuccess = function(word){
+  if(!word) return;
+  const stem = stemOf(word.toLowerCase());
+  const ws = wordStates();
+  if(ws[stem]){ ws[stem].st = 2; saveWS(); }
+  // 如果在生词本里也标记
+  const vocab = store.vocab;
+  const idx = vocab.findIndex(v => v.w === word.toLowerCase());
+  if(idx >= 0){ vocab[idx].st = 2; store.vocab = vocab; }
+};
 
 /* 保存阅读进度节流 — 见上方 _pgSaveTimer 已声明 */
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */

@@ -1,17 +1,21 @@
-/* LIZZREAD Service Worker — 离线缓存
+/* LIZZREAD Service Worker v6 — 离线缓存
    策略：
    - index.html / dict.js / manifest.json / icon.svg → 安装时预缓存（基础壳）
+   - shared/ / reader/ / sentences/ → cache-first（拼装模块 + 句子数据）
    - books/pg*.txt → cache-first（用户打开哪本就永久缓存，超 100MB 自动淘汰最久没读的）
    - 远程 PG 正文 → 走 IndexedDB（idbPut/idbGet）
-   - 外部 API（词典、MyMemory）→ 网络优先
+   - 外部 API（词典、机翻）→ 网络优先
 */
-const CACHE = "lizzread_v5";
+const CACHE = "lizzread_v6";
 const PRECACHE = [
   "./",
   "./index.html",
-  "./dict.js?v=5",
+  "./dict.js?v=6",
   "./manifest.json",
   "./icon.svg",
+  "./shared/assembly-core.js",
+  "./reader/assembly-panel.js",
+  "./sentences/index.json",
 ];
 const MAX_CACHE_BYTES = 100 * 1024 * 1024;  // 100MB 上限
 
@@ -31,9 +35,7 @@ async function getCacheSize(cache){
 async function gcCache(cache){
   let size = await getCacheSize(cache);
   if(size < MAX_CACHE_BYTES * 0.9) return;
-  /* 按 URL 里的页码排序（pg 小的先删） */
   const reqs = await cache.keys();
-  /* 简单粗暴：删前一半 */
   const half = Math.floor(reqs.length / 2);
   for(let i=0;i<half;i++){
     await cache.delete(reqs[i]);
@@ -60,13 +62,27 @@ self.addEventListener("fetch", e=>{
   const u = new URL(e.request.url);
   if(u.origin !== self.location.origin || e.request.method !== "GET") return;
 
-  /* dict.js — cache-first（版本化，v5+） */
+  /* dict.js — cache-first（版本化 v6） */
   if(u.pathname.endsWith("dict.js")){
     e.respondWith(
       caches.match(e.request).then(r=> r || fetch(e.request).then(res=>{
         const cp = res.clone(); caches.open(CACHE).then(c=> c.put(e.request, cp));
         return res;
-      }).catch(()=> caches.match("./dict.js?v=5")))
+      }).catch(()=> caches.match("./dict.js?v=6")))
+    ); return;
+  }
+
+  /* sentences/*.json — cache-first + GC */
+  if(u.pathname.includes("/sentences/") && u.pathname.endsWith(".json")){
+    e.respondWith(
+      caches.match(e.request).then(r=> {
+        if(r) return r;
+        return fetch(e.request).then(res=>{
+          const cp = res.clone();
+          caches.open(CACHE).then(c=>{ c.put(e.request, cp); gcCache(c); });
+          return res;
+        });
+      })
     ); return;
   }
 
@@ -84,8 +100,18 @@ self.addEventListener("fetch", e=>{
     ); return;
   }
 
+  /* 拼装模块 shared/*.js / reader/*.js — cache-first */
+  if((u.pathname.includes("/shared/") || u.pathname.includes("/reader/")) && u.pathname.endsWith(".js")){
+    e.respondWith(
+      caches.match(e.request).then(r=> r || fetch(e.request).then(res=>{
+        const cp = res.clone(); caches.open(CACHE).then(c=> c.put(e.request, cp));
+        return res;
+      }))
+    ); return;
+  }
+
   /* index.html — network-first */
-  if(u.pathname.endsWith("index.html") || u.pathname === "./" || u.pathname === "/"){
+  if(u.pathname.endsWith("index.html") || u.pathname === "/" || u.pathname.endsWith(location.pathname.replace(/index\.html$/,""))){
     e.respondWith(
       fetch(e.request).then(res=>{
         const cp = res.clone(); caches.open(CACHE).then(c=> c.put(e.request, cp));
