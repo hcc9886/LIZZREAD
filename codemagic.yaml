@@ -5,12 +5,14 @@ workflows:
     name: LIZZREAD iOS Release
     max_build_duration: 60
     instance_type: mac_mini_m2
-    integrations:
-      app_store_connect: LIZZREAD_ASC
+    # 发布密钥在 Codemagic 界面 Environment variables 组 appstore_credentials 中配置
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.lizzread.app
+        # 证书由 Codemagic 自动生成（需在界面配置 API Key）；也可改为上传 p12/mobileprovision
+      groups:
+        - appstore_credentials
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
@@ -36,7 +38,8 @@ workflows:
       - name: Set build number
         script: |
           cd ios/App
-          agvtool new-version -all $PROJECT_BUILD_NUMBER || true
+          agvtool new-version -all $(date +%Y%m%d%H) || true
+          agvtool new-marketing-version 2.0.0 || true
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install --repo-update
@@ -61,8 +64,13 @@ workflows:
       - build/*.ipa
       - build/*.xcarchive
     publishing:
+      # 配了 APP_STORE_CONNECT_PRIVATE_KEY 才会自动上传；没配则只在 Artifacts 里给你 ipa
       app_store_connect:
-        auth: integration
+        api_key: ${APP_STORE_CONNECT_PRIVATE_KEY}
+        key_id: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
+        issuer_id: ${APP_STORE_CONNECT_ISSUER_ID}
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
+        expire_build_submitted_for_review: false
+        submit_to_app_store: false
