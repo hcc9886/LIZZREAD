@@ -13,15 +13,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LIZZREAD · 线上图书馆</title>
 <meta name="theme-color" content="#2F5D50">
-<link rel="preload" href="dict.js?v=7" as="script">
 <script src="data/books-en.js?v=3"></script>
 <script src="data/catalog.js?v=1"></script>
 <script src="data/lang-manifest.js?v=3"></script>
 <script src="data/i18n.js?v=3"></script>
 <script src="data/lang-recs.js?v=1"></script>
-<script src="dict.js?v=7" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=1"></script>
+<script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <script>if(/^https?:$/.test(location.protocol)){document.write('<link rel="manifest" href="manifest.json">');}</script>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -128,6 +127,20 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .g-hum{background:linear-gradient(135deg,#A06A1E,#D6A247)}
 .cover{isolation:isolate}
 #view-reader .sent.listen-on{background:var(--brand-soft);border-radius:10px;transition:background .3s}
+/* 单词弹窗：更紧凑的行内操作 + 限高滚动，避免占满屏幕 */
+/* 更多释义面板：紧凑分节 */
+.mm-sec{border-top:1px solid var(--border);padding:8px 0 2px}
+.mm-sec:first-of-type{border-top:none}
+.mm-h{font:600 12px var(--font);color:var(--brand-deep);margin-bottom:4px}
+.mm-row{font-size:13px;line-height:1.65;margin:2px 0 4px}
+.mm-row b{color:var(--muted);font-weight:600;margin-right:4px}
+.mm-zh{color:var(--text);margin-top:1px}
+.sheet-mini{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+.sheet-mini .linkbtn{background:none;border:none;padding:2px 0;color:var(--brand-deep);font:500 12.5px var(--font);cursor:pointer}
+.sheet-mini .linkbtn:hover{text-decoration:underline}
+.sheet-mini .dot{color:var(--border-strong,var(--muted));font-size:12px}
+#sheet{max-height:78vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+@media (max-height:700px){ #sheet{max-height:86vh} }
 .cover .ctag{position:absolute;left:8px;bottom:7px;z-index:2;font:500 9px/1 var(--font);letter-spacing:1px;
   color:rgba(255,255,255,.92);background:rgba(0,0,0,.32);padding:3px 6px;border-radius:6px;backdrop-filter:blur(2px)}
 .cover .t{font-size:15px}
@@ -566,18 +579,20 @@ body.no-zh .sent .zh{display:none}
 <div class="sheet" id="sheet">
   <button class="close" onclick="closeSheet()">✕</button>
   <div class="w" id="shWord"></div>
-  <div class="sec-t">📖 平时常用义</div>
+  <div class="sec-t">📖 常用义</div>
   <div class="d" id="shDef"></div>
   <div id="shGlossBox"></div>
   <div class="d dim" id="shMorph" style="font-size:12px;margin-top:2px"></div>
-  <div class="row" style="margin-top:6px">
-    <button class="btn ghost small" id="shTr" onclick="translateSheetWord()">🌐 翻译 / 重译这个词</button>
-    <button class="btn ghost small" id="shCtxTr" onclick="translateSheetCtx()">🌐 翻译本句</button>
+  <div class="sheet-mini">
+    <button class="linkbtn" id="shTr" onclick="translateSheetWord()">🌐 重译此词</button>
+    <span class="dot">·</span>
+    <button class="linkbtn" id="shCtxTr" onclick="translateSheetCtx()">🌐 翻译本句</button>
+    <span class="dot">·</span>
+    <button class="linkbtn" id="shMoreBtn" onclick="expandDefs()" style="display:none">更多义项</button>
   </div>
-  <details class="fold"><summary>🔍 本句语境义 · 英英 · 音标 · 读法（点开）</summary>
-    <div class="d" id="shCtx" style="margin-bottom:8px"></div>
-    <div class="d dim" id="shEn">查询中…</div></details>
-  <div class="row" style="margin-top:8px"><button class="btn ghost small" id="shMoreBtn" onclick="expandDefs()" style="display:none">更多义项</button></div>
+  <details class="fold"><summary>🔍 本句语境义 · 英英 · 音标（点开）</summary>
+    <div class="d" id="shCtx" style="margin-bottom:6px;font-size:13px"></div>
+    <div class="d dim" id="shEn" style="font-size:12.5px">查询中…</div></details>
   <details class="fold"><summary>🎨 标记 · 🎯 熟练度（点开）</summary>
     <div class="mrow" id="shMarks"></div>
     <div class="mrow" id="shState" style="margin-top:8px"></div>
@@ -601,7 +616,6 @@ body.no-zh .sent .zh{display:none}
 </div>
 
 <!-- 本地大词典（24 万条，18MB）：<head> 里已用 defer 加载，这里只兜底唤醒，避免重复下载 18MB -->
-<script>document.addEventListener("DOMContentLoaded", function(){ if(!window.LIZ_DICT && typeof loadBigDict==="function") loadBigDict(); });</script>
 <script>
 /* =====================================================
   一、书库数据：英文书名 / 通行中文译名 / 作者 / 年份 / 难度 / 类型
@@ -812,24 +826,37 @@ ${lines.map((l,i)=>`<text x="20" y="${118+i*(fs+6)}" font-size="${fs}" font-weig
   return uri;
 }
 
-/* 原版封面：本地打包的 covers/<gb>.jpg 优先（离线+GitHub Pages 都能显示）；
-   本地没有再回退镜像；全部失败时退回自动生成的封面图 */
-/* 已预抓的封面清单（covers/index.js 由 scripts/fetch-covers.js 生成）。
-   该脚本在 head 里 defer 加载，执行到这里时可能还没到位，所以惰性构建。 */
-let _coverSet = null;
-function coverKnown(gb){
-  const list = window.LZ_COVERS;
-  if(!list || !list.length) return false;           /* 清单未到：交给调用方回退 */
-  if(!_coverSet) _coverSet = new Set(list.map(Number));
-  return _coverSet.has(Number(gb));
-}
+/* 原版封面：直接指向本地 covers/<gb>.jpg（仓库里已打包 19551 张）。
+   加载失败时由 onerror 依次回退：镜像 → 自动生成的书衣。
+   不再依赖 covers/index.js 清单，避免"清单没到就全都去请求慢镜像"。 */
+/* 这本书的全文是否已随站点/安装包发布（离线可读） */
+const _LOCAL_SET = {
+  set: null,
+  has(gb){
+    const list = window.LZ_LOCAL_BOOKS;
+    if(!list || !list.length) return false;      /* 清单还没加载：先当作没有，不清缓存 */
+    if(!this.set) this.set = new Set(list.map(Number));
+    return this.set.has(Number(gb));
+  }
+};
+function hasLocalText(b){ return !!(b && b.gb && _LOCAL_SET.has(b.gb)); }
 function coverSrc(b){
   if(!b || !b.gb) return coverArt(b);
-  const gb = Number(b.gb);
-  const local = "covers/" + gb + ".jpg";
-  if(typeof coverKnown === "function" && coverKnown(gb)) return local;
-  if(typeof coverKnown !== "function") return local;
-  return "https://gutenberg.pglaf.org/cache/epub/" + gb + "/pg" + gb + ".cover.medium.jpg";
+  return "covers/" + Number(b.gb) + ".jpg";
+}
+/* 封面加载失败时的两级回退 */
+function coverFallback(img, bookJson){
+  try{
+    if(!img || !img.dataset || img.dataset.fb) return;
+    img.dataset.fb = "1";
+    const gb = Number(bookJson && bookJson.gb);
+    if(gb){
+      img.src = "https://gutenberg.pglaf.org/cache/epub/" + gb + "/pg" + gb + ".cover.medium.jpg";
+      img.onerror = () => { img.onerror = null; img.src = coverArt(bookJson); };
+      return;
+    }
+  }catch(e){}
+  try{ img.onerror = null; img.src = coverArt(bookJson || {id:"x",t:"Book",g:"lit"}); }catch(e2){}
 }
 
 /* =====================================================
@@ -1024,13 +1051,25 @@ const DICT = (function(){
 /* ---------- 本地大词典（dict.js 约 24 万常用词，异步加载，点词即显） ---------- */
 let _bigDictLoading = false;
 const _DICT_V = "7";
+let _bigDictPromise = null;
 function loadBigDict(){
-  if(window.LIZ_DICT || _bigDictLoading) return;
+  if(window.LIZ_DICT) return Promise.resolve(true);
+  if(_bigDictPromise) return _bigDictPromise;
   _bigDictLoading = true;
-  const s = document.createElement("script");
-  s.src = "./dict.js?v="+_DICT_V; s.async = true;
-  document.head.appendChild(s);
+  _bigDictPromise = new Promise(resolve => {
+    const s = document.createElement("script");
+    s.src = "./dict.js?v="+_DICT_V;
+    s.async = true;
+    s.onload = ()=>{ _bigDictLoading = false; resolve(true); };
+    s.onerror = ()=>{ _bigDictLoading = false; _bigDictPromise = null; resolve(false); };
+    document.head.appendChild(s);
+  });
+  return _bigDictPromise;
 }
+/* 点词/开书时预热词典（不阻塞首屏） */
+function warmDict(){ try{ loadBigDict(); }catch(e){} }
+/* 词典是否就绪（用于弹窗占位提示） */
+function dictReady(){ return !!window.LIZ_DICT; }
 /* 词形变化兜底：复数/过去式/进行式/副词/比较级 */
 function _baseForms(w){
   const c = [];
@@ -2047,7 +2086,7 @@ function renderCollections(){
 function bookCardMini(b){
   const cls = "g-"+(b.g||"lit");
   return `<div class="book ${cls}" onclick="openBook('${b.id}')">
-    <div class="cover g-${b.g||"lit"}"><img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="this.onerror=null;this.src='${coverArt(b)}'"><span class="lv">${escHtml(b.lv||"·")}</span></div>
+    <div class="cover g-${b.g||"lit"}"><img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})"><span class="lv">${escHtml(b.lv||"·")}</span></div>
     <div class="meta">${escHtml(b.zh||b.g||"")}</div></div>`;
 }
 
@@ -2454,10 +2493,10 @@ function bookCard(b, rec){
   if(isImp){
     b.g = b.g || "imp";
     const ib = {id:b.id, t:b.t, zh:b.zh||"", a:b.a||"本地导入", y:"", lv:b.lv||"·", g:"imp"};
-    cov = `<img class="cimg" loading="lazy" src="${coverSrc(ib)}" alt="${escHtml(dispTitle(b))}" onerror="this.onerror=null;this.src='${coverArt(ib)}'">
+    cov = `<img class="cimg" loading="lazy" src="${coverSrc(ib)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:ib.gb||0,t:ib.t,zh:ib.zh||"",a:ib.a||"",g:ib.g||"lit",id:ib.id||""}))})">
        <span class="lv">导入</span>`;
   } else {
-    cov = `<img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="this.onerror=null;this.src='${coverArt(b)}'">
+    cov = `<img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
        <span class="lv">${b.lv||"·"}</span>`;
   }
   const hasFull = typeof b.gb === "number";
@@ -2468,7 +2507,7 @@ function bookCard(b, rec){
       ${b.translated ? `<div class="lang-badge" style="margin:2px 0 0">译本</div>` : ""}
       <br><span class="g">${isImp?L("genres.imp","我的导入"):escHtml(GENRES()[b.g]||"")}</span>
       ${rec?`<span class="badge">推荐</span>`:""}
-      <br>${isImp?"✦ 可阅读":(hasFull?"✦ 可读全文":(GUIDES[b.id]?"✦ 精读导读":(SAMPLES[b.id]?"✦ 可试读":"")))}</div>
+      <br>${isImp?"✦ 可阅读":(hasFull?(hasLocalText(b)?"📶 已内置全文":"🌐 需联网取全文"):(GUIDES[b.id]?"✦ 精读导读":(SAMPLES[b.id]?"✦ 可试读":"")))}</div>
     ${progPct}
   </div>`;
 }
@@ -2488,7 +2527,7 @@ async function openBook(id){
       <span class="back" onclick="go('library')">← 返回书城</span>
       <div class="detail-head">
         <div class="cover g-imp">
-          <img class="cimg" loading="lazy" src="${coverSrc({id:imp.id,t:imp.t,zh:"",a:"本地导入",y:"",lv:"·",g:"imp"})}" alt="${escHtml(imp.t)}" onerror="this.onerror=null;this.src='${coverArt({id:imp.id,t:imp.t,zh:"",a:"本地导入",y:"",lv:"·",g:"imp"})}'">
+          <img class="cimg" loading="lazy" src="${coverSrc({id:imp.id,t:imp.t,zh:"",a:"本地导入",y:"",lv:"·",g:"imp"})}" alt="${escHtml(imp.t)}" onerror="coverFallback(this, {id:'${imp.id}',t:'',g:'imp'})">
           <span class="lv">导入</span></div>
         <div class="detail-info">
           <h2>${escHtml(imp.t)}</h2>
@@ -2519,7 +2558,7 @@ async function openBook(id){
     <span class="back" onclick="go('library')">← 返回书城</span>
     <div class="detail-head">
       <div class="cover g-${b.g}">
-        <img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="this.onerror=null;this.src='${coverArt(b)}'">
+        <img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
         <span class="lv">${escHtml(b.lv)}</span></div>
       <div class="detail-info">
         <h2>${escHtml(b.t)}${b.zh && b.zh!==b.t ? " · "+escHtml(b.zh) : ""}</h2>
@@ -2825,10 +2864,10 @@ async function loadBookText(b, onProgress){
   if(!gb) throw new Error("这本书没有可用的公版编号");
   if(_bookLoadJobs[gb]) return _bookLoadJobs[gb];
   const job = (async()=>{
-    /* 1) 站内打包文件（272 本常用书，秒开）——新目录书不再无谓 404 */
-    if(b.file || b.src !== "pg"){
+    /* 1) 站内打包文件优先（仓库里已带的 145 本，秒开；静态托管时这是主路径） */
+    {
+      const localPath = b.file || ("./books/pg"+gb+".txt");
       try{
-        const localPath = b.file || ("./books/pg"+gb+".txt");
         const r = await fetch(localPath, {cache:"force-cache"});
         if(r.ok){
           const t = await r.text();
@@ -2860,6 +2899,30 @@ async function loadBookText(b, onProgress){
         }
         lastErr = new Error("代理返回内容过短");
       }catch(e){ lastErr = e; }
+    }
+    /* 静态托管（没有后端）时，浏览器直连古腾堡会被跨域拦截：
+       跳过 3 个必失败的镜像，直接走代理，整体在 ~20 秒内给出结论 */
+    const canDirect = hasLocalAPI !== false || window.__LZ_NATIVE;
+    if(!canDirect){
+      const proxied0 = [
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://gutenberg.pglaf.org/cache/epub/" + gb + "/pg" + gb + ".txt"),
+        "https://r.jina.ai/https://gutenberg.pglaf.org/cache/epub/" + gb + "/pg" + gb + ".txt"
+      ];
+      for(const url of proxied0){
+        try{
+          let txt = await fetchTextProgress(url, onProgress, 12000);
+          if(!txt || txt.length < 2000) continue;
+          if(/^(Title:|URL Source:|Markdown Content:)/.test(txt)){
+            const cut = txt.indexOf('Markdown Content:');
+            if(cut >= 0) txt = txt.slice(cut + 18);
+          }
+          txt = txt.replace(/^\s*URL Source:[^\n]*\n/i, '');
+          if(/^\s*<!DOCTYPE|<html/i.test(txt.slice(0,300)) || txt.length < 2000) continue;
+          try{ await idbPut(gb, txt, txt.length, b.t); }catch(e){}
+          return txt;
+        }catch(e){ lastErr = e; }
+      }
+      throw new Error("网页版无法直接获取这本书的全文（浏览器跨域限制）。\n\n三个办法：\n① 装 App（Android 版内置离线全文）\n② 在设置里填一个已部署的后端地址\n③ 换一本已内置全文的书（书城左上角「可读全文」标记）");
     }
     /* 4) 古腾堡镜像（带进度 + 超时 + 备用域名） */
     const mirrors = [
@@ -2983,7 +3046,7 @@ async function loadLanguageText(b, onProgress){
 
 async function openFull(id){
   curBook = BOOKS.find(x=>x.id===id);
-  loadBigDict();
+  warmDict();
   if(curBook && curBook.translated && curBook.gb){
     setTimeout(() => { if(typeof toast === "function") toast("《" + curBook.t + "》为译本条目；正文使用同一部书的原版全文，可逐句翻译对照。"); }, 300);
   }
@@ -3598,6 +3661,19 @@ function markSent(si, n){
 }
 /* 单词标记：在弹层中选择颜色 */
 let sheetWord = "", sheetSent = -1, sheetCtxEn = "";
+/* 词典尚未加载时的占位弹窗（避免用户以为点了没反应） */
+function ensureSheetOpenForPending(low){
+  try{
+    document.getElementById("shWord").textContent = sheetWord;
+    const zhEl = document.getElementById("shDef");
+    if(zhEl) zhEl.innerHTML = `<span style="color:var(--muted)">词典加载中…（首次使用需下载约 18MB，之后会缓存）</span>`;
+    const sheet = document.getElementById("sheet");
+    const mask = document.getElementById("mask");
+    if(sheet) sheet.classList.add("on");
+    if(mask) mask.classList.add("on");
+    sheetWordKey = low;
+  }catch(e){}
+}
 function wordClick(e){
   const el = e.target.closest("span.w");
   if(!el) return;
@@ -3625,6 +3701,12 @@ function wordClick(e){
   const low = (lc === "zh" || lc === "ja" || lc === "ko")
     ? String(sheetWord).trim()
     : sheetWord.toLowerCase().replace(/[^a-z'-]/g,"");
+  /* 词典没加载完就点词：先占位，加载完自动补齐 */
+  if(lc === "en" && !dictReady()){
+    ensureSheetOpenForPending(low);
+    loadBigDict().then(ok => { if(ok) setTimeout(()=>{ try{ wordClick({ target: el }); }catch(e){} }, 30); });
+    return;
+  }
   const d = dictEntry(low);
   const isProper = isLatinLang(lc) ? (/^[A-Z][a-z]+$/.test(sheetWord) && !d) : false;
   /* 日语/韩语：本地无词条时静默走机翻，不显示「专有名词未识别」 */
@@ -3809,9 +3891,23 @@ async function fillMultiGloss(word){
       <div>${rows}</div></details>` : "";
   };
   if(_multiGlossCache[key]) return render(_multiGlossCache[key]);
+  const tosAll = SHOW_LANGS.map(x => x.code).filter(c => c !== lc);
+  /* 没有后端（GitHub Pages 等）：用浏览器直连机翻，至少给出 4 门最常用语言 */
+  if(!hasLocalAPI && !window.__LZ_NATIVE){
+    const picked = ["en","zh","ja","de"].filter(c => c !== lc).slice(0, 4);
+    try{
+      const pairs = await Promise.all(picked.map(async c => {
+        try{ const t = await mtTo(word, c); return [c, t && _isUsableIn(t, c) ? t : ""]; }
+        catch(e){ return [c, ""]; }
+      }));
+      const g = {};
+      pairs.forEach(([c, v]) => { if(v) g[c] = v; });
+      if(Object.keys(g).length){ _multiGlossCache[key] = g; render(g); return; }
+    }catch(e){}
+    return;
+  }
   try{
-    const tos = SHOW_LANGS.map(x => x.code).filter(c => c !== lc).slice(0, 8);
-    if(!hasLocalAPI) return;
+    const tos = tosAll.slice(0, 8);
     const r = await fetch(apiUrl("api/word?lang=") + encodeURIComponent(lc) + "&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
     if(r.ok){
       const j = await r.json();
@@ -3938,6 +4034,7 @@ async function showMoreMeanings(ev){
   const bold = document.getElementById("shWord");
   const word = (sheetWord || (bold && bold.textContent) || "").trim();
   if(!word) return;
+  loadBigDict();
   let el = document.getElementById("moreMean");
   if(!el){
     el = document.createElement("div");
@@ -3947,29 +4044,75 @@ async function showMoreMeanings(ev){
   }
   el.style.display = "flex";
   el.onclick = e => { if(e.target === el) el.style.display = "none"; };
-  const d = dictEntry(word);
-  const en = dictEnDef(word);
-  const cached = _zhCache[String(word).toLowerCase()] || "";
+  const low = word.toLowerCase().replace(/[^a-z'’-]/g, "");
+  const d = dictEntry(low);
+  const en = dictEnDef(low);
+  const cached = _zhCache[low] || "";
   const morph = (typeof lcHint === "function") ? lcHint(word) : "";
-  el.innerHTML = `<div class="box">
-    <div style="display:flex;align-items:center">
-      <h3>📚 ${escHtml(word)} · ${L("sheet.more","更多释义")}</h3>
+  const deep = (_dictCache[low] || {}).defs || [];
+  const ctxZh = (mtCache[sheetCtxEn] || (lastSent && lastSent.zh) || "").trim();
+  const fam = (typeof wordState === "function" ? null : null);
+
+  /* 义项：优先词典多义项（含中译），其次本地词典、缓存译文 */
+  const senses = [];
+  if(deep.length){
+    deep.slice(0, 5).forEach((x, i) => senses.push({
+      pos: "[" + (x.pos || "") + "]", en: x.en || "", zh: (_zhCache[(x.en||"").toLowerCase()] || "")
+    }));
+  } else if(d){
+    senses.push({ pos: d[0] ? "[" + d[0] + "]" : "", en: "", zh: d[1] || "" });
+  }
+  if(cached && !senses.some(x => x.zh === cached)) senses.push({ pos: "", en: "", zh: cached });
+
+  el.innerHTML = `<div class="box" style="max-height:82vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:8px">
+      <h3 style="margin:0">📚 ${escHtml(word)}</h3>
+      <span class="tip" style="margin:0">${escHtml((LANG_INFO[activeLang()]||{}).native||"")}</span>
       <button style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer" onclick="document.getElementById('moreMean').style.display='none'">×</button>
     </div>
-    <div class="sub">以下内容全部来自站内词典与已缓存译文，不跳转外部网站。</div>
-    <div style="display:grid;gap:8px">
-      ${d ? `<div class="settings-card" style="margin:0"><b>常用义</b><div style="margin-top:4px">${escHtml(d[0])} ${escHtml(d[1])}</div></div>` : ""}
-      ${cached ? `<div class="settings-card" style="margin:0"><b>缓存的译文</b><div style="margin-top:4px">${escHtml(cached)}</div></div>` : ""}
-      ${en ? `<div class="settings-card" style="margin:0"><b>释义（原文）</b><div style="margin-top:4px">${escHtml(en)}</div></div>` : ""}
-      ${morph ? `<div class="settings-card" style="margin:0"><b>词形提示</b><div style="margin-top:4px">${escHtml(morph)}</div></div>` : ""}
-      ${(!d && !en && !cached) ? `<div class="settings-card" style="margin:0"><b>还没查到</b><div style="margin-top:4px">这本 <b>${escHtml((LANG_INFO[activeLang()]||{}).native||"")}</b> 词典暂时没有收录「${escHtml(word)}」。可以点「翻译 / 重译这个词」让系统机翻一次，之后会记住。</div></div>` : ""}
-      <div class="lang-row">
-        <button class="btn small" onclick="translateSheetWord();document.getElementById('moreMean').style.display='none'">🌐 机翻这个词</button>
-        <button class="btn ghost small" onclick="speakText(${JSON.stringify(word)})">🔊 朗读</button>
-        <button class="btn ghost small" onclick="document.getElementById('moreMean').style.display='none'">关闭</button>
-      </div>
+
+    ${senses.length ? `<div class="mm-sec"><div class="mm-h">义项</div>
+      ${senses.map((x, i) => `<div class="mm-row"><b>${i+1}</b> ${escHtml(x.pos)} ${escHtml(x.en)}
+        ${x.zh ? `<div class="mm-zh">${escHtml(x.zh)}</div>` : `<div class="mm-zh dim" data-en="${escHtml(x.en)}">译文中…</div>`}</div>`).join("")}
+    </div>` : ""}
+
+    ${ctxZh ? `<div class="mm-sec"><div class="mm-h">本句中的意思</div>
+      <div class="mm-row">${escHtml(ctxZh)}</div></div>` : ""}
+
+    ${morph ? `<div class="mm-sec"><div class="mm-h">词形</div><div class="mm-row">${escHtml(morph)}</div></div>` : ""}
+
+    ${en && !senses.some(x => x.en === en) ? `<div class="mm-sec"><div class="mm-h">英英释义</div><div class="mm-row">${escHtml(en)}</div></div>` : ""}
+
+    <div class="mm-sec"><div class="mm-h">各国语言怎么说</div>
+      <div class="mm-row dim" id="mmMulti">加载中…</div></div>
+
+    ${(!senses.length && !en && !cached) ? `<div class="mm-sec"><div class="mm-h">还没收录</div>
+      <div class="mm-row">这本词典暂时没有「${escHtml(word)}」，点下面的「机翻这个词」即可补上，并会记住。</div></div>` : ""}
+
+    <div class="lang-row" style="margin-top:10px">
+      <button class="btn small" onclick="translateSheetWord();document.getElementById('moreMean').style.display='none'">🌐 机翻这个词</button>
+      <button class="btn ghost small" onclick="speakText(${JSON.stringify(word)})">🔊 朗读</button>
+      <button class="btn ghost small" onclick="addVocab(${JSON.stringify(low)});document.getElementById('moreMean').style.display='none'">＋ 生词</button>
+      <button class="btn ghost small" onclick="document.getElementById('moreMean').style.display='none'">关闭</button>
     </div>
   </div>`;
+
+  /* 异步补齐：义项中译 + 多语言对照 */
+  const pend = [...el.querySelectorAll(".mm-zh[data-en]")].slice(0, 6);
+  if(pend.length){
+    apiTranslateTexts(pend.map(x => x.dataset.en)).then(map => {
+      pend.forEach(x => {
+        const t = _stripBadTrans(map[x.dataset.en] || "");
+        if(t && /[\u4e00-\u9fff]/.test(t)){ x.textContent = t; x.classList.remove("dim"); }
+      });
+    }).catch(()=>{});
+  }
+  fillMultiGloss(word).then(() => {
+    const box = document.getElementById("mmMulti");
+    const src = document.getElementById("shGlossBox");
+    if(box && src && src.innerHTML.trim()){ box.innerHTML = src.innerHTML; box.classList.remove("dim"); }
+    else if(box){ box.textContent = "需要联网翻译（当前不可用）"; }
+  }).catch(()=>{});
 }
 
 function closeSheet(){
@@ -4032,6 +4175,43 @@ async function fetchDictDetail(word, entry){
 */
 /* 翻译语言对：源=学习语言，目标=展示语言 */
 const GT_LANG = { zh:"zh-CN", en:"en", de:"de", fr:"fr", it:"it", es:"es", ja:"ja", ko:"ko" };
+/* 指定目标语言机翻（不需要后端）：供「各国语言怎么说」使用 */
+const _mtToCache = {};
+async function mtTo(text, code){
+  const tgt = GT_LANG[code] || code;
+  const key = tgt + "|" + text;
+  if(_mtToCache[key]) return _mtToCache[key];
+  const u1 = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=" + encodeURIComponent(tgt) + "&q=" + encodeURIComponent(text);
+  try{
+    const r = await fetch(u1, {cache:"no-store", signal: AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j = await r.json();
+      const t = Array.isArray(j) ? (Array.isArray(j[0]) ? j[0][0] : j.join("")) : (j && j.sentences ? j.sentences.map(x=>x.trans||"").join("") : "");
+      if(t && t.trim()){ _mtToCache[key] = t.trim(); return t.trim(); }
+    }
+  }catch(e){}
+  try{
+    const pair = encodeURIComponent((GT_LANG[activeLang()]||"en") + "|" + tgt);
+    const r2 = await fetch("https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) + "&langpair=" + pair, {cache:"no-store", signal: AbortSignal.timeout(9000)});
+    if(r2.ok){
+      const j2 = await r2.json();
+      let t = (j2 && j2.responseData && j2.responseData.translatedText) || "";
+      if(/MYMEMORY WARNING|QUOTA|INVALID/i.test(t)) t = "";
+      if(t && t.trim()){ _mtToCache[key] = t.trim(); return t.trim(); }
+    }
+  }catch(e){}
+  return "";
+}
+/* 粗略校验：译文要包含该语言的典型字符（中文/日文），其他拉丁语言只要求非空且不等于原文 */
+function _isUsableIn(out, code){
+  out = String(out || "").trim();
+  if(!out) return false;
+  if(code === "zh") return /[\u4e00-\u9fff]/.test(out);
+  if(code === "ja") return /[\u3040-\u30ff\u4e00-\u9fff]/.test(out);
+  if(code === "ko") return /[\uac00-\ud7a3]/.test(out);
+  if(code === "el") return /[\u0370-\u03ff]/.test(out);
+  return /[\p{L}]/u.test(out);
+}
 function mtSrc(){ return GT_LANG[activeLang()] || "en"; }
 function mtTgt(){ return GT_LANG[showLang()] || "zh-CN"; }
 function _hashText(t){ let h=2166136261; for(let i=0;i<t.length;i++){ h^=t.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
@@ -8138,8 +8318,10 @@ window.addEventListener("load", () => {
 setTimeout(() => {
   if(window.AssemblyCore && AssemblyCore.initReaderAssembly && !window.LZAssembly) AssemblyCore.initReaderAssembly();
 }, 600);
-/* 预载本地大词典：等页面空闲后加载，点词时基本已就绪 */
-setTimeout(loadBigDict, 200);
+/* 本地大词典不再开机预载（18MB 会很慢）。改为：
+   ① 打开任意一本书时预热（warmDict）
+   ② 空闲 8 秒后如果还没加载，再慢慢补（不影响首屏） */
+setTimeout(() => { if(document.visibilityState === "visible") loadBigDict(); }, 8000);
 /* 阅读进度：滚动防抖保存（300ms）+ 离开页面前强制保存 */
 let _pgSaveTimer = null;
 window.addEventListener("scroll", ()=>{
