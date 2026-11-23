@@ -573,6 +573,7 @@ body.no-zh .sent .zh{display:none}
   <details class="fold"><summary>🔍 本句语境义 · 英英 · 音标 · 读法（点开）</summary>
     <div class="d" id="shCtx" style="margin-bottom:8px"></div>
     <div class="d dim" id="shEn">查询中…</div></details>
+  <div class="row" style="margin-top:8px"><button class="btn ghost small" id="shMoreBtn" onclick="expandDefs()" style="display:none">更多义项</button></div>
   <details class="fold"><summary>🎨 标记 · 🎯 熟练度（点开）</summary>
     <div class="mrow" id="shMarks"></div>
     <div class="mrow" id="shState" style="margin-top:8px"></div>
@@ -3374,6 +3375,16 @@ async function mtFetchWords(words){
   const batches = [];
   for(let i = 0; i < list.length; i += 60) batches.push(list.slice(i, i + 60));
   const runBatch = async (batch) => {
+    /* 先走本机服务（Bing 代理），失败再直连 Google */
+    try{
+      const map = await apiTranslateTexts(batch);
+      let hit = 0;
+      for(const w of batch){
+        const t = _stripBadTrans(map[w] || map[w.charAt(0).toUpperCase()+w.slice(1)] || "");
+        if(t && _isUsableZh(w, t)){ out[w] = t.trim(); hit++; }
+      }
+      if(hit) return;
+    }catch(e){}
     try{
       const q = batch.join("\n");
       const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + mtSrc() + "&tl=" + mtTgt() + "&dt=t&dj=1&q=" + encodeURIComponent(q);
@@ -3429,6 +3440,15 @@ async function mtFetchSentences(texts){
   const batches = [];
   for(let i = 0; i < list.length; i += 8) batches.push(list.slice(i, i + 8));
   const runBatch = async (batch) => {
+    try{
+      const map = await apiTranslateTexts(batch);
+      let hit = 0;
+      for(const t of batch){
+        const v = _stripBadTrans(map[_normText(t)] || map[t] || "");
+        if(v && _isUsableZh(t, v)){ out[_normText(t)] = v.trim(); hit++; }
+      }
+      if(hit) return;
+    }catch(e){}
     try{
       const q = batch.join("\n");
       const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + mtSrc() + "&tl=" + mtTgt() + "&dt=t&dj=1&q=" + encodeURIComponent(q);
@@ -3575,7 +3595,8 @@ function wordClick(e){
   }
   if(isProper){
     /* 首字母大写且 dict 未命中 → 不 recordLookup，直接 mtFetch */
-    document.getElementById("shWord").textContent = sheetWord;
+    sheetWordKey = low;
+  document.getElementById("shWord").textContent = sheetWord;
     document.getElementById("shCtx").textContent = localZh || "（本句暂无译文）";
     document.getElementById("shEn").textContent = "专有名词/人名/地名，正在机翻…";
     const zhEl = document.getElementById("shDef");
@@ -3611,8 +3632,18 @@ function wordClick(e){
   } else if(zhCached){
     zhEl.textContent = zhCached;
   } else {
-    zhEl.textContent = "翻译中…";
-    /* 第一步：立即 mtFetch 单词本身 → 立刻显示结果（≈300ms） */
+    zhEl.textContent = "查询中…";
+    /* 第一步：打包版先从本机服务取释义（词典 + 机翻一次到位） */
+    if(window.__LZ_NATIVE){
+      nativeWordLookup(sheetWord, lc, showLang()).then(j=>{
+        const g = j && j.gloss && j.gloss[0] ? String(j.gloss[0]).trim() : "";
+        if(g){ zhEl.textContent = g; _zhCache[low] = g; _saveZhCache(); return; }
+        throw new Error("no native gloss");
+      }).catch(()=>{ /* 回落到浏览器直连机翻 */ mtFetch(sheetWord).then(mt=>{
+        if(mt){ zhEl.textContent = mt; _zhCache[low] = mt; _saveZhCache(); }
+        else { zhEl.textContent = "（本机服务未连接，翻译不可用）"; }
+      }).catch(()=>{ zhEl.textContent = "（本机服务未连接，翻译不可用）"; }); });
+    } else {
     mtFetch(sheetWord).then(mt=>{
       if(mt){
         zhEl.textContent = mt;
@@ -3620,9 +3651,14 @@ function wordClick(e){
       } else {
         zhEl.textContent = "（自动翻译暂未返回）";
       }
-    }).catch(()=>{ zhEl.textContent = "（自动翻译不可用）"; });
-    /* 第二步：后台并行查牛津词典（英文定义 + 音标） */
-    fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(sheetWord), {signal: AbortSignal.timeout(3000)})
+    }).catch(err=>{
+      zhEl.innerHTML = `（翻译暂时不可用）<br><span style="font-size:12px;color:var(--muted)">${escHtml(String(err && err.message || "").slice(0,60))} · 可点「更多释义」或用上方音标与英英释义</span>`;
+    });
+    }
+    /* 第二步：后台并行查英英词典（定义 + 音标）；成功后再刷新「更多义项」按钮，避免点了没反应 */
+    /* 后台补词典：拿到后刷新释义区与「更多义项」按钮 */
+    setTimeout(()=>{ try{ refreshDefsPanel(low); }catch(e){} }, 50);
+    fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(sheetWord), {signal: AbortSignal.timeout(6000)})
       .then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{
         if(!j || !j[0]) return;
         const e0 = j[0];
@@ -3633,6 +3669,15 @@ function wordClick(e){
           if(defs.length>=5) break outer;
         }
         _dictCache[low] = {phon, defs}; _saveEnCache();
+        /* 拿到词典后刷新「英英释义」区（含音标与「更多义项」按钮） */
+        const enEl = document.getElementById("shEn");
+        if(enEl && defs.length){ enEl.innerHTML = renderDefs(low, 2); }
+        /* 把「更多义项」按钮更新到与词典实际义项数一致 */
+        const mb = document.getElementById("shMoreBtn");
+        if(mb){
+          mb.style.display = defs.length > 2 ? "inline-block" : "none";
+          mb.textContent = "更多义项 (" + defs.length + ")";
+        }
       });
   }
   /* 本句语境义：先查 mtCache（跨刷新持久化），命中秒显；未命中占位"翻译中…"后台请求 */
@@ -3654,7 +3699,7 @@ function wordClick(e){
   const localEn = dictEnDef(low);
   const cachedEn = getEnCache(low);
   if(cachedEn){ enEl.innerHTML = renderDefs(low, 1); }
-  else if(localEn){ enEl.innerHTML = `<div style="color:var(--text)">${localEn}</div><div class="dim">（本地词典 · 联网补充更多义项）</div>`; fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{}); }
+  else if(localEn){ enEl.innerHTML = `<div style="color:var(--text)">${localEn}</div><div class="dim">（本地词典 · 联网补充更多义项）</div>`; fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{ enEl.innerHTML = '<div class="dim">（英英释义暂不可用，点「更多释义」可从站内词典查看）</div>'; }); }
   else {
     enEl.textContent = "英英释义后台补充中…";
     fetchDict(low).then(r=>{ enEl.innerHTML = r; }).catch(()=>{
@@ -3961,16 +4006,19 @@ function _stripBadTrans(t){
 }
 /* 本机翻译代理：浏览器直连失败时的同源兜底（服务端用 MyMemory） */
 async function apiTranslateTexts(texts){
-  try{
-    const r = await fetch(apiUrl("api/translate"), {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({texts: texts.map(t=>_normText(t)).filter(Boolean).slice(0,40), from: activeLang(), to: showLang()})
-    });
-    if(!r.ok) return {};
-    const j = await r.json();
-    return (j && j.translations) || {};
-  }catch(e){ return {}; }
+  const payload = JSON.stringify({texts: texts.map(t=>_normText(t)).filter(Boolean).slice(0,40), from: activeLang(), to: showLang()});
+  const urls = [apiUrl("api/translate")];
+  /* 打包壳：Capacitor 把 public/api/* 的请求交给原生层发起（不经 WebView CORS） */
+  if(window.__LZ_NATIVE) urls.push("public/api/translate");
+  for(const u of urls){
+    try{
+      const r = await fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body:payload});
+      if(!r.ok) continue;
+      const j = await r.json();
+      if(j && j.translations && Object.keys(j.translations).length) return j.translations;
+    }catch(e){}
+  }
+  return {};
 }
 window.lzUsableZh = function(src, out){ return _isUsableZh(src, out); };
 function _isUsableZh(src, out){
@@ -3978,11 +4026,22 @@ function _isUsableZh(src, out){
   if(!out) return false;
   const srcl = String(src || '').trim().toLowerCase();
   if(srcl && out.toLowerCase() === srcl) return false;
-  /* 译文必须包含中文；纯英文/纯符号说明源把原文返回了 */
-  if(!/[\u4e00-\u9fff]/.test(out)) return false;
-  return true;
+  /* 目标是中文时，译文必须含中文（纯英文说明源把原文退回来了）；
+     目标不是中文时（如中文书→英文、日语→德语），只要求与原文不同且有实义字符 */
+  const tgt = (typeof mtTgt === "function") ? mtTgt() : "zh-CN";
+  const wantZh = /^(zh|zh-cn|zh-tw|zh-hans|zh-hant)$/i.test(tgt);
+  if(wantZh) return /[\u4e00-\u9fff]/.test(out);
+  return /[\p{L}\p{N}]/u.test(out) && out.length >= 1;
 }
 const MT_SOURCES = [
+  /* 本站服务端（Bing 代理 + MyMemory 兜底）优先：国内网络下唯一稳定可用的源，
+     打包版请求 public/ 前缀，走 Capacitor 原生代理，避免 WebView 的 CORS 限制 */
+  { name:"server", fn: async(text)=>{
+      const map = await apiTranslateTexts([text]);
+      const t = _stripBadTrans(map[_normText(text)] || map[text]);
+      if(!t) throw new Error("server empty");
+      return t;
+  }},
   { name:"google", fn: async(text)=>{
       const u = "https://translate.googleapis.com/translate_a/single?client=gtx&sl="+mtSrc()+"&tl="+mtTgt()+"&dt=t&dj=1&q="+encodeURIComponent(text);
       const r = await fetch(u, {cache:"no-store"});
@@ -4075,8 +4134,19 @@ async function _mtOne(text){
   try{
     return await Promise.any(tasks);
   }catch(e){
-    throw new Error("所有翻译源均失败（网络或服务限制）");
+    throw new Error(hasLocalAPI === false
+      ? "翻译服务未连接（可在设置→后端连接填写地址，或检查网络）"
+      : "翻译服务暂时不可用（网络或限流），稍后再点一次即可");
   }
+}
+/* 打包版从本机服务取释义：请求 public/api/word（Capacitor 原生代理发起，不受 WebView CORS 限制） */
+async function nativeWordLookup(word, lang, to){
+  if(!window.__LZ_NATIVE) return null;
+  try{
+    const r = await fetch("public/api/word?lang=" + encodeURIComponent(lang) + "&word=" + encodeURIComponent(word) + "&to=" + encodeURIComponent(to), {signal: AbortSignal.timeout(6000)});
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(e){ return null; }
 }
 /* 离线兜底：逐词给本地词典释义（不是整句机翻，但足以应急） */
 function offlineGloss(text){
@@ -4905,6 +4975,109 @@ async function fetchDict(word){
     return renderDefs(word, 1);
   } finally { clearTimeout(tm); }
 }
+/* 词典译文的作用域：优先当前单词弹窗，其次「更多释义」面板，否则整页 */
+function wordPopScope(){
+  const cands = ['#moreMean', '#moreMeanBody', '#sheet', '#shEn'];
+  for(const sel of cands){
+    const el = document.querySelector(sel);
+    if(el) return el;
+  }
+  return document;
+}
+/* 释义中译队列：DOM 更新后统一补齐，限定当前弹窗作用域，单条最长等 6 秒 */
+let _dictZhTimer = 0;
+let sheetWordKey = "";
+/* 展开折叠区里的英英释义，并把义项数逐步加多 */
+function expandDefs(){
+  const d = document.getElementById("shEn");
+  if(!d) return;
+  const det = d.closest("details");
+  if(det) det.open = true;
+  const w = (typeof curWord === "function" ? curWord() : "") || String((_dictCache && Object.keys(_dictCache).pop()) || "");
+  const key = String(sheetWordKey || w || "").toLowerCase();
+  const cache = _dictCache[key] || {defs:[]};
+  const shown = (d.querySelectorAll("[data-def]").length) || 2;
+  const next = Math.min(cache.defs.length, shown + 3);
+  if(cache.defs.length){ d.innerHTML = renderDefs(key, next); }
+  const mb = document.getElementById("shMoreBtn");
+  if(mb){
+    mb.style.display = cache.defs.length > 1 ? "inline-block" : "none";
+    mb.textContent = "更多义项 (" + cache.defs.length + ")";
+  }
+}
+function syncMoreBtn(){
+  const btn = document.getElementById("shMoreBtn");
+  if(!btn) return;
+  const key = String(sheetWordKey || "").toLowerCase();
+  const n = ((_dictCache[key]||{}).defs||[]).length;
+  btn.style.display = n > 2 ? "inline-block" : "none";
+  btn.textContent = n > 2 ? "更多义项 (" + n + ")" : "更多义项";
+}
+/* 查词典后刷新英英释义区与「更多义项」按钮（按词本身，不依赖全局状态） */
+async function refreshDefsPanel(word, keepOpen){
+  const key = String(word || "").toLowerCase();
+  try{
+    await fetchDict(key);
+  }catch(e){}
+  const cache = _dictCache[key] || {defs:[]};
+  const enEl = document.getElementById("shEn");
+  const mb = document.getElementById("shMoreBtn");
+  if(enEl){
+    enEl.innerHTML = renderDefs(key, 2);
+    const det = enEl.closest("details");
+    if(det && keepOpen !== false) det.open = true;
+  }
+  if(mb){
+    /* 只要显示过的义项少于总数就露出按钮（n 可能已被展开过，这里按当前 DOM 计算） */
+    const shown = enEl ? enEl.querySelectorAll("[data-def]").length : 0;
+    const total = cache.defs.length;
+    /* 只显示了一个义项却有多条 → 必须露出按钮（用户反馈的 bug） */
+    mb.style.display = (total > 1) ? "inline-block" : "none";
+    mb.textContent = "更多义项 (" + total + ")";
+    mb.dataset.shown = String(shown);
+  }
+  return cache.defs.length;
+}
+function queueDictZh(){
+  clearTimeout(_dictZhTimer);
+  _dictZhTimer = setTimeout(fillDictZh, 30);
+}
+function fillDictZh(){
+  const scope = wordPopScope();
+  const pending = [...scope.querySelectorAll(".dictzh")].filter(el=>!el.dataset.done && !el.dataset.busy);
+  if(!pending.length) return;
+  pending.forEach(el=>{ el.dataset.busy="1"; });
+  const texts = pending.map(el=>el.dataset.en || "");
+  const finish = t => {
+    pending.forEach(el=>{ el.dataset.busy=""; el.dataset.done="1";
+      el.textContent = t ? (" → " + t) : "（暂无法翻译，可点「更多释义」看站内词典）"; });
+  };
+  Promise.race([
+    apiTranslateTexts(texts).then(map=>{
+      const one = _stripBadTrans(map[_normText(texts[0])] || "");
+      if(!one) return "";
+      /* 多条时逐条填；单条直接填 */
+      if(pending.length === 1) return one;
+      pending.forEach(el=>{
+        const t = _stripBadTrans(map[_normText(el.dataset.en)] || "");
+        if(t){ el.textContent = " → " + t; el.dataset.done="1"; el.dataset.busy=""; }
+      });
+      return " ";
+    }),
+    new Promise(r=>setTimeout(()=>r(""), 7000))
+  ]).then(t=>{
+    if(t === " ") return;
+    const left = pending.filter(el=>!el.dataset.done);
+    if(!left.length) return;
+    if(t){ left.forEach(el=>{ el.textContent=" → "+t; el.dataset.done="1"; }); return; }
+    /* 批量失败：逐条兜底，各最多 6 秒 */
+    left.forEach(el=>{
+      Promise.race([mtFetch(el.dataset.en), new Promise(r=>setTimeout(()=>r(""), 6000))])
+        .then(v=>{ el.textContent = v ? (" → " + v) : "（暂无法翻译，可点「更多释义」看站内词典）"; el.dataset.done="1"; })
+        .catch(()=>{ el.textContent = "（暂无法翻译）"; el.dataset.done="1"; });
+    });
+  }).catch(()=>finish(""));
+}
 /* 简洁英英释义 + 自动中译（最多 2 个义项，后台再补到 5 个） */
 function renderDefs(word, n){
   const d0 = _dictCache[word] || {phon:"", defs:[]};
@@ -4916,7 +5089,7 @@ function renderDefs(word, n){
   /* 最多展示 n 个义项 + 第一个例句 */
   d0.defs.slice(0, n).forEach((d, i)=>{
     const enShort = d.en.length > 140 ? d.en.slice(0, 137)+"…" : d.en;
-    html += `<div style="margin-top:6px"><b>[${d.pos}]</b> ${enShort}
+    html += `<div data-def="${i}" style="margin-top:6px"><b>[${d.pos}]</b> ${enShort}
       <span class="dim dictzh" data-en="${d.en.replace(/"/g,'&quot;')}">翻译中…</span></div>`;
     if(i === 0 && d.ex){
       const exShort = d.ex.length > 120 ? d.ex.slice(0,117)+"…" : d.ex;
@@ -4924,17 +5097,8 @@ function renderDefs(word, n){
         <span class="dictzh" data-en="${d.ex.replace(/"/g,'&quot;')}">翻译中…</span></div>`;
     }
   });
-  if(d0.defs.length > n)
-    html += `<button class="btn ghost small" style="margin-top:6px"
-      onclick="this.outerHTML=renderDefs('${esc}',${Math.min(n+2, d0.defs.length)})">更多义项 (${d0.defs.length})</button>`;
-  /* 异步把每个英文义项/例句翻译成中文 */
-  setTimeout(()=>{
-    document.querySelectorAll(".dictzh").forEach(async el=>{
-      const t = await mtFetch(el.dataset.en);
-      el.textContent = " → " + t;
-      el.dataset.done = "1";
-    });
-  }, 20);
+  /* 释义中译：等新节点插入 DOM 后再补齐（这里只排队，避免抓到旧节点一直“翻译中…”） */
+  queueDictZh();
   return html;
 }
 

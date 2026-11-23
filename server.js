@@ -60,6 +60,16 @@ function sendJSON(res, code, obj){
   res.end(body);
 }
 
+/* 打包壳（Capacitor Android/iOS）与本机浏览器都允许：用于翻译/词典代理 */
+function isTrustedClient(req){
+  if(isLocalRequest(req)) return true;
+  const o = String(req.headers.origin || '');
+  if(!o) return false;
+  try{
+    const host = new URL(o).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  }catch(e){ return false; }
+}
 function isLocalRequest(req){
   const h = String(req.headers.host || '');
   const m = h.match(/^(\[[^\]]+\]|[^:]+)(?::(\d+))?$/);
@@ -334,9 +344,18 @@ async function translateOne(text, from, to){
     const t = await bingTranslateTo(q, to, false, from);
     if(t){ txSet(ck, t); return t; }
   }catch(e){ lastErr = e; }
-  /* 2) MyMemory 兜底 */
+  /* 1.5) Google gtx（若服务器网络可达） */
   try{
-    const r = await fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(q) + '&langpair=en|zh-CN&de=contact%40lizzread.app', {
+    const gl = (await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=' + encodeURIComponent(from) + '&tl=' + encodeURIComponent(to === 'zh' ? 'zh-CN' : to) + '&dt=t&q=' + encodeURIComponent(q),
+      {signal: AbortSignal.timeout(8000)})).json();
+    const j = await gl;
+    const t = (j && j.sentences) ? j.sentences.map(x => x[0] || '').join('') : '';
+    if(t && t.trim()){ txSet(ck, t.trim()); return t.trim(); }
+  }catch(e){ lastErr = e; }
+  /* 2) MyMemory 兜底（按请求语言对，不再写死 en|zh） */
+  try{
+    const pair = from + '|' + (to === 'zh' ? 'zh-CN' : to);
+    const r = await fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(q) + '&langpair=' + encodeURIComponent(pair) + '&de=contact%40lizzread.app', {
       headers:{'User-Agent':'LIZZREAD/2.0'},
       signal: AbortSignal.timeout(15000)
     });
