@@ -8,7 +8,7 @@ echo "== 1/4 同步网页到 www/ =="
 rsync -a --delete \
   --exclude node_modules --exclude android --exclude ios --exclude .git \
   --exclude .trae-html-share-packages --exclude extension --exclude scripts \
-  --exclude .screenshots --exclude www --exclude ".backup" --exclude ".sdk" \
+  --exclude .screenshots --exclude www --exclude ".backup" --exclude ".sdk" --exclude "dist" --exclude "*.original" \
   --exclude redemptions.json --exclude "*.part-*" --exclude .DS_Store ./ www/
 
 echo "== 2/4 Capacitor sync android =="

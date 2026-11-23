@@ -12,6 +12,9 @@ sentences/zh-cache.json
 
 # 本地构建产物与工具链
 .sdk/
-dist/*.apk
 android/app/build/
 .gradle/
+# 交付物与本地工具链（不入库，避免被再次打包进 www/）
+dist/
+.sdk/
+android/app/build/
