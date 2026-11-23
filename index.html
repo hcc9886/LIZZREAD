@@ -126,7 +126,8 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .g-rom{background:linear-gradient(135deg,#8E3B5A,#C57792)}
 .g-hum{background:linear-gradient(135deg,#A06A1E,#D6A247)}
 .cover{isolation:isolate}
-.cover .ctag{position:absolute;left:10px;bottom:8px;z-index:2;font:500 9px/1 var(--font);letter-spacing:1px;color:rgba(255,255,255,.7)}
+.cover .ctag{position:absolute;left:8px;bottom:7px;z-index:2;font:500 9px/1 var(--font);letter-spacing:1px;
+  color:rgba(255,255,255,.92);background:rgba(0,0,0,.32);padding:3px 6px;border-radius:6px;backdrop-filter:blur(2px)}
 .cover .t{font-size:15px}
 .cover.gen .t{font-size:15px}
 
@@ -2273,8 +2274,24 @@ function wrapText(ctx, text, x, y, maxW, lh){
   增长⑤ PWA 安装提示（beforeinstallprompt）
 ===================================================== */
 let _bia = null;
+/* 安装提示：14 天内不重复打扰；已是独立窗口（已安装）则不显示 */
+const INSTALL_DISMISS_KEY = "lz_install_dismissed_at";
+function installPromptAllowed(){
+  try{
+    const at = Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0);
+    if(at && Date.now() - at < 14 * 86400000) return false;
+    if(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return false;
+    if(window.navigator && window.navigator.standalone) return false;
+  }catch(e){}
+  return true;
+}
+function dismissInstallPrompt(div){
+  try{ localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); }catch(e){}
+  if(div && div.remove) div.remove();
+}
 window.addEventListener("beforeinstallprompt", e=>{
   e.preventDefault(); _bia = e;
+  if(!installPromptAllowed()) return;
   const div = document.createElement("div");
   div.style.cssText = "position:fixed;bottom:16px;left:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.15);z-index:100";
   div.innerHTML = `<span style="font-size:13px">📲 把 LIZZREAD 装成 App，下次直接点开，支持离线阅读</span>
@@ -2291,7 +2308,7 @@ window.addEventListener("beforeinstallprompt", e=>{
       toast("请用浏览器菜单里的「安装应用 / 添加到主屏幕」");
     }
   };
-  document.getElementById("installLater").onclick = ()=>div.remove();
+  document.getElementById("installLater").onclick = ()=>dismissInstallPrompt(div);
 });
 
 /* 自动启动：导航栏亮「复习」按钮 + 每 5 分钟定时检查 due */
@@ -2357,8 +2374,8 @@ function renderRecs(){
       </div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
         ${books.map(b => `<div onclick="openBook('${b.id}')" style="flex:0 0 132px;cursor:pointer;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)">
-          <div class="cover g-${escHtml(b.g || "lit")}" style="height:96px;position:relative">
-            <img src="${coverSrc(b)}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
+          <div class="cover g-${escHtml(b.g || "lit")}" style="height:96px;position:relative;padding:0;aspect-ratio:auto">
+            <img src="${coverSrc(b)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
           </div>
           <div style="padding:6px 8px">
             <div style="font:600 12px/1.35 var(--font);max-height:34px;overflow:hidden">${escHtml(b.t)}</div>
@@ -5751,7 +5768,7 @@ async function loadAsmBooks(){
   if(asmBooks) return asmBooks;
   try{
     if(/^https?:/.test(location.protocol)){
-      const r = await fetch("./sentences/books.json?v=3", {cache:"force-cache"});
+      const r = await fetch("./sentences/books.json?v=4", {cache:"force-cache"});
       if(r.ok) asmBooks = await r.json();
     }
   }catch(e){}
@@ -6039,17 +6056,19 @@ function asmRenderStage(){
         <span class="lang-badge" style="margin-left:6px">练习语言：${escHtml((LANG_INFO[activeLang()]||{}).native || "English")}${asmHasPack() ? "" : "（本书暂用即时生成句子）"}</span></div>
       <div id="asmSentReveal">${asmTextUnlocked ? `<button class="btn ghost small" onclick="asmToggleText()">隐藏原句</button>` : `<span style="color:var(--muted)">原句已隐藏（先看译文提示，再自己拼出原句）</span><button class="btn ghost small" style="margin-left:8px" onclick="asmToggleText()">看原句</button>`}</div>
       ${asmTextUnlocked ? `<div id="asmSentText" style="font:16px/1.65 var(--serif);margin-top:6px">${escHtml(s.text)}</div>` : ""}
-      <div class="asm-zh" id="asmZh">${s.zh ? ("💬 "+escHtml(s.zh)) : `<button class="btn ghost small" onclick="asmTranslate()">🌐 翻译这句话</button>`}</div>
+      ${asmTextUnlocked
+        ? ""   /* 展开原句后，译文放到下方「这句话的意思」里，避免同一句中文出现两次 */
+        : `<div class="asm-zh" id="asmZh">${s.zh ? ("💬 "+escHtml(s.zh)) : `<button class="btn ghost small" onclick="asmTranslate()">🌐 翻译这句话</button>`}</div>`}
       <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost small" onclick="asmSpeak()">🔊 朗读</button>
         ${asmState.returnBook?`<button class="btn ghost small" onclick="openReader('${asmState.returnBook}')">← 回阅读器</button>`:""}
       </div>
     </div>
     <div class="asm-info-grid" style="display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0 6px">
-      <div class="asm-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px">
+      ${asmTextUnlocked ? `<div class="asm-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px">
         <div style="font:600 12px var(--font);color:var(--brand-deep);margin-bottom:4px">💬 ${asmT("meaning","这句话的意思")}</div>
         <div style="font-size:13px;line-height:1.7">${s.zh ? escHtml(s.zh) : `<span style="color:var(--muted)">选择「翻译这句话」查看译文</span>`}</div>
-      </div>
+      </div>` : ""}
       <div class="asm-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px">
         <div style="font:600 12px var(--font);color:var(--brand-deep);margin-bottom:4px">🧭 ${asmT("context","联系本文的意思")}</div>
         <div style="font-size:13px;line-height:1.7">
