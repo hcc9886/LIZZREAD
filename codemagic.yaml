@@ -1,0 +1,68 @@
+# Codemagic 构建配置（iOS）
+# 用法：https://codemagic.io/start/ → 连接 GitHub 仓库 → 自动识别本文件
+workflows:
+  ios-release:
+    name: LIZZREAD iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: LIZZREAD_ASC
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.lizzread.app
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.lizzread.app"
+        APP_STORE_APP_ID: "0000000000"   # ← 建好 App 后替换为 App Store Connect 里的数字 ID
+      node: 20
+      java: 21
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install --no-audit --no-fund
+          npm i -D @capacitor/cli@8
+      - name: Sync web assets
+        script: |
+          rsync -a --delete \
+            --exclude '.git' --exclude '.github' --exclude node_modules \
+            --exclude android --exclude ios --exclude www --exclude .sdk \
+            --exclude dist --exclude .backup --exclude scripts --exclude store \
+            --exclude '.screenshots' --exclude extension --exclude 'redemptions.json' \
+            --exclude '*.part-*' --exclude '*.original' \
+            ./ www/
+          npx cap sync ios
+      - name: Set build number
+        script: |
+          cd ios/App
+          agvtool new-version -all $PROJECT_BUILD_NUMBER || true
+      - name: Install CocoaPods
+        script: |
+          cd ios/App && pod install --repo-update
+      - name: Build iOS
+        script: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/LIZZREAD.xcarchive \
+            -destination generic/platform=iOS \
+            DEVELOPMENT_TEAM=$APPLE_TEAM_ID \
+            CODE_SIGN_STYLE=Automatic \
+            archive
+      - name: Export IPA
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath build/LIZZREAD.xcarchive \
+            -exportOptionsPlist store/ExportOptions.plist \
+            -exportPath build/
+    artifacts:
+      - build/*.ipa
+      - build/*.xcarchive
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers

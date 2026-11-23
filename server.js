@@ -508,6 +508,53 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* /api/huawei/verify —— 华为 IAP 收据校验（服务端）
+     客户端支付成功后把 purchaseToken 发来；服务端用华为 IAP 的验单接口核对，
+     避免改包白嫖。未配置 HUAWEI_APP_ID/SECRET 时返回 configured:false。 */
+  if(u.pathname === '/api/huawei/verify' && req.method === 'POST'){
+    const APP_ID = process.env.HUAWEI_APP_ID || '';
+    const APP_SECRET = process.env.HUAWEI_APP_SECRET || '';
+    let body = '';
+    try{
+      body = await new Promise((resolve, reject) => {
+        let raw = '';
+        req.on('data', c => { raw += c; if(raw.length > 2e5) req.destroy(); });
+        req.on('end', () => resolve(raw));
+        req.on('error', reject);
+      });
+    }catch(e){ body = ''; }
+    let j = {};
+    try{ j = JSON.parse(body || '{}'); }catch(e){ j = {}; }
+    if(!APP_ID || !APP_SECRET){ sendJSON(res, 200, {ok:false, configured:false, message:'服务端未配置华为 IAP 密钥'}); return; }
+    const token = String(j.purchaseToken || '').slice(0, 4000);
+    const productId = String(j.productId || '').slice(0, 120);
+    const subId = String(j.subscriptionId || productId).slice(0, 120);
+    if(!token){ sendJSON(res, 400, {ok:false, message:'缺少 purchaseToken'}); return; }
+    try{
+      const auth = 'Basic ' + Buffer.from(APP_ID + ':' + APP_SECRET).toString('base64');
+      const r = await fetch('https://orders-dre.iap.hicloud.com/applications/purchases/tokens/verify', {
+        method:'POST',
+        headers:{ 'Authorization': auth, 'Content-Type':'application/x-www-form-urlencoded' },
+        body: 'purchaseToken=' + encodeURIComponent(token),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await r.json();
+      const rc = data && data.responseCode;
+      const ok = String(rc) === '0';
+      sendJSON(res, 200, {
+        ok,
+        configured: true,
+        product: subId,
+        purchaseState: data && data.purchaseState,
+        responseCode: rc,
+        expiresAt: data && data.data && data.data.expirationDate ? Number(data.data.expirationDate) : 0
+      });
+    }catch(e){
+      sendJSON(res, 200, {ok:false, configured:true, message:'验单异常：' + (e.message || e)});
+    }
+    return;
+  }
+
   /* /api/version —— 客户端版本与更新提示（App 内“检查更新”与强制升级用） */
   if(u.pathname === '/api/version'){
     sendJSON(res, 200, {
