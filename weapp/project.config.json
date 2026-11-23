@@ -1,0 +1,18 @@
+{
+  "description": "LIZZREAD 微信小程序（web-view 套壳）",
+  "packOptions": { "ignore": [], "include": [] },
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "checkSiteMap": false
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.5.0",
+  "appid": "替换成你的AppID",
+  "projectname": "LIZZREAD",
+  "condition": {}
+}

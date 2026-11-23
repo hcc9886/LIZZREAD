@@ -1,0 +1,14 @@
+{
+  "pages": ["pages/web/web"],
+  "window": {
+    "navigationBarTitleText": "LIZZREAD 阅读器",
+    "navigationBarBackgroundColor": "#0F8A4D",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F6F7F5",
+    "enablePullDownRefresh": false
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {},
+  "requiredPrivateInfos": []
+}

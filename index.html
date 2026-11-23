@@ -34,6 +34,8 @@
 <script src="data/app-version.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
+<style>html.lz-mini .lz-no-mini{display:none !important}</style>
+<script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
 <script src="shared/assembly-core.js?v=14" defer></script>
 <script src="shared/importers.js?v=14" defer></script>
@@ -464,10 +466,10 @@ body.no-zh .sent .zh{display:none}
     <div class="filters" id="lvChips"></div>
     <div class="filters"><div id="genreChips" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
     <div class="filters">
-      <button class="btn ghost small" id="importBtnLabel" onclick="document.getElementById('importFile').click()">📥 导入书籍</button>
+      <button class="btn ghost small lz-no-mini" id="importBtnLabel" onclick="document.getElementById('importFile').click()">📥 导入书籍</button>
       <input type="file" id="importFile" accept=".txt,.md,.markdown,.html,.htm,.xhtml,.epub,.docx,.odt,.pdf,.fb2,.rtf,.srt,.vtt,.csv,.json,.zip,.mobi,.azw,.azw3,text/plain,application/epub+zip,application/pdf" multiple style="display:none" onchange="doImport(this)">
-      <button class="btn ghost small" onclick="go('guide')" title="支持 16 种格式，点击看导入教程">❓ 支持哪些格式</button>
-      <button class="btn ghost small" onclick="openUrlImport()" title="从外部网站抓取正文（Gutenberg / 青空文库 / 维基文库 / 任意文章页）">🔗 网址导入</button>
+      <button class="btn ghost small lz-no-mini" onclick="go('guide')" title="支持 16 种格式，点击看导入教程">❓ 支持哪些格式</button>
+      <button class="btn ghost small lz-no-mini" onclick="openUrlImport()" title="从外部网站抓取正文（Gutenberg / 青空文库 / 维基文库 / 任意文章页）">🔗 网址导入</button>
       <button class="btn ghost small" id="offlineBtn" onclick="downloadAll()">📶 离线下载常用书</button>
       <input class="search" id="searchBox" placeholder="搜索书名 / 作者…">
       <button class="btn ghost small" onclick="runFullTextSearch()">🔎 全文搜索</button>
@@ -1342,6 +1344,12 @@ function setGlossLang(code){
 }
 function langCodes(){ return LANGS.map(x=>x.code); }
 /* UI 文案：学习语言界面（主）+ 展示语言（覆盖） */
+/* 是否运行在微信小程序 web-view 里 */
+function isMiniProgram(){
+  try{
+    return /miniProgram/i.test(navigator.userAgent) || /\bwx=1\b/.test(location.search) || /from=miniprogram/.test(location.search);
+  }catch(e){ return false; }
+}
 /* 界面语言：默认跟随「展示语言」（你看得懂的那种），可选跟随学习语言做沉浸 */
 function uiLang(){
   try{
@@ -8927,7 +8935,7 @@ window.__cacheSentenceZh = function(sentence, zh){
 
 /* 保存阅读进度节流 — 见上方 _pgSaveTimer 已声明 */
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
-if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1")){
+if("serviceWorker" in navigator && !isMiniProgram() && (location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1")){
   /* 自动更新：注册 SW 并监听更新；发现新版本时顶部出现「立即更新」条 */
   navigator.serviceWorker.register("sw.js").then((reg) => {
     /* 每次打开都主动查一次有没有新版本 */

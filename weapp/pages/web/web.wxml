@@ -1,0 +1,14 @@
+<web-view
+  wx:if="{{url}}"
+  src="{{url}}"
+  bindmessage="onMessage"
+  binderror="onError"
+  bindload="onWebViewLoad"
+></web-view>
+
+<view wx:if="{{failed}}" class="fallback">
+  <view class="title">网页加载失败</view>
+  <view class="desc">当前地址：{{url}}</view>
+  <view class="desc">常见原因：业务域名未在小程序后台配置，或域名未备案。</view>
+  <button class="btn" bindtap="buildUrl">重试</button>
+</view>
