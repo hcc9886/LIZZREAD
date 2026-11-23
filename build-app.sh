@@ -14,7 +14,7 @@ rsync -a --delete \
   --exclude covers --exclude covers-pick --exclude covers-app --exclude www \
   --exclude 'PUSH-COMMAND.md' --exclude 'README.md' --exclude 'codemagic.yaml' \
   --exclude 'capacitor.config.json' --exclude 'package*.json' --exclude 'build*' \
-  --exclude 'server.js' --exclude 'start.*' --exclude 'redemptions.json' --exclude 'download' --exclude 'Dockerfile' --exclude '.dockerignore' --exclude 'render.yaml' --exclude 'fly.toml' \
+  --exclude 'server.js' --exclude 'start.*' --exclude 'redemptions.json' --exclude 'download' --exclude 'dist-web' --exclude 'Dockerfile' --exclude '.dockerignore' --exclude 'render.yaml' --exclude 'fly.toml' \
   --exclude '*.part-*' --exclude '*.original' --exclude '.DS_Store' \
   ./ www/
 
@@ -42,9 +42,15 @@ if [ -d "$SDK/platforms/android-34" ]; then
   export ANDROID_USER_HOME="$SDK/android-home"
   export GRADLE_USER_HOME="$SDK/gradle-user-home"
   export PATH="$SDK/gradle-8.10.2/bin:$PATH"
-  ( cd android && /usr/bin/arch -x86_64 gradle --no-daemon --console=plain assembleDebug )
-  echo "APK: android/app/build/outputs/apk/debug/app-debug.apk"
-  ( cd android && /usr/bin/arch -x86_64 gradle --no-daemon --console=plain bundleRelease ) || echo "AAB（正式包）需要签名密钥，见 store/README-AppStore.md"
+  echo "-- 正式签名包（release） --"
+  ( cd android && /usr/bin/arch -x86_64 gradle --no-daemon --console=plain assembleRelease bundleRelease )
+  echo "APK: android/app/build/outputs/apk/release/app-release.apk"
+  echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
+  mkdir -p dist
+  cp -f android/app/build/outputs/apk/release/app-release.apk "dist/LIZZREAD-${VER:-2.0.0}-release.apk" 2>/dev/null || true
+  cp -f android/app/build/outputs/bundle/release/app-release.aab "dist/LIZZREAD-${VER:-2.0.0}.aab" 2>/dev/null || true
+  mkdir -p download
+  cp -f android/app/build/outputs/apk/release/app-release.apk download/LIZZREAD.apk 2>/dev/null || true
 elif [ -n "$ANDROID_SDK_ROOT" ] || [ -n "$ANDROID_HOME" ]; then
   (cd android && ./gradlew assembleDebug)
   echo "APK: android/app/build/outputs/apk/debug/app-debug.apk"

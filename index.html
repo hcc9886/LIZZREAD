@@ -1711,12 +1711,16 @@ async function renderCompare(){
     if(code === activeLang()) text = src;
     else {
       try{
-        if(!hasLocalAPI) return {};
+        if(hasLocalAPI === false && !window.__LZ_NATIVE) throw new Error("no-api");
         const r = await fetch(apiUrl("api/translate"), {method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({texts:[src], from: activeLang(), to: code})});
+        if(!r.ok) throw new Error("http "+r.status);
         const j = await r.json();
         text = (j.translations || {})[src] || "";
-      }catch(e){}
+      }catch(e){
+        /* 没有后端时退回浏览器直连机翻 */
+        try{ text = await mtFetch(src, code); }catch(e2){ text = ""; }
+      }
     }
     rows.push({code, text});
   }
@@ -3411,6 +3415,7 @@ async function mtFetchWords(words){
   const runBatch = async (batch) => {
     /* 先走本机服务（Bing 代理），失败再直连 Google */
     try{
+      if(hasLocalAPI === false && !window.__LZ_NATIVE) throw new Error("no-api");
       const map = await apiTranslateTexts(batch);
       let hit = 0;
       for(const w of batch){
@@ -3475,6 +3480,7 @@ async function mtFetchSentences(texts){
   for(let i = 0; i < list.length; i += 8) batches.push(list.slice(i, i + 8));
   const runBatch = async (batch) => {
     try{
+      if(hasLocalAPI === false && !window.__LZ_NATIVE) throw new Error("no-api");
       const map = await apiTranslateTexts(batch);
       let hit = 0;
       for(const t of batch){
@@ -4043,6 +4049,11 @@ function _stripBadTrans(t){
 }
 /* 本机翻译代理：浏览器直连失败时的同源兜底（服务端用 MyMemory） */
 async function apiTranslateTexts(texts){
+  /* 等后端探测结果（避免探测未完成就先发请求） */
+  try{ if(window.__lzApiReady) await window.__lzApiReady; }catch(e){}
+  /* 静态托管（GitHub Pages 等）没有后端：直接跳过，避免每个词都发一个 404 */
+  if(hasLocalAPI === false && !window.__LZ_NATIVE) return {};
+  if(!window.__LZ_NATIVE && !hasLocalAPI) return {};   /* 探测中/未知也先不请求 */
   const payload = JSON.stringify({texts: texts.map(t=>_normText(t)).filter(Boolean).slice(0,40), from: activeLang(), to: showLang()});
   const urls = [apiUrl("api/translate")];
   /* 打包壳：Capacitor 把 public/api/* 的请求交给原生层发起（不经 WebView CORS） */
@@ -4893,11 +4904,18 @@ const API_BASE = (function(){
 })();
 function apiUrl(path){ return (API_BASE || "") + path.replace(/^\.?\//, ""); }
 let hasLocalAPI = false;   /* 由 probeLocalAPI() 决定 */
+const API_PROBE_KEY = "lz_api_probe";
 async function probeLocalAPI(){
+  /* 静态托管（GitHub Pages 等）没有后端：把「没有」缓存 1 天，避免每次刷新都发一个 404 请求 */
+  try{
+    const c = JSON.parse(localStorage.getItem(API_PROBE_KEY) || "null");
+    if(c && Date.now() - c.at < 86400000){ hasLocalAPI = !!c.ok; if(!hasLocalAPI) return false; }
+  }catch(e){}
   try{
     const r = await fetch(apiUrl("api/health"), {signal: AbortSignal.timeout(2500)});
     hasLocalAPI = r.ok;
   }catch(e){ hasLocalAPI = false; }
+  try{ localStorage.setItem(API_PROBE_KEY, JSON.stringify({ok: hasLocalAPI, at: Date.now()})); }catch(e){}
   if(!hasLocalAPI){
     console.info("[LIZZREAD] 未连接后端：词典与翻译走浏览器直连（可在设置里填写服务端地址）");
   }
@@ -8320,7 +8338,9 @@ applyPrefs();
 })();
 /* 初始化语言模式：加载当前学习语言书库并刷新界面文案 */
 (async function bootLanguage(){
-  try{ await probeLocalAPI(); }catch(e){}
+  const __probe = probeLocalAPI().catch(()=>false);
+  window.__lzApiReady = __probe;
+  try{ await __probe; }catch(e){}
   try{
     await refreshBooksForLang();
     _langBooted = true;

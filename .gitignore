@@ -23,3 +23,6 @@ covers-app/
 .keepalive
 www/
 download/
+
+dist-web/
+android/app/lizzread.keystore
