@@ -28,6 +28,7 @@
 <script src="data/lang-manifest.js?v=4"></script>
 <script src="data/i18n.js?v=3"></script>
 <script src="data/lang-recs.js?v=1"></script>
+<script src="data/lang-tests.js?v=1"></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
@@ -146,6 +147,10 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .mm-row{font-size:13px;line-height:1.65;margin:2px 0 4px}
 .mm-row b{color:var(--muted);font-weight:600;margin-right:4px}
 .mm-zh{color:var(--text);margin-top:1px}
+/* 语言面板：内容多时必须能滚动，否则上面的选项看不到 */
+.lang-sheet{overflow-y:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:16px}
+.lang-sheet>.box{margin:auto 0}
+@media (min-width:720px){ .lang-sheet{align-items:center;padding:24px} }
 .sheet-mini{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
 .sheet-mini .linkbtn{background:none;border:none;padding:2px 0;color:var(--brand-deep);font:500 12.5px var(--font);cursor:pointer}
 .sheet-mini .linkbtn:hover{text-decoration:underline}
@@ -476,6 +481,7 @@ body.no-zh .sent .zh{display:none}
   <!-- ============ 词汇测试 ============ -->
   <section class="view" id="view-test">
     <div id="testIntro">
+      <div id="testContinue"></div>
       <div class="test-card">
         <div class="word" style="font-size:26px">📚 词汇量测试</div>
         <p class="result-desc">
@@ -1316,6 +1322,14 @@ function glossLang(){
   const g = getPref("gloss") || "auto";
   return g === "auto" ? showLang() : g;
 }
+function setUiLang(v){
+  try{ localStorage.setItem("lz_uilang", v); }catch(e){}
+  applyLangUI();
+  renderLangChips();
+  renderLibrary();
+  try{ closeLangPanel(); openLangPanel(); }catch(e){}
+  toast("界面语言已切换");
+}
 function setGlossLang(code){
   setPref("gloss", code);
   toast("释义语言：" + (code === "auto" ? "跟随展示语言" : ((SHOW_LANGS.find(x => x.code === code) || {}).name || code)));
@@ -1324,15 +1338,24 @@ function setGlossLang(code){
 }
 function langCodes(){ return LANGS.map(x=>x.code); }
 /* UI 文案：学习语言界面（主）+ 展示语言（覆盖） */
+/* 界面语言：默认跟随「展示语言」（你看得懂的那种），可选跟随学习语言做沉浸 */
+function uiLang(){
+  try{
+    const v = localStorage.getItem("lz_uilang") || "show";
+    if(v === "learn") return activeLang();
+    if(v === "show") return showLang();
+    return v;   /* 具体语言码 */
+  }catch(e){ return showLang(); }
+}
 function L(k, fb){
-  const lang = activeLang(), show = showLang();
+  const lang = uiLang(), show = showLang();
   const pick = (obj, path) => {
     let cur = obj;
     for(const seg of String(path).split('.')){ if(cur == null) return undefined; cur = cur[seg]; }
     return cur;
   };
   const T = window.LZ_MIX || {};
-  const mix = T[lang] && T[lang].ui;
+  const mix = (T[lang] && T[lang].ui) || (T[activeLang()] && T[activeLang()].ui);
   const showUi = (show === 'zh' ? (window.LZ_ZH || {}).ui : (show === 'en' ? (window.LZ_EN || {}).ui
     : ((window.LZ_TR && window.LZ_TR[show] && window.LZ_TR[show].ui) || (T[show] && T[show].ui)))) || null;
   /* 语言模式界面优先，展示语言只兜底缺失键 */
@@ -1360,7 +1383,13 @@ function GENRES(){
 }
 function TIERS(){ return (LANG_INFO[activeLang()] || {}).levels || TIERS_EN; }
 function LV_DESC(){ return ((window.LZ_L || {})[activeLang()] || {}).desc || LV_DESC_EN; }
-function TEST(){ return (((window.LZ_L || {})[activeLang()] || {}).test || TEST_EN).map(q => ({tier:q.t, w:q.w, o:q.o})); }
+function TEST(){
+  const code = activeLang();
+  const fromLang = ((window.LZ_L || {})[code] || {}).test;
+  const fromNew = (window.LZ_TEST || {})[code];
+  const src = fromLang || fromNew || TEST_EN;
+  return src.map(q => ({tier:q.t, w:q.w, o:q.o}));
+}
 function langQuota(){ const L0 = LANG_INFO[activeLang()] || {}; return L0.quota || (activeLang()==='en'?120:30); }
 const ACCENTS = {
   emerald:["#0F8A4D","#0B6B3C","#E7F5EC","#2FBF72","#5CD594","#1D3327"],
@@ -1544,6 +1573,9 @@ function langSwitcherHtml(){
       title="${x.name} · ${escHtml(lv)}${paid ? " · 已解锁" : ""}">${x.native}${x.count ? `<span class="lang-badge">${x.count}</span>` : ""}${paid && x.code !== "en" ? " ✓" : ""}</button>`;
   }).join("");
 }
+function openRecBlock(lv){ window.__recOpen = Object.assign(window.__recOpen || {}, {[lv]: true}); renderRecs(); }
+function closeRecBlock(lv){ if(window.__recOpen) delete window.__recOpen[lv]; renderRecs(); }
+function collapseAllRecs(){ window.__recOpen = {}; renderRecs(); }
 function renderLangChips(){
   const el = document.getElementById("langChips");
   if(!el) return;
@@ -1638,6 +1670,12 @@ function openLangPanel(){
       <div class="lang-row">
         ${SHOW_LANGS.map(x => `<button class="chip ${showLang()===x.code?'on':''}" onclick="pickShowLang('${x.code}')">${x.name}</button>`).join("")}
       </div>
+      <div style="font:600 13px var(--font);margin:14px 0 6px">界面语言（菜单 / 按钮用的语言）</div>
+      <div class="lang-row">
+        <button class="chip ${uiLang()===showLang()?'on':''}" onclick="setUiLang('show')">跟随展示语言（推荐）</button>
+        <button class="chip ${uiLang()===activeLang()?'on':''}" onclick="setUiLang('learn')">跟随学习语言（沉浸）</button>
+        ${SHOW_LANGS.slice(0,6).map(x => `<button class="chip ${uiLang()===x.code?'on':''}" onclick="setUiLang('${x.code}')">${x.name}</button>`).join("")}
+      </div>
       <div style="font:600 13px var(--font);margin:14px 0 6px">点词释义语言（母语桥接）</div>
       <div class="lang-row">
         <button class="chip ${(getPref("gloss")||"auto")==="auto"?'on':''}" onclick="setGlossLang('auto')">跟随展示语言</button>
@@ -1650,7 +1688,7 @@ function openLangPanel(){
         <button class="btn ghost small" onclick="shareLangLink()">🔗 分享本语言链接</button>
       </div>
       <div class="paywall-note" style="margin-top:14px">
-        每个学习语言的每日免费翻译额度不同：英语 ${(LANG_INFO.en||{}).quota||120} 句，其他语言 ${(LANG_INFO.de||{}).quota||40} 句左右；会员不限量。
+        免费额度：英语 ${(LANG_INFO.en||{}).quota||120} 句/天，其他语言各 ${(LANG_INFO.de||{}).quota||80} 句/天；会员不限量。
       </div>
     </div>`;
   el.style.display = "flex";
@@ -2420,14 +2458,26 @@ function renderRecs(){
   const list = recLevelList();
   if(!list.length){ host.innerHTML = ""; return; }
   const info = LANG_INFO[activeLang()] || {};
-  host.innerHTML = list.slice(0, 2).map(({lv, titles}) => {
+  const curLv = store.level || (TIERS()[2] || "B1");
+  const expanded = (window.__recOpen || {});
+  host.innerHTML = list.slice(0, 3).map(({lv, titles}) => {
     const books = titles.map(t => BOOKS.find(b => b.t === t)).filter(Boolean).slice(0, 6);
     if(!books.length) return "";
+    const isCur = lv === curLv;
+    const open = isCur || expanded[lv];
+    /* 非当前等级的推荐默认折叠成一行，避免占满首屏 */
+    if(!open){
+      return `<div class="rec-fold" onclick="openRecBlock('${escHtml(lv)}')">
+        <b>${escHtml(info.label || info.lvLabel || "等级")} ${escHtml(lv)}</b>
+        <span class="tip" style="margin:0">${titles.length} 本推荐 · 点开展开</span>
+        <span style="margin-left:auto;color:var(--brand-deep)">展开 ›</span></div>`;
+    }
     return `<div class="rec-block" style="margin:6px 0 14px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <b style="font:600 14px var(--font);color:var(--brand-deep)">${escHtml(info.label || info.lvLabel || "等级")} ${escHtml(lv)} · ${L("library.rec","这个等级读什么")}</b>
         <button class="btn ghost small" style="margin-left:auto" onclick="openExam()">📜 升级考试</button>
         <button class="btn ghost small" onclick="setLv('${escHtml(lv)}')">只看 ${escHtml(lv)}</button>
+        ${isCur ? "" : `<button class="btn ghost small" onclick="closeRecBlock('${escHtml(lv)}')">收起</button>`}
       </div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
         ${books.map(b => `<div onclick="openBook('${b.id}')" style="flex:0 0 132px;cursor:pointer;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)">
@@ -5451,12 +5501,49 @@ function renderTestIntro(){
   document.getElementById("testBox").style.display="none";
   document.getElementById("testResult").style.display="none";
   const lv = store.level;
+  const prog = loadTestProgress();
+  const cont = document.getElementById("testContinue");
+  if(cont){
+    cont.innerHTML = prog
+      ? `<div class="settings-card" style="margin:10px 0"><b>上次做到第 ${prog.q+1} / ${TEST().length} 题</b>
+          <div class="sub">可以接着做完，也可以重新开始（重新开始会清掉这次进度）。</div>
+          <div class="lang-row" style="margin-top:8px">
+            <button class="btn small" onclick="resumeTest()">继续上次（第 ${prog.q+1} 题）</button>
+            <button class="btn ghost small" onclick="startTest()">重新开始</button>
+          </div></div>`
+      : "";
+  }
   document.getElementById("haveLv").innerHTML = lv
     ? `当前记录：<b>${lv}</b>，可以直接 <a href="#" onclick="afterTest();return false" style="color:var(--brand-deep)">去书城看推荐</a>`
     : "还没有测试记录，测完即可解锁个性化推荐。";
 }
+/* 词汇测试进度：按学习语言保存，切走再回来能接着做 */
+function testStateKey(){ return pk("testprogress_" + activeLang()); }
+function saveTestProgress(){
+  try{ localStorage.setItem(testStateKey(), JSON.stringify({q: testQ, ans: testAns, at: Date.now(), total: TEST().length})); }catch(e){}
+}
+function loadTestProgress(){
+  try{
+    const o = JSON.parse(localStorage.getItem(testStateKey()) || "null");
+    if(!o || !Array.isArray(o.ans)) return null;
+    if(o.q >= TEST().length) return null;      /* 已完成 */
+    if(o.total !== TEST().length) return null; /* 题库变了，作废 */
+    return o;
+  }catch(e){ return null; }
+}
+function clearTestProgress(){ try{ localStorage.removeItem(testStateKey()); }catch(e){} }
+function resumeTest(){
+  const o = loadTestProgress();
+  if(!o){ startTest(); return; }
+  testQ = o.q; testAns = o.ans.slice();
+  document.getElementById("testIntro").style.display="none";
+  document.getElementById("testResult").style.display="none";
+  document.getElementById("testBox").style.display="";
+  showQ();
+}
 function startTest(){
   testQ = 0; testAns = TIERS().map(()=>0);
+  clearTestProgress();
   document.getElementById("testIntro").style.display="none";
   document.getElementById("testResult").style.display="none";
   document.getElementById("testBox").style.display="";
@@ -5485,6 +5572,7 @@ function pick(btn, ok){
   setTimeout(()=>{
     delete document.getElementById("qOpts").dataset.lock;
     testQ++;
+    saveTestProgress();
     if(testQ >= TEST().length) finishTest(); else showQ();
   }, 700);
 }
@@ -5501,10 +5589,12 @@ function pickSkip(btn){
   setTimeout(()=>{
     delete document.getElementById("qOpts").dataset.lock;
     testQ++;
+    saveTestProgress();
     if(testQ >= TEST().length) finishTest(); else showQ();
   }, 900);
 }
 function finishTest(){
+  clearTestProgress();
   let lv = "入门";
   for(let i=0;i<TIERS().length;i++) if(testAns[i]>=2) lv = TIERS()[i];
   store.level = lv;
@@ -6055,18 +6145,32 @@ async function loadAsmBooks(){
 function escHtml(t){ return String(t==null?"":t).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 function escAttr(t){ return escHtml(t).replace(/`/g,"&#96;"); }
 function asmBookTitle(bookId){
-  /* 多语言句子包：de-2229 / ja-773 / zh-24240 */
-  const lm = String(bookId||"").match(/^([a-z]{2})-\d+$/);
-  if(lm){
-    const list = (asmBooks || []);
-    const item = list.find(x => x && x.bookId === bookId);
-    if(item && item.title) return item.title;
+  const id = String(bookId || "");
+  /* 1) 句子包自带的标题（books.json 里已经有） */
+  const item = (asmBooks || []).find(x => x && x.bookId === id);
+  if(item && item.title && !/^book\d+$/.test(item.title)) return item.title;
+
+  const lm = id.match(/^([a-z]{2})-(\d+)$/);
+  const gb = Number(lm ? lm[2] : id.replace(/^book0*/, "")) || 0;
+  const code = lm ? lm[1] : "en";
+  if(!gb) return item && item.title ? item.title : id;
+
+  /* 2) 对应语言的官方书库 */
+  const tryPools = [];
+  const langArr = window["LZ_LANG_" + code.toUpperCase()];
+  if(Array.isArray(langArr)) tryPools.push(langArr);
+  if(Array.isArray(window.LZ_BOOKS_EN)) tryPools.push(window.LZ_BOOKS_EN);
+  if(Array.isArray(BOOKS)) tryPools.push(BOOKS);
+  for(const pool of tryPools){
+    const b = pool.find(x => x && Number(x.gb) === gb);
+    if(b) return dispTitle(b);
   }
-  const gb = Number(String(bookId).replace(/^book0*/, "").replace(/^[a-z]{2}-/, "")) || 0;
-  /* 句库是英语书，标题要从英语书库里找，避免切换学习语言后显示成别国书名 */
-  const pool = (window.LZ_BOOKS_EN && window.LZ_BOOKS_EN.length) ? window.LZ_BOOKS_EN : BOOKS;
-  const b = pool.find(x => x.gb === gb);
-  return b ? dispTitle(b) : bookId;
+  /* 3) 全站目录 */
+  try{
+    const c = (window.PG_CATALOG || []).find(x => Number(x.gb) === gb);
+    if(c && c.t) return c.t;
+  }catch(e){}
+  return item && item.title ? item.title : ("Gutenberg #" + gb);
 }
 function asmHasPack(){
   try{
@@ -6109,12 +6213,13 @@ function renderAssembly(){
     </div>
     <p class="tip">数据来自 ${(asmBooks||[]).length || "280"}+ 本公版书的 13 万句预制句子包；新书/导入书可在阅读器里点「🧩 拆解本句」即时生成意群。</p>`;
   (loadAsmBooks() || Promise.resolve([])).then(raw => {
-    /* 当前学习语言优先：多语言句子包的 bookId 形如 de-2229 / ja-773 */
+    /* 当前学习语言优先：多语言句子包的 bookId 形如 de-2229 / ja-773 或 book<gb>（英语） */
     const cur = activeLang();
-    raw = raw.slice().sort((a,b)=>{
-      const sa = (a.lang===cur?0:1), sb = (b.lang===cur?0:1);
-      return sa - sb || (b.n||0) - (a.n||0);
-    });
+    const langOf = b => b.lang || (/^[a-z]{2}-\d+$/.test(b.bookId||"") ? b.bookId.slice(0,2) : "en");
+    const mine = raw.filter(b => langOf(b) === cur);
+    const others = raw.filter(b => langOf(b) !== cur);
+    raw = [...mine, ...others];
+    const ownCount = mine.length;
     const list = Array.isArray(raw) ? raw : [];
     const sel = document.getElementById("asmBook");
     if(!sel) return;
@@ -6124,7 +6229,11 @@ function renderAssembly(){
       return {x, title: b?dispTitle(b):x.bookId, n:x.n, gb};
     }).sort((a,b)=> (b.n||0)-(a.n||0));
     sel.innerHTML = `<option value="">— 从 ${list.length} 本有句子包的书里选 —</option>` +
-      sorted.map(o=>`<option value="${o.x.bookId}">${o.title}（${o.n} 句）</option>`).join("");
+      `<optgroup label="${escAttr((LANG_INFO[cur]||{}).native || cur)}（${ownCount} 本）">` +
+      mine.map(b => `<option value="${escHtml(b.bookId)}"${b.bookId===asmState?.bookId?" selected":""}>${escHtml(asmBookTitle(b.bookId))}（${b.n} 句）</option>`).join("") +
+      `</optgroup><optgroup label="其他语言">` +
+      others.map(b => `<option value="${escHtml(b.bookId)}"${b.bookId===asmState?.bookId?" selected":""}>${escHtml(asmBookTitle(b.bookId))}（${b.n} 句）</option>`).join("") +
+      `</optgroup>`;
     if(asmState && asmState.bookId) sel.value = asmState.bookId;
     if(!asmState && list.length) asmNewRandom();
     if(!list.length && stage) stage.innerHTML = `<div class="empty">当前为离线壳/无句子数据模式：从书城打开一本书后点「🧩 拆解本句」即可练习。</div>`;
