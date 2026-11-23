@@ -26,7 +26,7 @@ const REDEEM_CODES = {
   'nulixuexiya2027':             {plan:'year',      days:366, scope:'all'},
   'lizzzhaohaoyon!!!':            {plan:'month',     days:31,  scope:'one'},
   /* 班级版：最多 30 台设备（老师+学生），一年内有效 */
-  'lizzread-class-2026':         {plan:'all_year',  days:366, scope:'all', seats:30}
+  'lzbb3h-5qdy-dek3':         {plan:'all_year',  days:366, scope:'all', seats:30}
 };
 function readRedeemed(){
   try{ return JSON.parse(fs.readFileSync(REDEEM_FILE, 'utf8')) || {}; }catch(e){ return {}; }
@@ -436,6 +436,15 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
+  /* 语言译本目录按需存在：缺文件时返回空数组，避免控制台 404 噪音 */
+  const trMiss = u.pathname.match(/^\/data\/lang-([a-z]{2})-tr\.js$/);
+  if(trMiss && !fs.existsSync(path.join(ROOT, 'data', 'lang-' + trMiss[1] + '-tr.js'))){
+    const body = 'window.LZ_LANG_' + trMiss[1].toUpperCase() + '_TR = [];';
+    res.writeHead(200, {'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=86400'});
+    res.end(body);
+    return;
+  }
+
   /* /api/admin/health —— 仅本机可访问的运营数据 */
   if(u.pathname === '/api/admin/health'){
     if(!isLocalRequest(req)){ sendJSON(res, 403, {error:'仅本机可访问'}); return; }

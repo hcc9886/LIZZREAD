@@ -14,10 +14,10 @@
 <title>LIZZREAD · 线上图书馆</title>
 <meta name="theme-color" content="#2F5D50">
 <link rel="preload" href="dict.js?v=7" as="script">
-<script src="data/books-en.js?v=2"></script>
+<script src="data/books-en.js?v=3"></script>
 <script src="data/catalog.js?v=1"></script>
-<script src="data/lang-manifest.js?v=2"></script>
-<script src="data/i18n.js?v=2"></script>
+<script src="data/lang-manifest.js?v=3"></script>
+<script src="data/i18n.js?v=3"></script>
 <script src="data/lang-recs.js?v=1"></script>
 <script src="dict.js?v=7" defer></script>
 <script>if(/^https?:$/.test(location.protocol)){document.write('<link rel="manifest" href="manifest.json">');}</script>
@@ -433,6 +433,7 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" id="importBtnLabel" onclick="document.getElementById('importFile').click()">📥 导入书籍</button>
       <input type="file" id="importFile" accept=".txt,.md,.markdown,.html,.htm,.xhtml,.epub,.docx,.odt,.pdf,.fb2,.rtf,.srt,.vtt,.csv,.json,.zip,.mobi,.azw,.azw3,text/plain,application/epub+zip,application/pdf" multiple style="display:none" onchange="doImport(this)">
       <button class="btn ghost small" onclick="go('guide')" title="支持 16 种格式，点击看导入教程">❓ 支持哪些格式</button>
+      <button class="btn ghost small" onclick="openUrlImport()" title="从外部网站抓取正文（Gutenberg / 青空文库 / 维基文库 / 任意文章页）">🔗 网址导入</button>
       <button class="btn ghost small" id="offlineBtn" onclick="downloadAll()">📶 离线下载常用书</button>
       <input class="search" id="searchBox" placeholder="搜索书名 / 作者…">
       <button class="btn ghost small" onclick="runFullTextSearch()">🔎 全文搜索</button>
@@ -1134,7 +1135,9 @@ LANGS.forEach(x => { LANG_INFO[x.code] = x; });
 if(!LANG_INFO.en) LANG_INFO.en = {code:"en", name:"English", native:"English", zh:"英语", levels:["A1","A2","B1","B2","C1","C2"], quota:120, count:0};
 if(!LANG_INFO.en.count) LANG_INFO.en.count = (typeof BOOKS !== "undefined" && BOOKS.length) ? BOOKS.length : 3787;
 const SHOW_LANGS = [{code:"zh", name:"中文"},{code:"en", name:"English"},{code:"de", name:"Deutsch"},
-  {code:"fr", name:"Français"},{code:"it", name:"Italiano"},{code:"es", name:"Español"},{code:"ja", name:"日本語"},{code:"ko", name:"한국어"}];
+  {code:"fr", name:"Français"},{code:"it", name:"Italiano"},{code:"es", name:"Español"},{code:"ja", name:"日本語"},{code:"ko", name:"한국어"},
+  {code:"nl", name:"Nederlands"},{code:"pt", name:"Português"},{code:"la", name:"Latina"},{code:"el", name:"Ελληνικά"},
+  {code:"fi", name:"Suomi"},{code:"hu", name:"Magyar"},{code:"sv", name:"Svenska"},{code:"eo", name:"Esperanto"}];
 const LANG_SAMPLE = {
   en:"It is a truth universally acknowledged, that a single man in possession of a good fortune must be in want of a wife.",
   de:"Es ist eine allgemein anerkannte Wahrheit, dass ein Junggeselle im Besitz eines schönen Vermögens nichts nötiger braucht als eine Frau.",
@@ -1156,7 +1159,15 @@ const TOKEN_SRC = {
   es:"[A-Za-zÀ-ÖØ-öø-ÿñÑ'’]+(?:-[A-Za-zÀ-ÖØ-öø-ÿñÑ'’]+)*",
   ja:"[\u3040-\u30ff\u4e00-\u9fff\u3005]+",
   ko:"[\uac00-\ud7a3\u1100-\u11ff]+",
-  zh:"[\u4e00-\u9fff]{1,4}"
+  zh:"[\u4e00-\u9fff]{1,4}",
+  nl:"[A-Za-zÀ-ÖØ-öø-ÿ'’]+(?:-[A-Za-zÀ-ÖØ-öø-ÿ'’]+)*",
+  pt:"[A-Za-zÀ-ÖØ-öø-ÿ'’]+(?:-[A-Za-zÀ-ÖØ-öø-ÿ'’]+)*",
+  la:"[A-Za-zÀ-ÖØ-öø-ÿ'’]+(?:-[A-Za-zÀ-ÖØ-öø-ÿ'’]+)*",
+  el:"[\u0370-\u03ff\u1f00-\u1fff]+",
+  fi:"[A-Za-zÅÄÖåäö'’]+(?:-[A-Za-zÅÄÖåäö'’]+)*",
+  hu:"[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű'’]+(?:-[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű'’]+)*",
+  sv:"[A-Za-zÅÄÖåäö'’]+(?:-[A-Za-zÅÄÖåäö'’]+)*",
+  eo:"[A-Za-zĈĉĜĝĤĥĴĵŜŝŬŭ'’]+(?:-[A-Za-zĈĉĜĝĤĥĴĵŜŝŬŭ'’]+)*"
 };
 function TOKEN_RE(){ return new RegExp(TOKEN_SRC[activeLang()] || TOKEN_SRC.en, "g"); }
 function isLatinLang(code){ code = code || activeLang(); return code !== "ja" && code !== "ko" && code !== "zh"; }
@@ -3690,7 +3701,7 @@ async function fillMultiGloss(word){
   };
   if(_multiGlossCache[key]) return render(_multiGlossCache[key]);
   try{
-    const tos = SHOW_LANGS.map(x => x.code).filter(c => c !== lc);
+    const tos = SHOW_LANGS.map(x => x.code).filter(c => c !== lc).slice(0, 8);
     if(!hasLocalAPI) return;
     const r = await fetch(apiUrl("api/word?lang=") + encodeURIComponent(lc) + "&word=" + encodeURIComponent(word) + "&tos=" + tos.join(","), {signal: AbortSignal.timeout(9000)});
     if(r.ok){
@@ -4391,16 +4402,7 @@ async function doImport(input){
       await new Promise(r=>setTimeout(r, 30));
       const {sents, chapters} = normalizeImportResult(res, file.name);
       if(!sents.length) throw new Error("没有识别到正文句子");
-      const id = "imp"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-      const rec = { id, t: res.title || file.name.replace(/\.\w+$/,""), format: res.format || "TXT",
-        author: res.author||"", sents, chapters, text: res.text, chars: (res.text||"").length, at: Date.now() };
-      await idbImportPut(rec);
-      const meta = store.imports;
-      meta.unshift({id, t:rec.t, format:rec.format, chars:rec.chars, sents:sents.length, chapters:chapters.length, at:Date.now()});
-      localStorage.setItem("lz_imports_meta", JSON.stringify(meta));
-      fullCache[id] = {sents, chapters, imported:true};
-      fullMode = {id, chap:0};
-      localStorage.removeItem("lz_imports");
+      const id = await saveImportedBook(res, file.name, sents, chapters);
       updateImportOverlay(100, "完成 ✓ 已转换 "+chapters.length+" 章 / "+sents.length+" 句");
       await new Promise(r=>setTimeout(r, 350));
       hideImportOverlay();
@@ -4411,6 +4413,176 @@ async function doImport(input){
       alert("《"+file.name+"》导入失败：\n"+(e.message||e));
     }
   }
+}
+/* ================= 网址导入：把外部网站的文章/公版书接进阅读器 ================= */
+const URL_SOURCES = [
+  { id:"auto", name:"自动识别" },
+  { id:"gutenberg", name:"Project Gutenberg", hint:"gutenberg.org/ebooks/1342 或 .../files/…txt" },
+  { id:"aozora", name:"青空文库（日语）", hint:"aozora.gr.jp/cards/000148/files/773_14560.html" },
+  { id:"wikisource", name:"维基文库", hint:"zh.wikisource.org/wiki/红楼梦（按条目抓取）" },
+  { id:"rss", name:"RSS / Atom 订阅", hint:"博客或新闻站的 feed 地址，逐篇导入" },
+  { id:"page", name:"任意网页正文", hint:"文章页、博客、新闻（自动去广告与导航）" }
+];
+function openUrlImport(){
+  let el = document.getElementById("urlImportSheet");
+  if(!el){ el = document.createElement("div"); el.id="urlImportSheet"; el.className="lang-sheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box" style="max-width:560px">
+    <div style="display:flex;align-items:center">
+      <h3>🔗 从网址导入</h3>
+      <button style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer" onclick="this.closest('.lang-sheet').style.display='none'">×</button>
+    </div>
+    <div class="sub">把外部网站的正文抓进阅读器，即可享受点词多语言释义、整章翻译、拼装与生词复习。<br>仅用于公版 / 你有权访问的内容；跨域受限的站点请用「📋 粘贴正文」。</div>
+    <input class="code-input" id="urlImportInput" placeholder="https://…  （粘贴文章或书籍链接）" style="width:100%">
+    <div class="lang-row" style="margin-top:8px">
+      <select class="btn ghost small" id="urlImportType">${URL_SOURCES.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")}</select>
+      <button class="btn small" onclick="runUrlImport()">抓取并导入</button>
+      <button class="btn ghost small" onclick="openPasteImport()">📋 粘贴正文</button>
+    </div>
+    <div class="tip" id="urlImportTip" style="margin-top:8px">支持：Gutenberg 的 /ebooks/ID 与 /files/xxx.txt、青空文库卡片页、维基文库条目、RSS/Atom、普通文章页。</div>
+  </div>`;
+}
+function openPasteImport(){
+  let el = document.getElementById("pasteSheet");
+  if(!el){ el = document.createElement("div"); el.id="pasteSheet"; el.className="lang-sheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box" style="max-width:640px">
+    <div style="display:flex;align-items:center"><h3>📋 粘贴正文导入</h3>
+      <button style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer" onclick="this.closest('.lang-sheet').style.display='none'">×</button></div>
+    <div class="sub">任何网站复制来的正文都可粘贴进来（浏览器禁止跨站抓取时用这个办法）。</div>
+    <input class="code-input" id="pasteTitle" placeholder="书名 / 标题" style="width:100%;margin-bottom:8px">
+    <textarea id="pasteText" placeholder="把正文粘贴到这里…" style="width:100%;height:220px;border:1px solid var(--border);border-radius:10px;padding:10px;font:14px/1.6 var(--font)"></textarea>
+    <div class="lang-row" style="margin-top:8px"><button class="btn" onclick="runPasteImport()">导入并阅读</button></div>
+  </div>`;
+}
+function detectUrlType(url){
+  const u = String(url||"");
+  if(/gutenberg\.org|gutenberg\.net|pglaf\.org/.test(u)) return "gutenberg";
+  if(/aozora\.gr\.jp/.test(u)) return "aozora";
+  if(/wikisource\.org/.test(u)) return "wikisource";
+  if(/(\.rss$|\/feed\/?$|\/rss\/?$|atom\.xml$)/i.test(u)) return "rss";
+  return "page";
+}
+function htmlToText(html){
+  const doc = new DOMParser().parseFromString(String(html||""), "text/html");
+  doc.querySelectorAll("script,style,nav,header,footer,aside,form,iframe,noscript,svg,.ad,.ads,.advert,.sidebar,.comment,.comments,.menu,.nav,.share,.related").forEach(n=>n.remove());
+  const main = doc.querySelector("article, main, .content, .post, .entry-content, #content, #mw-content-text, .mw-parser-output") || doc.body;
+  const txt = (main ? main.innerText || main.textContent : "") || "";
+  let out = txt.replace(/\n{3,}/g,"\n\n").replace(/[ \t]{2,}/g," ").trim();
+  /* DOMParser 文档的 innerText 不一定继承换行：段标签之间补空行 */
+  if(main && !/\n/.test(out) && main.querySelectorAll("p,div,br,li,h1,h2,h3").length){
+    out = [...main.querySelectorAll("p,div,li,h1,h2,h3,blockquote")].map(n=>n.textContent.trim()).filter(Boolean).join("\n\n");
+  }
+  return out;
+}
+function gutenbergId(url){
+  const m = String(url).match(/gutenberg\.org\/(?:ebooks|files|cache\/epub)\/(\d+)/i) || String(url).match(/pglaf\.org\/cache\/epub\/(\d+)/i);
+  return m ? Number(m[1]) : 0;
+}
+async function fetchTextSmart(url){
+  /* 直连失败时走公共 CORS 代理（仅 GET，公开文本） */
+  const tries = [
+    url,
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+    "https://r.jina.ai/" + url
+  ];
+  let lastErr = null;
+  for(const u of tries){
+    try{
+      const r = await fetch(u, {signal: AbortSignal.timeout(25000)});
+      if(!r.ok) { lastErr = new Error("HTTP " + r.status); continue; }
+      const t = await r.text();
+      if(t && t.length > 200) return t;
+      lastErr = new Error("内容过短");
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("抓取失败（可能是跨域限制）");
+}
+async function runUrlImport(){
+  const url = (document.getElementById("urlImportInput")||{}).value?.trim();
+  const tip = document.getElementById("urlImportTip");
+  if(!url){ toast("请先粘贴链接"); return; }
+  let type = (document.getElementById("urlImportType")||{}).value || "auto";
+  if(type === "auto") type = detectUrlType(url);
+  if(tip) tip.textContent = "正在抓取…";
+  try{
+    if(type === "gutenberg"){
+      const gb = gutenbergId(url);
+      if(!gb) throw new Error("没认出 Gutenberg 书号，请用 gutenberg.org/ebooks/1342 这种链接");
+      if(tip) tip.textContent = "从本机服务下载第 " + gb + " 号全文…";
+      let txt = null;
+      try{
+        const r = await fetch(apiUrl("api/pg/") + gb, {signal: AbortSignal.timeout(180000)});
+        if(r.ok) txt = await r.text();
+      }catch(e){}
+      if(!txt || txt.length < 500) txt = await fetchTextSmart("https://www.gutenberg.org/cache/epub/" + gb + "/pg" + gb + ".txt");
+      const title = (txt.match(/^Title:\s*(.+)$/mi)||[])[1] || ("Gutenberg #" + gb);
+      const author = (txt.match(/^Author:\s*(.+)$/mi)||[])[1] || "";
+      const body = txt.split(/\*\*\* ?START OF (?:THE|THIS) PROJECT GUTENBERG[^\n]*\n/i).pop();
+      const res = { title: title.trim().slice(0,120), author: author.trim().slice(0,60), format:"Gutenberg #" + gb, text: body, source: url };
+      const {sents, chapters} = normalizeImportResult(res, title);
+      const id = await saveImportedBook(res, title, sents, chapters);
+      document.getElementById("urlImportSheet").style.display = "none";
+      renderLibrary(); openBook(id); toast("已导入《" + res.title + "》" + sents.length + " 句");
+      return;
+    }
+    if(type === "rss"){
+      const xml = await fetchTextSmart(url);
+      const doc = new DOMParser().parseFromString(xml, "text/xml");
+      const items = [...doc.querySelectorAll("item, entry")].slice(0, 30);
+      if(!items.length) throw new Error("这个地址不是 RSS/Atom");
+      const texts = items.map((it, i) => {
+        const t = (it.querySelector("title")||{}).textContent || ("第 " + (i+1) + " 篇");
+        const d = it.querySelector('content\\:encoded, content, description') || {};
+        return "## " + t.trim() + "\n\n" + htmlToText(d.textContent || "");
+      });
+      const title = ((doc.querySelector("channel > title, feed > title")||{}).textContent || "订阅文章").trim().slice(0,80);
+      const res = { title, author:"", format:"RSS", text: texts.join("\n\n"), source: url };
+      const {sents, chapters} = normalizeImportResult(res, title);
+      const id = await saveImportedBook(res, title, sents, chapters);
+      document.getElementById("urlImportSheet").style.display = "none";
+      renderLibrary(); openBook(id); toast("已导入 " + items.length + " 篇订阅文章");
+      return;
+    }
+    /* aozora / wikisource / 普通网页：抓 HTML 后抽正文 */
+    const html = await fetchTextSmart(url);
+    let title = ((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1] || "").replace(/\s+/g," ").trim();
+    const text = htmlToText(html);
+    if(!text || text.length < 300) throw new Error("没抓到正文，试试「📋 粘贴正文」");
+    const res = { title: (title || "网页导入").slice(0,120), author:"", format: type === "aozora" ? "青空文库" : (type === "wikisource" ? "维基文库" : "网页"), text, source: url };
+    const {sents, chapters} = normalizeImportResult(res, res.title);
+    const id = await saveImportedBook(res, res.title, sents, chapters);
+    document.getElementById("urlImportSheet").style.display = "none";
+    renderLibrary(); openBook(id); toast("已导入《" + res.title + "》");
+  }catch(e){
+    if(tip) tip.textContent = "抓取失败：" + (e.message||e) + "。可改用「📋 粘贴正文」。";
+  }
+}
+async function runPasteImport(){
+  const title = (document.getElementById("pasteTitle")||{}).value?.trim() || "粘贴导入";
+  const text = (document.getElementById("pasteText")||{}).value || "";
+  if(text.trim().length < 100){ toast("正文太短了（至少 100 字）"); return; }
+  const res = { title, author:"", format:"粘贴", text, source:"" };
+  const {sents, chapters} = normalizeImportResult(res, title);
+  const id = await saveImportedBook(res, title, sents, chapters);
+  document.getElementById("pasteSheet").style.display = "none";
+  renderLibrary(); openBook(id); toast("已导入《" + title + "》");
+}
+/* 统一的导入落地：文件导入与网址导入共用 */
+async function saveImportedBook(res, srcName, sents, chapters){
+  const id = "imp"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  const rec = { id, t: res.title || String(srcName||"").replace(/\.\w+$/,""), format: res.format || "TXT",
+    author: res.author||"", source: res.source||"", sents, chapters, text: res.text,
+    chars: (res.text||"").length, at: Date.now() };
+  try{ await idbImportPut(rec); }catch(e){ localStorage.setItem("lz_imports", JSON.stringify([{id, t:rec.t, text:rec.text}])); }
+  const meta = store.imports;
+  meta.unshift({id, t:rec.t, format:rec.format, chars:rec.chars, sents:sents.length, chapters:chapters.length, at:Date.now(), source:res.source||""});
+  localStorage.setItem("lz_imports_meta", JSON.stringify(meta));
+  fullCache[id] = {sents, chapters, imported:true};
+  fullMode = {id, chap:0};
+  return id;
 }
 async function delImport(id){
   if(!confirm("确定删除这本导入的书？")) return;
@@ -5950,7 +6122,15 @@ function langGuideIntro(){
     es:"3 minutos para leer en español: vocabulario, traducción, sintaxis.",
     ja:"日本語読解を3分で：単語・翻訳・語順。",
     ko:"한국어 읽기를 3분 만에: 어휘, 번역, 문장 조립.",
-    zh:"3 分钟学会汉语精读：点词看英译、翻译整章、拼句子、收藏金句。"
+    zh:"3 分钟学会汉语精读：点词看英译、翻译整章、拼句子、收藏金句。",
+    nl:"3 minuten lezen in het Nederlands: woorden, vertaling, zinsbouw.",
+    pt:"3 minutos a ler em português: vocabulário, tradução, sintaxe.",
+    la:"Tres minuta ut Latine legas: verba, conversio, structura.",
+    el:"3 λεπτά ανάγνωσης στα ελληνικά: λεξιλόγιο, μετάφραση, σύνταξη.",
+    fi:"3 minuuttia suomeksi: sanasto, käännös, lauserakenne.",
+    hu:"3 perc magyarul: szókincs, fordítás, mondatszerkezet.",
+    sv:"3 minuter på svenska: ord, översättning, meningsbyggnad.",
+    eo:"3 minutoj por legi Esperante: vortoj, traduko, frazstrukturo."
   };
   return tips[code] || tips.en;
 }
@@ -6291,10 +6471,43 @@ const REDEEM_CODES = {
   "wansuiwansuiwanwansui1313113": {plan:"permanent", days:0,    label:"永久会员（全部语言）"},
   "nulixuexiya2027":             {plan:"year",      days:366,  label:"全语言年度（1 年）"},
   "lizzzhaohaoyon!!!":            {plan:"month",     days:31,   label:"单语言月度（1 个月）", scope:"one"},
-  /* 演示/推广码：班级版（30 台设备共用，见 server 登记） */
-  "lizzread-class-2026":         {plan:"all_year",  days:366,  label:"班级版年度（全部语言）"}
+
+  /* 班级码：服务端签发（见 data/class-codes.json 与 /api/admin/class-code），这里只登记已知批次 */
+  "lzbb3h-5qdy-dek3":            {plan:"all_year",  days:366,  label:"班级版年度（30 台设备）", scope:"all"}
 };
+/* ---------- 班级码工具（老师自助签发） ---------- */
+function normClassCode(c){
+  return String(c||"").trim().toLowerCase().replace(/[^a-z0-9]/g,"").replace(/^lz/, "");
+}
+function makeClassCode(seats){
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let raw = "";
+  const rnd = (typeof crypto !== "undefined" && crypto.getRandomValues) ? crypto.getRandomValues(new Uint8Array(12)) : null;
+  for(let i=0;i<12;i++){
+    const n = rnd ? rnd[i] % alphabet.length : Math.floor(Math.random()*alphabet.length);
+    raw += alphabet[n];
+  }
+  const code = "LZ" + raw.slice(0,4) + "-" + raw.slice(4,8) + "-" + raw.slice(8,12);
+  try{
+    const all = JSON.parse(localStorage.getItem("lz_class_codes") || "{}");
+    all[normalizeCode(code)] = { seats: Math.max(1, Number(seats)||30), created: Date.now(), used: [] };
+    localStorage.setItem("lz_class_codes", JSON.stringify(all));
+  }catch(e){}
+  return code;
+}
+function listClassCodes(){
+  try{ return JSON.parse(localStorage.getItem("lz_class_codes") || "{}"); }catch(e){ return {}; }
+}
 function normalizeCode(c){ return String(c||"").trim().toLowerCase(); }
+/* 合并本机老师生成的班级码 */
+(function mergeLocalClassCodes(){
+  try{
+    const all = JSON.parse(localStorage.getItem("lz_class_codes") || "{}");
+    for(const [k,v] of Object.entries(all)){
+      if(!REDEEM_CODES[k]) REDEEM_CODES[k] = {plan:"all_year", days:366, label:"班级版年度（本机签发）", scope:"all", seats:v.seats||30};
+    }
+  }catch(e){}
+})();
 function deviceId(){
   try{
     let id = localStorage.getItem("lz_device_id");
@@ -6661,8 +6874,14 @@ function renderPlan(){
       <h3>🏫 班级 / 小组版</h3>
       <div class="sub">老师用同一个激活码最多开到 30 台设备，全班共用一份生词本与拼装记录看板。</div>
       <div class="share-link-box">
-        <input class="code-input" id="classCode" placeholder="班级激活码（如 lizzread-class-2026）" value="lizzread-class-2026">
-        <button class="btn small" onclick="activateClass()">开通班级版</button>
+        <input class="code-input" id="classCode" placeholder="班级激活码（老师发给学生的那个）">
+        <button class="btn small" onclick="activateClass()">用此码开通</button>
+      </div>
+      <div class="lang-row" style="margin-top:8px">
+        <input class="code-input" id="classSeats" type="number" min="1" max="200" value="30" style="max-width:90px">
+        <button class="btn ghost small" onclick="createClassCode()">🔑 我是在老师：生成班级码</button>
+      </div>
+      <div class="tip" id="classCodeOut" style="margin-top:6px"></div>
       </div>
       <div class="paywall-note">个人用户请勿使用班级码；班级码按设备计数，30 个名额用完后会提示已满。</div>
       <div class="lang-row" style="margin-top:10px">
@@ -6711,8 +6930,21 @@ function renderPlan(){
     </div>`;
   updatePlanBadge();
 }
+async function createClassCode(){
+  const seats = Number((document.getElementById("classSeats")||{}).value || 30);
+  const code = makeClassCode(seats);
+  const out = document.getElementById("classCodeOut");
+  if(out){
+    out.innerHTML = `已生成班级码（${seats} 个名额）：<b style="font-family:monospace;user-select:all">${code}</b>
+      <button class="btn ghost small" onclick="copyText('${code}')">复制</button><br>
+      <span class="tip">发给学生后，他们在同一处输入即可激活。名额记录保存在本机（本机管理）；正式运营建议由服务端签发。</span>`;
+  }
+  try{ await navigator.clipboard.writeText(code); }catch(e){}
+  toast("班级码已生成并复制");
+}
 async function activateClass(){
-  const v = document.getElementById("classCode")?.value || "lizzread-class-2026";
+  const v = document.getElementById("classCode")?.value;
+  if(!v){ toast("请先向老师索取班级码"); return; }
   if(await activateCode(v)){ toast("班级版已开通（" + planLabel() + "）"); renderPlan(); }
 }
 async function planActivate(){
