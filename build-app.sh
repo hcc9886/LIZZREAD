@@ -14,7 +14,7 @@ rsync -a --delete \
   --exclude covers --exclude covers-pick --exclude covers-app --exclude www \
   --exclude 'PUSH-COMMAND.md' --exclude 'README.md' --exclude 'codemagic.yaml' \
   --exclude 'capacitor.config.json' --exclude 'package*.json' --exclude 'build*' \
-  --exclude 'server.js' --exclude 'start.*' --exclude 'redemptions.json' \
+  --exclude 'server.js' --exclude 'start.*' --exclude 'redemptions.json' --exclude 'download' --exclude 'Dockerfile' --exclude '.dockerignore' --exclude 'render.yaml' --exclude 'fly.toml' \
   --exclude '*.part-*' --exclude '*.original' --exclude '.DS_Store' \
   ./ www/
 
@@ -65,6 +65,7 @@ let j={}; try{ j=JSON.parse(fs.readFileSync(f,"utf8")); }catch(e){}
 j.latest=ver; j.build=build; if(!j.min) j.min=ver;
 fs.writeFileSync(f, JSON.stringify(j,null,2));
 fs.mkdirSync("www/data",{recursive:true});
+fs.writeFileSync("data/app-version.js", "window.LZ_BUILD="+JSON.stringify({version:ver,build:build})+";\n");
 fs.writeFileSync("www/data/app-version.js", "window.LZ_BUILD="+JSON.stringify({version:ver,build:build})+";\n");
 fs.copyFileSync(f, "www/data/app-version.json");
 console.log("版本写入:", ver, build);

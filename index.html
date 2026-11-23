@@ -127,6 +127,7 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .g-rom{background:linear-gradient(135deg,#8E3B5A,#C57792)}
 .g-hum{background:linear-gradient(135deg,#A06A1E,#D6A247)}
 .cover{isolation:isolate}
+#view-reader .sent.listen-on{background:var(--brand-soft);border-radius:10px;transition:background .3s}
 .cover .ctag{position:absolute;left:8px;bottom:7px;z-index:2;font:500 9px/1 var(--font);letter-spacing:1px;
   color:rgba(255,255,255,.92);background:rgba(0,0,0,.32);padding:3px 6px;border-radius:6px;backdrop-filter:blur(2px)}
 .cover .t{font-size:15px}
@@ -3290,6 +3291,7 @@ function openReader(id){
         <button class="btn ghost small" id="zhToggle" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
         <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"整段排版":"逐句对照"}</button>
         <button class="btn ghost small" onclick="toggleDecompose()">${decomposeOn?"🧩 拆解当前句：开":"🧩 拆解当前句：关"}</button>
+        <button class="btn ghost small" id="listenBtn" onclick="listenToggle()">🎧 听书</button>
         <button class="btn ghost small" onclick="downloadBook('${id}')">📶 离线本书</button>
         <select class="btn ghost small" id="ttsRate" onchange="setPref('ttsrate',this.value)" title="听书语速" style="padding:6px 8px">
           <option value="0.7"${getPref("ttsrate")==="0.7"?" selected":""}>🐢 0.7x</option>
@@ -5163,6 +5165,67 @@ function speakText(text, lang){ try{
   speechSynthesis.speak(u);
 }catch(e){ alert("当前浏览器不支持语音朗读"); } }
 function speak(i){ speakText(getSents(curBook.id)[i].en); }
+/* ============ 听书模式：连续朗读整章，可后台播放（移动端支持时） ============ */
+let _listen = { on:false, idx:0, rate:1 };
+function listenToggle(){
+  if(_listen.on){ listenStop(); return; }
+  if(!("speechSynthesis" in window)){ toast("当前浏览器不支持语音朗读"); return; }
+  _listen.on = true; _listen.idx = Math.max(0, (typeof sheetSent === "number" ? sheetSent : 0));
+  keepAwake(true);
+  listenTick();
+  listenUpdateBtn();
+  toast("开始朗读，再点一次停止");
+}
+function listenStop(){
+  _listen.on = false;
+  keepAwake(false);
+  try{ speechSynthesis.cancel(); }catch(e){}
+  listenUpdateBtn();
+}
+function listenUpdateBtn(){
+  const b = document.getElementById("listenBtn");
+  if(b) b.textContent = _listen.on ? "⏹ 停止朗读" : "🎧 听书";
+}
+/* 朗读时把当前句滚到视野中间并高亮 */
+function scrollToSent(si){
+  const nodes = document.querySelectorAll("#view-reader .sent");
+  for(const el of nodes){
+    if(Number(el.dataset.si) === Number(si)){
+      el.scrollIntoView({block:"center", behavior:"smooth"});
+      el.classList.add("listen-on");
+      setTimeout(()=>el.classList.remove("listen-on"), 4000);
+      return;
+    }
+  }
+}
+function listenTick(){
+  if(!_listen.on || !curBook) return;
+  const all = getSents(curBook.id);
+  if(_listen.idx >= all.length){ listenStop(); toast("本章读完了"); return; }
+  /* 章节范围：只读当前章 */
+  const rng = currentChapterRange ? currentChapterRange() : null;
+  if(rng && _listen.idx >= rng[1]){ listenStop(); toast("本章读完了，可以翻下一章"); return; }
+  const s = all[_listen.idx];
+  const text = (s && s.en) ? s.en : "";
+  if(!text){ _listen.idx++; setTimeout(listenTick, 50); return; }
+  try{ scrollToSent(_listen.idx); }catch(e){}
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = TTS_VOICE[activeLang()] || "en-US";
+  u.rate = Number(getPref("ttsrate") || _listen.rate || 1) || 1;
+  u.onend = ()=>{ if(_listen.on){ _listen.idx++; setTimeout(listenTick, 120); } };
+  u.onerror = ()=>{ if(_listen.on){ _listen.idx++; setTimeout(listenTick, 300); } };
+  try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){ listenStop(); }
+}
+/* 屏幕常亮（部分浏览器支持），听书时避免自动锁屏 */
+async function keepAwake(on){
+  try{
+    if(on && navigator.wakeLock) { window.__lzWake = await navigator.wakeLock.request("screen"); }
+    else if(window.__lzWake){ await window.__lzWake.release(); window.__lzWake = null; }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible" && _listen.on){ listenTick(); }
+});
 function speakPara(p){
   const all = getSents(curBook.id);
   const grp = all.slice(p, Math.min(p+3, all.length));
