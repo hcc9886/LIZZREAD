@@ -34,3 +34,9 @@ else
   echo "工程已就绪：android/（用 Android Studio 打开即可构建）"
 fi
 echo "== 4/4 完成：iOS 工程在 ios/，需在 Mac 上用 Xcode 打开（store/upload-ios.sh） =="
+
+echo "== 5/5 版本号 =="
+APPVER="${APPVER:-2.0.0}"
+BUILDNUM="${BUILDNUM:-$(date +%Y%m%d%H)}"
+echo "版本 $APPVER ($BUILDNUM)  — iOS 用 xcodebuild MARKETING_VERSION=$APPVER CURRENT_PROJECT_VERSION=$BUILDNUM"
+echo "  Android 已写入 android/app/build.gradle（versionName/versionCode）"

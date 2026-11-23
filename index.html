@@ -6261,6 +6261,8 @@ function renderSettings(){
       <h3>ℹ️ 关于 LIZZREAD</h3>
       <div class="sub">版本 2.0 · 8 门语言经典阅读器 · 书源 Project Gutenberg / 青空文库（均为公版）</div>
       <div class="lang-row">
+        <button class="btn ghost small" onclick="checkAppUpdate(true)">🔄 检查更新</button>
+        <button class="btn ghost small" onclick="restorePurchases()">♻️ 恢复购买</button>
         <a class="btn ghost small" href="privacy.html" target="_blank" rel="noopener">隐私政策</a>
         <a class="btn ghost small" href="https://www.gutenberg.org" target="_blank" rel="noopener">书籍来源</a>
         <button class="btn ghost small" onclick="copyText('LIZZREAD')">复制应用名</button>
@@ -6724,6 +6726,8 @@ function localRedeemed(){
 }
 function saveLocalRedeemed(o){ try{ localStorage.setItem("lz_redeemed_codes", JSON.stringify(o)); }catch(e){} }
 function applyPro(plan, expires, source, lang, scopeOverride){
+  /* 兼容字符串日期（App Store / Google Play 返回 ISO 时间） */
+  if(typeof expires === "string"){ const d = Date.parse(expires); expires = isNaN(d) ? 0 : d; }
   const def = PLAN_DEF[plan] || {};
   /* 单语言方案：scope 优先取调用方传入（激活码/REDEEM_CODES），其次 PLAN_DEF，最后按是否给了 lang 推断 */
   const scope = scopeOverride || def.scope || (lang ? "one" : "all");
@@ -6919,6 +6923,43 @@ function showCheckoutSheet(plan){
     </div>`;
   el.classList.add("on");
 }
+/* ---------- App 内购买（StoreKit / Play Billing）----------
+   商品 ID 与套餐的对应关系；价格在 App Store Connect / Play Console 里配置，
+   这里只负责“买了什么 → 解锁什么”。RevenueCat 会把 Purchases.getProducts 的
+   标识原样返回，因此两侧用同一套 ID 即可。 */
+const IAP_PRODUCTS = {
+  "com.lizzread.one.month":   { plan:"lang",        scope:"one" },
+  "com.lizzread.all.month":   { plan:"all_month",   scope:"all" },
+  "com.lizzread.all.quarter": { plan:"all_quarter", scope:"all" },
+  "com.lizzread.all.year":    { plan:"all_year",    scope:"all" }
+};
+function iapPlugin(){
+  const C = window.Capacitor;
+  if(!C || !C.Plugins) return null;
+  return C.Plugins.Purchases || C.Plugins.CdvPurchase || C.Plugins.InAppPurchases || null;
+}
+function iapAvailable(){ return isStoreBuild() && !!iapPlugin() && !!window.__LZ_NATIVE; }
+/* 把商店的订阅状态写入本地会员状态；source="iap" 让界面能区分渠道 */
+function applyStoreEntitlement(info){
+  if(!info || !info.productId) return null;
+  const map = IAP_PRODUCTS[info.productId] || { plan:"all_month", scope:"all" };
+  const exp = Number(info.expiresDate || info.expirationDate || 0) || (Date.now() + 31*86400000);
+  return applyPro(map.plan, exp, "iap:" + info.productId, map.scope === "one" ? activeLang() : "", map.scope);
+}
+/* 恢复购买（App Store 审核要求必须有） */
+async function restorePurchases(){
+  const P = iapPlugin();
+  if(!P){ toast("当前版本未内嵌内购插件，请用激活码或网页版开通"); return; }
+  try{
+    const r = await (P.restorePurchases ? P.restorePurchases() : P.restore && P.restore());
+    const items = (r && (r.customerInfo?.entitlements?.active || r.entitlements)) || {};
+    const list = Object.values(items);
+    if(!list.length){ toast("没有找到可恢复的购买"); return; }
+    const ok = applyStoreEntitlement({ productId: list[0].productIdentifier || Object.keys(items)[0], expiresDate: list[0].expirationDate });
+    toast(ok ? "已恢复：" + planLabel() : "恢复失败，请稍后重试");
+    renderPlan();
+  }catch(e){ toast("恢复失败：" + (e.message || e)); }
+}
 const COMMERCE = (function(){
   try{ return localStorage.getItem("lz_commerce") || "auto"; }catch(e){ return "auto"; }
 })();
@@ -6932,19 +6973,63 @@ function selectCheckout(plan){
   const def = PLAN_DEF[plan];
   if(!def) return;
   if(isStoreBuild()){
-    /* App Store 合规：App 内不出现任何外部支付 / 激活码入口 */
+    /* App Store 合规 3.1.1：App 内只能用内购，绝不出现外部支付或激活码入口 */
     const el = ensurePaywall();
+    const iapPlan = Object.keys(IAP_PRODUCTS).find(k => IAP_PRODUCTS[k].plan === plan) || "com.lizzread.all.quarter";
+    if(!iapPlugin()){
+      el.innerHTML = `<div class="box">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font:700 20px var(--serif)">${def.name}</div>
+          <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+        </div>
+        <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">
+          这个安装包还没有接入 App 内购买。你可以继续使用免费额度（阅读、查词、样章翻译），
+          或使用「恢复购买」找回已在商店购买过的订阅。
+        </p>
+        <div class="lang-row"><button class="btn small" onclick="restorePurchases()">恢复购买</button>
+          <button class="btn ghost small" onclick="closePaywall()">返回</button></div>
+      </div>`;
+      el.classList.add("on");
+      return;
+    }
     el.innerHTML = `<div class="box">
       <div style="display:flex;align-items:center;gap:8px">
         <div style="font:700 20px var(--serif)">${def.name}</div>
         <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
       </div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">
-        App 内购买正在接入中。当前版本你可以继续使用免费额度；如需立即开通，请到网页版（${escHtml(location.hostname)}）用内测码激活，激活后本机同步生效。
-      </p>
-      <button class="btn ghost small" onclick="closePaywall()">返回</button>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">正在向商店请求购买信息…</p>
     </div>`;
     el.classList.add("on");
+    const P = iapPlugin();
+    (async ()=>{
+      try{
+        const prods = await (P.getProducts ? P.getProducts({ productIdentifiers:[iapPlan] }) : P.getProducts({ productIds:[iapPlan] }));
+        const list = (prods && (prods.products || prods)) || [];
+        const p0 = Array.isArray(list) ? list[0] : null;
+        if(!p0) throw new Error("商店里还没有这个商品，请稍后重试");
+        const title = p0.title || def.name;
+        const price = p0.priceString || p0.price || ("¥" + def.price);
+        el.innerHTML = `<div class="box">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font:700 20px var(--serif)">${escHtml(title)}</div>
+            <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+          </div>
+          <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0">
+            价格：<b>${escHtml(String(price))}</b>　·　自动续订，可随时在 App Store 账户里取消<br>
+            订阅生效后本机立即解锁：不限量整章翻译、整书预翻译、全部离线、学习报告导出。
+          </p>
+          <div class="lang-row">
+            <button class="btn" onclick="iapBuy('${escapedAttr(iapPlan)}')">继续购买</button>
+            <button class="btn ghost small" onclick="restorePurchases()">恢复购买</button>
+          </div>
+          <div class="paywall-note" style="margin-top:10px">订阅说明：<a href="privacy.html" target="_blank" rel="noopener">隐私政策</a></div>
+        </div>`;
+      }catch(e){
+        el.innerHTML = `<div class="box"><p>${escHtml(String(e.message||e))}</p>
+          <div class="lang-row"><button class="btn small" onclick="restorePurchases()">恢复购买</button>
+          <button class="btn ghost small" onclick="closePaywall()">返回</button></div></div>`;
+      }
+    })();
     return;
   }
   if(def.scope === "one"){
@@ -6976,6 +7061,82 @@ function selectCheckout(plan){
   showCheckoutSheet(plan);
 }
 
+/* 服务端二次校验（RevenueCat）：拿到购买凭证后调用，防止改包白嫖 */
+async function iapVerifyServer(productId){
+  try{
+    let uid = localStorage.getItem("lz_iap_uid");
+    if(!uid){ uid = "lz_" + Math.random().toString(36).slice(2, 12); localStorage.setItem("lz_iap_uid", uid); }
+    const r = await fetch(window.__LZ_NATIVE ? "public/api/iap/verify" : apiUrl("api/iap/verify"), {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ appUserId: uid, product: productId }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if(!r.ok) return { ok:false, offline:true };
+    return await r.json();
+  }catch(e){ return { ok:false, offline:true }; }
+}
+/* 启动时与切回前台时自动恢复订阅（换机/重装/续订后立即生效） */
+async function iapSyncOnLaunch(){
+  if(!iapAvailable()) return;
+  const P = iapPlugin();
+  try{
+    const r = await (P.restorePurchases ? P.restorePurchases() : P.getCustomerInfo && P.getCustomerInfo());
+    const items = (r && (r.customerInfo?.entitlements?.active || r.entitlements)) || {};
+    const ids = Object.keys(items);
+    if(!ids.length) return;
+    const info = items[ids[0]] || {};
+    applyStoreEntitlement({ productId: info.productIdentifier || ids[0], expiresDate: info.expirationDate });
+  }catch(e){}
+}
+window.addEventListener("online", ()=>{ iapSyncOnLaunch(); checkAppUpdate(); });
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") iapSyncOnLaunch(); });
+
+/* 检查更新：对比服务端最新版本（App 内“设置 → 关于”可手动触发） */
+async function checkAppUpdate(manual){
+  try{
+    const r = await fetch(window.__LZ_NATIVE ? "public/api/version" : apiUrl("api/version"), {cache:"no-store"});
+    if(!r.ok) return;
+    const v = await r.json();
+    const plat = /iPhone|iPad/i.test(navigator.userAgent) ? "ios" : "android";
+    const info = v[plat] || {};
+    const cur = localStorage.getItem("lz_app_version") || "2.0.0";
+    const cmp = (a,b)=>{ const A=String(a).split(".").map(Number), B=String(b).split(".").map(Number); for(let i=0;i<3;i++){ if((A[i]||0)!==(B[i]||0)) return (A[i]||0)-(B[i]||0); } return 0; };
+    if(info.latest && cmp(info.latest, cur) > 0){
+      const box = ensurePaywall();
+      box.innerHTML = `<div class="box"><div style="font:700 18px var(--serif)">发现新版本 ${escHtml(info.latest)}</div>
+        <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0">${escHtml(v.notes||"")}</p>
+        <div class="lang-row">${info.url?`<a class="btn small" href="${escHtml(info.url)}" target="_blank" rel="noopener">去更新</a>`:""}
+        <button class="btn ghost small" onclick="closePaywall()">稍后</button></div></div>`;
+      box.classList.add("on");
+    } else if(manual){ toast("已是最新版本 " + cur); }
+  }catch(e){ if(manual) toast("检查更新失败，请稍后再试"); }
+}
+
+/* 发起 App 内购买；成功后解锁并写回本地状态 */
+async function iapBuy(productId){
+  const P = iapPlugin();
+  if(!P){ toast("内购插件未安装"); return; }
+  try{
+    const r = P.purchaseProduct ? await P.purchaseProduct({ productIdentifier: productId })
+                                : await P.purchase({ productId, type: "subs" });
+    const info = (r && (r.customerInfo || r.transaction)) || r || {};
+    const ents = (info.entitlements && info.entitlements.active) || {};
+    const pid = Object.keys(ents)[0] || productId;
+    const exp = (ents[pid] && ents[pid].expirationDate) || (info.expirationDate) || (Date.now() + 31*86400000);
+    /* 服务端二次校验：能连上就以后端为准，连不上则用本地票据（离线也能用） */
+    const chk = await iapVerifyServer(pid);
+    const expFinal = (chk && chk.ok && chk.entitlements && chk.entitlements[0] && chk.entitlements[0].expires) ? chk.entitlements[0].expires : exp;
+    const st = applyStoreEntitlement({ productId: pid, expiresDate: expFinal });
+    closePaywall();
+    toast(st ? ("购买成功：" + planLabel()) : "购买成功，但订阅仍在同步中");
+    renderPlan();
+  }catch(e){
+    const msg = String(e && e.message || e);
+    if(/cancel/i.test(msg)) toast("已取消购买");
+    else toast("购买失败：" + msg);
+  }
+}
+function escapedAttr(v){ return String(v||"").replace(/"/g, "&quot;"); }
 function renderPlan(){
   const body = document.getElementById("planBody");
   const st = proState();

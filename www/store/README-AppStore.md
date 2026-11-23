@@ -99,7 +99,7 @@ ssh user@server 'cd /opt/lizzread && (node server.js 8080 >log 2>&1 &)'
 <key>NSPhotoLibraryAddUsageDescription</key><string>保存学习证书与摘抄图片</string>
 ```
 
-## 5. 会员：接入 App 内购买（三选一）
+## 5. 会员：接入 App 内购买（已实现，见 `store/iap/README-IAP.md`）
 
 **推荐：StoreKit 2 + 三个订阅商品**
 

@@ -467,6 +467,58 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
+  /* /api/iap/verify —— App 内购买的服务端二次校验（RevenueCat REST）。
+     客户端拿到购买凭证后调用；服务端向 RevenueCat 查询订阅状态，避免越狱/改包白嫖。
+     未配置 REVENUECAT_SECRET 时返回 {ok:false, configured:false}，客户端回落为本地校验。 */
+  if(u.pathname === '/api/iap/verify' && req.method === 'POST'){
+    const SECRET = process.env.REVENUECAT_SECRET || '';
+    const APP_ID = process.env.REVENUECAT_APP_ID || 'app_lizzread';
+    let body = '';
+    try{
+      body = await new Promise((resolve, reject) => {
+        let raw = '';
+        req.on('data', c => { raw += c; if(raw.length > 1e5) req.destroy(); });
+        req.on('end', () => resolve(raw));
+        req.on('error', reject);
+      });
+    }catch(e){ body = ''; }
+    let j = {};
+    try{ j = JSON.parse(body || '{}'); }catch(e){ j = {}; }
+    if(!SECRET){ sendJSON(res, 200, {ok:false, configured:false, message:'服务端未配置内购校验密钥'}); return; }
+    const uid = String(j.appUserId || j.device || '').slice(0, 80);
+    if(!uid){ sendJSON(res, 400, {ok:false, message:'缺少 appUserId'}); return; }
+    try{
+      const r = await fetch('https://api.revenuecat.com/v1/subscribers/' + encodeURIComponent(uid), {
+        headers:{ 'Authorization': 'Bearer ' + SECRET, 'X-Platform': 'ios', 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(15000)
+      });
+      if(!r.ok){ sendJSON(res, 200, {ok:false, message:'订阅查询失败（' + r.status + '）'}); return; }
+      const data = await r.json();
+      const ents = (data && data.subscriber && data.subscriber.entitlements) || {};
+      const active = Object.entries(ents).filter(([, v]) => !v.expires_date || Date.parse(v.expires_date) > Date.now());
+      const products = (data && data.subscriber && data.subscriber.subscriptions) || {};
+      sendJSON(res, 200, {
+        ok: active.length > 0,
+        entitlements: active.map(([k, v]) => ({ id:k, product: v.product_identifier, expires: v.expires_date || '' })),
+        subscriptions: Object.keys(products)
+      });
+    }catch(e){
+      sendJSON(res, 200, {ok:false, message:'订阅查询异常：' + (e.message || e)});
+    }
+    return;
+  }
+
+  /* /api/version —— 客户端版本与更新提示（App 内“检查更新”与强制升级用） */
+  if(u.pathname === '/api/version'){
+    sendJSON(res, 200, {
+      ok: true,
+      ios:     { latest: '2.0.0', min: '2.0.0', url: 'https://apps.apple.com/app/id0000000000' },
+      android: { latest: '2.0.0', min: '2.0.0', url: 'https://play.google.com/store/apps/details?id=com.lizzread.app' },
+      notes: '16 门语言 · 网址导入 · 翻译稳定性修复'
+    });
+    return;
+  }
+
   /* 语言译本目录按需存在：缺文件时返回空数组，避免控制台 404 噪音 */
   const trMiss = u.pathname.match(/^\/data\/lang-([a-z]{2})-tr\.js$/);
   if(trMiss && !fs.existsSync(path.join(ROOT, 'data', 'lang-' + trMiss[1] + '-tr.js'))){
