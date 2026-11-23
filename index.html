@@ -29,6 +29,7 @@
 <script src="data/i18n.js?v=3"></script>
 <script src="data/lang-recs.js?v=1"></script>
 <script src="data/lang-tests.js?v=1"></script>
+<script src="data/lang-test-options.js?v=1"></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
@@ -482,6 +483,8 @@ body.no-zh .sent .zh{display:none}
   <section class="view" id="view-test">
     <div id="testIntro">
       <div id="testContinue"></div>
+      <div id="testAnsCard"></div>
+      </div>
       <div class="test-card">
         <div class="word" style="font-size:26px">📚 词汇量测试</div>
         <p class="result-desc">
@@ -497,6 +500,7 @@ body.no-zh .sent .zh{display:none}
       <div class="test-card">
         <div class="prog"><i id="progBar"></i></div>
         <div class="tier" id="qTier"></div>
+        <div class="tip" id="qAnswerLang" style="margin:2px 0 0"></div>
         <div class="word" id="qWord"></div>
         <div class="opts" id="qOpts"></div>
       </div>
@@ -1383,6 +1387,56 @@ function GENRES(){
 }
 function TIERS(){ return (LANG_INFO[activeLang()] || {}).levels || TIERS_EN; }
 function LV_DESC(){ return ((window.LZ_L || {})[activeLang()] || {}).desc || LV_DESC_EN; }
+/* 答题语言：中文 / English（默认跟随展示语言；若与学习语言相同则自动换另一种） */
+function answerLang(){
+  let v = "zh";
+  try{ v = localStorage.getItem("lz_answerlang") || (showLang() === "en" ? "en" : "zh"); }catch(e){}
+  if(!v) v = "zh";
+  if(v === activeLang()) v = (v === "zh" ? "en" : "zh");   /* 不能自己考自己 */
+  return v;
+}
+function setAnswerLang(v){
+  try{ localStorage.setItem("lz_answerlang", v); }catch(e){}
+  const box = document.getElementById("testBox");
+  const inProgress = box && box.style.display !== "none";
+  if(inProgress){
+    /* 正在答题：只刷新选项，不退出题目 */
+    showQ();
+  } else {
+    renderTestIntro();
+  }
+  toast("答题语言：" + (v === "en" ? "English" : "中文"));
+}
+/* 某题的选项（按答题语言返回，first 为正确答案） */
+function testOptions(q){
+  const al = answerLang();
+  const opt = (window.LZ_TEST_OPT || {})[activeLang()] || [];
+  const item = opt.find(x => x.w === q.w);
+  if(item){
+    const field = (al === "en") ? "en" : "zh";
+    const right = item[field];
+    const others = opt.filter(x => x.w !== q.w).map(x => x[field]).filter(Boolean);
+    /* 干扰项与正确答案必须同一种语言，避免「中文题里混进德语」 */
+    const sameScript = others.filter(t => detectScript(t) === detectScript(right));
+    return [right, ...pickDistractors(sameScript.length >= 3 ? sameScript : others, 3)];
+  }
+  return q.o;
+}
+/* 判断一段文字属于哪种书写系统（用于过滤干扰项） */
+function detectScript(t){
+  const s = String(t || "");
+  if(/[\u4e00-\u9fff]/.test(s)) return "han";
+  if(/[\u3040-\u30ff]/.test(s)) return "kana";
+  if(/[\uac00-\ud7a3]/.test(s)) return "hangul";
+  if(/[\u0370-\u03ff]/.test(s)) return "greek";
+  if(/[\u0400-\u04ff]/.test(s)) return "cyrillic";
+  return "latin";
+}
+function pickDistractors(pool, n){
+  const arr = [...new Set(pool.filter(Boolean))];
+  for(let i = arr.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return arr.slice(0, n);
+}
 function TEST(){
   const code = activeLang();
   const fromLang = ((window.LZ_L || {})[code] || {}).test;
@@ -5501,6 +5555,22 @@ function renderTestIntro(){
   document.getElementById("testBox").style.display="none";
   document.getElementById("testResult").style.display="none";
   const lv = store.level;
+  /* 答题语言卡片（按学习语言决定可选语言：不能自己考自己） */
+  const card = document.getElementById("testAnsCard");
+  if(card){
+    const native = (LANG_INFO[activeLang()] || {}).native || activeLang();
+    card.innerHTML = `<div class="settings-card" style="margin:0 0 12px">
+      <b>答题语言</b>
+      <div class="sub">题目永远是「学习语言」的词（${escHtml(native)}），选项用哪种语言由你决定。</div>
+      <div class="lang-row" style="margin-top:8px">
+        ${activeLang()==='en'
+          ? `<button class="chip on">中文选项</button><span class="tip" style="margin:0">学英语时用中文作答</span>`
+          : activeLang()==='zh'
+            ? `<button class="chip on">English options</button><span class="tip" style="margin:0">学中文时用英文作答</span>`
+            : `<button class="chip ${answerLang()==='zh'?'on':''}" onclick="setAnswerLang('zh')">中文选项</button>
+               <button class="chip ${answerLang()==='en'?'on':''}" onclick="setAnswerLang('en')">English options</button>`}
+      </div></div>`;
+  }
   const prog = loadTestProgress();
   const cont = document.getElementById("testContinue");
   if(cont){
@@ -5551,13 +5621,16 @@ function startTest(){
 }
 function showQ(){
   const q = TEST()[testQ];
+  const ol = testOptions(q);           /* ol[0] 是正确答案，按答题语言生成 */
   document.getElementById("progBar").style.width = (testQ/TEST().length*100)+"%";
   document.getElementById("qTier").textContent = `第 ${testQ+1} / ${TEST().length} 题 · 难度 ${q.tier}`;
   document.getElementById("qWord").textContent = q.w;
-  const right = q.o[0];
-  const opts = [...q.o].sort(()=>Math.random()-.5);
+  const tag = document.getElementById("qAnswerLang");
+  if(tag) tag.textContent = (answerLang() === "en" ? "English" : "中文") + "作答";
+  const right = ol[0];
+  const opts = [...ol].sort(()=>Math.random()-.5);
   document.getElementById("qOpts").innerHTML = opts.map(o=>
-    `<button onclick="pick(this,'${o===right?"1":"0"}')">${o}</button>`).join("") +
+    `<button onclick="pick(this,'${o===right?"1":"0"}')" data-ans="${escAttr(o)}">${escHtml(o)}</button>`).join("") +
     `<button style="margin-top:6px;color:var(--muted)" onclick="pickSkip(this)">🤔 记混了/不确定（跳过）</button>`;
 }
 function pick(btn, ok){
@@ -5565,8 +5638,9 @@ function pick(btn, ok){
   document.getElementById("qOpts").dataset.lock = "1";
   if(ok==="1") testAns[TIERS().indexOf(TEST()[testQ].tier)]++;
   btn.classList.add(ok==="1"?"ok":"bad");
+  const right = testOptions(TEST()[testQ])[0];
   document.querySelectorAll("#qOpts button").forEach(b=>{
-    if(b!==btn && b.textContent===TEST()[testQ].o[0]) b.classList.add("ok");
+    if(b!==btn && b.dataset.ans === right) b.classList.add("ok");
     b.disabled = true;
   });
   setTimeout(()=>{
@@ -5580,8 +5654,9 @@ function pickSkip(btn){
   if(document.getElementById("qOpts").dataset.lock) return;
   document.getElementById("qOpts").dataset.lock = "1";
   /* 跳过不计入对错——让诚实的用户不受压力 */
+  const right2 = testOptions(TEST()[testQ])[0];
   document.querySelectorAll("#qOpts button").forEach(b=>{
-    if(b.textContent===TEST()[testQ].o[0]) b.classList.add("ok");
+    if(b.dataset.ans === right2) b.classList.add("ok");
     b.disabled = true;
   });
   btn.style.background = "var(--surface2)";
