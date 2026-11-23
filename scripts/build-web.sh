@@ -9,7 +9,8 @@ mkdir -p "$OUT"
 
 echo "== 复制静态资源 =="
 rsync -a \
-  index.html privacy.html manifest.json sw.js icon.svg icon-192.png icon-512.png dict.js \
+  index.html privacy.html manifest.json sw.js dict.js \
+  icon.svg icon-192.png icon-512.png icon-216.png icon-512-maskable.png apple-touch-icon.png \
   "$OUT"/
 for d in data books covers dicts sentences shared reader vendor; do
   [ -d "$d" ] && rsync -a "$d" "$OUT"/
