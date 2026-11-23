@@ -26,3 +26,10 @@ download/
 
 dist-web/
 android/app/lizzread.keystore
+
+# 大体积资源不入库（由构建/下载脚本生成）
+dict.js.v4.original
+.trae-html-share-packages/
+.screenshots/
+store/screenshots/
+store/huawei/assets/
