@@ -12,18 +12,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LIZZREAD · 线上图书馆</title>
-<meta name="theme-color" content="#2F5D50">
+<meta name="theme-color" content="#0F8A4D">
+<!-- PWA / iOS「添加到主屏幕」：全屏、状态栏、图标 -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LIZZREAD">
+<meta name="application-name" content="LIZZREAD">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="16 门语言经典原著阅读器：点词多语言释义、整章翻译、句子拼装、生词复习、609 本全文离线可读。">
 <script src="data/books-en.js?v=3"></script>
 <script src="data/catalog.js?v=1"></script>
-<script src="data/lang-manifest.js?v=3"></script>
+<script src="data/lang-manifest.js?v=4"></script>
 <script src="data/i18n.js?v=3"></script>
 <script src="data/lang-recs.js?v=1"></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
-<script>if(/^https?:$/.test(location.protocol)){document.write('<link rel="manifest" href="manifest.json">');}</script>
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png" sizes="192x192">
 <!-- 句子拼装模块 -->
 <script src="shared/assembly-core.js?v=14" defer></script>
 <script src="shared/importers.js?v=14" defer></script>
@@ -129,6 +137,9 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 #view-reader .sent.listen-on{background:var(--brand-soft);border-radius:10px;transition:background .3s}
 /* 单词弹窗：更紧凑的行内操作 + 限高滚动，避免占满屏幕 */
 /* 更多释义面板：紧凑分节 */
+.ios-step{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px dashed var(--border);font-size:13.5px;line-height:1.6}
+.ios-step:first-of-type{border-top:none}
+.ios-step b{flex:0 0 22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font:600 12px/22px var(--font);text-align:center}
 .mm-sec{border-top:1px solid var(--border);padding:8px 0 2px}
 .mm-sec:first-of-type{border-top:none}
 .mm-h{font:600 12px var(--font);color:var(--brand-deep);margin-bottom:4px}
@@ -6577,6 +6588,7 @@ function renderSettings(){
       <h3>ℹ️ 关于 LIZZREAD</h3>
       <div class="sub">版本 <b id="lzVerText">${APP_VERSION}</b> · 16 门语言经典阅读器 · 书源 Project Gutenberg / 青空文库（均为公版）</div>
       <div class="lang-row">
+        <button class="btn ghost small" onclick="showIosInstallGuide(true)">📲 装到桌面</button>
         <button class="btn ghost small" onclick="checkAppUpdate(true)">🔄 检查更新</button>
         <button class="btn ghost small" onclick="restorePurchases()">♻️ 恢复购买</button>
         <a class="btn ghost small" href="privacy.html" target="_blank" rel="noopener">隐私政策</a>
@@ -6777,7 +6789,7 @@ function renderGuide(){
     <div class="settings-card">
       <h3>常见问题</h3>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>点词/翻译没反应？</b>先看设置里「离线模式」是否打开；关闭它，或确认这本书的本章已缓存。翻译源是 Google/MyMemory，网络受限时会自动降级，已翻过的句子永远秒显。</div></div>
-      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>阅读、查词、词典、拼装全部免费；每天 120 句整章翻译、3 本离线书。会员 ¥18/月起、全语言 ¥268/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
+      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>阅读、查词、词典、拼装全部免费；每天 120 句整章翻译（英语）/80 句（其他语言）、3 本离线书。会员 ¥18/月起、全语言 ¥268/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>新书第一次打开很慢？</b>3300 本书默认按需下载完整全文（不删节）。常用 272 本已打包在本地秒开；其余第一次需联网，之后存入 IndexedDB。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>导入 PDF 提示失败？</b>扫描版 PDF 没有文字层，需先 OCR；普通文字版 PDF 可直接导入。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>怎么离线？</b>打开一本书后点「📶 离线本书」，或设置里「离线模式」。译文要离线显示，需先在线点「翻译本章」。</div></div>
@@ -7144,7 +7156,7 @@ function proState(){
 /* 某门语言是否有会员（叠加判定：全语言 > 单语言 > 永久） */
 function entHasLang(code){
   const c = code || activeLang();
-  if(c === "en") return true;
+  /* 注意：英语对所有人免费，但它有独立额度，不能算作「已付费」 */
   try{
     const e = loadEnt();
     const now = Date.now();
@@ -7331,8 +7343,8 @@ function langIsPaid(code){
 }
 function freeQuotaLeft(){
   if(langIsPaid()) return Infinity;
-  let q = langQuota();
-  if(activeLang() !== "en" && !enabledExtraLangs().includes(activeLang())) q = Math.round(q * 0.6);
+  /* 免费额度：英语 120 句/天，其余语言统一 80 句/天 */
+  const q = langQuota();
   /* 按语言统计今日已用额度（历史上未按语言分开的记录不计入） */
   let used = 0;
   try{
@@ -7696,7 +7708,7 @@ function renderPlan(){
       <p>${st
         ? (proScope() === "all" ? "全语言会员：16 门语言不限量翻译、整书预翻译、全部离线、学期计划包、班级共享。" :
            "单语言会员：" + ((LANG_INFO[proLang()]||{}).native || proLang() || "已选语言") + " 不限量翻译与离线；其他语言按免费额度。")
-        : "免费版：英语 120 句/天，其他语言 25–40 句/天；1 门自选语言 8 折额度，其他语言 6 折。"}</p>
+        : "免费版：英语 120 句/天，其他 15 门语言各 80 句/天；每天刷新。"}</p>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <span class="current-plan">今日剩余翻译 ${freeLeft === Infinity ? "不限" : freeLeft + " 句"}</span>
         <button class="btn ghost small" onclick="openKpi()">学习数据看板</button>
@@ -8538,6 +8550,37 @@ applyPrefs();
     if(!t.done) setTimeout(()=>startTour(t.at || 0), 1200);
   }catch(e){}
 })();
+/* iOS「添加到主屏幕」引导：一次性，可再点顶部按钮重看 */
+function showIosInstallGuide(force){
+  try{
+    if(!force && localStorage.getItem("lz_ios_hint_v2")) return;
+    localStorage.setItem("lz_ios_hint_v2", "1");
+  }catch(e){}
+  let el = document.getElementById("iosInstall");
+  if(!el){
+    el = document.createElement("div");
+    el.className = "lang-sheet";
+    el.id = "iosInstall";
+    document.body.appendChild(el);
+  }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box" style="max-width:420px">
+    <div style="display:flex;align-items:center">
+      <h3 style="margin:0">📲 把 LIZZREAD 装到桌面</h3>
+      <button style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer" onclick="document.getElementById('iosInstall').style.display='none'">×</button>
+    </div>
+    <p class="sub" style="margin:8px 0 10px">装好后像 App 一样：全屏、有图标、离线可读，不占存储两次。</p>
+    <div class="ios-step"><b>1</b><div>用 <b>Safari</b> 打开本页（微信/QQ 内置浏览器不支持）</div></div>
+    <div class="ios-step"><b>2</b><div>点底部中间的 <b>分享 ⬆️</b> 按钮</div></div>
+    <div class="ios-step"><b>3</b><div>在弹出菜单里往下滑，选 <b>「添加到主屏幕」</b></div></div>
+    <div class="ios-step"><b>4</b><div>点右上角 <b>「添加」</b>，桌面就会出现 LIZZREAD 图标</div></div>
+    <div class="lang-row" style="margin-top:12px">
+      <button class="btn small" onclick="document.getElementById('iosInstall').style.display='none'">知道了</button>
+      <button class="btn ghost small" onclick="copyText(location.origin+location.pathname)">复制本页链接</button>
+    </div>
+  </div>`;
+}
 /* 顶栏「❓ 教程」快捷按钮 */
 (function addGuideLink(){
   const nav = document.getElementById("mainNav");
@@ -8733,14 +8776,9 @@ if("serviceWorker" in navigator && (location.protocol==="https:" || location.hos
     /* 控制器切换后（更新完成）刷新一次，拿到新资源 */
     let refreshed = false;
     navigator.serviceWorker.addEventListener("controllerchange", ()=>{ if(refreshed) return; refreshed = true; });
-    /* 给 iOS/Android 的「添加到主屏」提示：iOS 无 beforeinstallprompt，改为手动引导 */
-    if(!matchMedia("(display-mode: standalone)").matches && /iPad|iPhone|iPod/.test(navigator.userAgent)){
-      setTimeout(() => {
-        const seen = localStorage.getItem("lz_ios_hint");
-        if(seen) return;
-        localStorage.setItem("lz_ios_hint", "1");
-        try{ toast("iOS：点浏览器「分享」→「添加到主屏幕」，即可当 App 使用。"); }catch(e){}
-      }, 6000);
+    /* iOS 没有 beforeinstallprompt：给一次性图文引导（Safari 分享 → 添加到主屏幕） */
+    if(!matchMedia("(display-mode: standalone)").matches && /iPad|iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone){
+      setTimeout(() => { try{ showIosInstallGuide(); }catch(e){} }, 5000);
     }
   }).catch(()=>{});
 }

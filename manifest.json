@@ -1,11 +1,25 @@
 {
-  "name": "LIZZREAD · 8 语言阅读器",
+  "name": "LIZZREAD · 16 门语言经典阅读器",
   "short_name": "LIZZREAD",
-  "description": "8 门语言（英/中/德/法/意/西/日/韩）经典原著阅读 · 点词多语言释义 · 分级推荐 · 生词复习",
+  "description": "16 门语言（英/中/德/法/意/西/日/韩/荷/葡/拉丁/希腊/芬/匈/瑞典/世界语）经典原著阅读 · 点词多语言释义 · 整章翻译 · 句子拼装 · 生词复习",
+  "id": "/LIZZREAD/",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
   "background_color": "#F6F7F5",
   "theme_color": "#0F8A4D",
+  "categories": [
+    "education",
+    "books"
+  ],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icon.svg",
@@ -14,14 +28,42 @@
       "purpose": "any"
     },
     {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "categories": [
-    "education",
-    "books"
-  ],
-  "lang": "zh-CN"
+  "shortcuts": [
+    {
+      "name": "书城",
+      "url": "./index.html#library"
+    },
+    {
+      "name": "生词本",
+      "url": "./index.html#vocab"
+    },
+    {
+      "name": "句子拼装",
+      "url": "./index.html#assembly"
+    }
+  ]
 }
