@@ -5,11 +5,18 @@ set -e
 cd "$(dirname "$0")"
 
 echo "== 1/4 同步网页到 www/ =="
+rm -rf ./www
+mkdir -p ./www
 rsync -a --delete \
   --exclude node_modules --exclude android --exclude ios --exclude .git \
-  --exclude .trae-html-share-packages --exclude extension --exclude scripts \
-  --exclude .screenshots --exclude www --exclude ".backup" --exclude ".sdk" --exclude "dist" --exclude "covers" --exclude "covers-pick" --exclude "covers-app" --exclude "*.original" \
-  --exclude redemptions.json --exclude "*.part-*" --exclude .DS_Store ./ www/
+  --exclude .github --exclude store --exclude .sdk --exclude dist --exclude .backup \
+  --exclude scripts --exclude .screenshots --exclude extension --exclude .trae-html-share-packages \
+  --exclude covers --exclude covers-pick --exclude covers-app --exclude www \
+  --exclude 'PUSH-COMMAND.md' --exclude 'README.md' --exclude 'codemagic.yaml' \
+  --exclude 'capacitor.config.json' --exclude 'package*.json' --exclude 'build*' \
+  --exclude 'server.js' --exclude 'start.*' --exclude 'redemptions.json' \
+  --exclude '*.part-*' --exclude '*.original' --exclude '.DS_Store' \
+  ./ www/
 
 echo "== 1.5 精简封面（APK 只带热门书封面，其余走网络） =="
 if [ -d covers ]; then
