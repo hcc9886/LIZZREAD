@@ -2066,6 +2066,15 @@ async function idbPut(gb, txt, size, title){
     try{ localStorage.setItem("lz_remote_"+gb, txt); }catch(e2){}
   }
 }
+async function idbDel(gb){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction("books","readwrite");
+    tx.objectStore("books").delete(gb);
+    await new Promise((res, rej)=>{ tx.oncomplete=res; tx.onerror=rej; });
+  }catch(e){}
+  try{ localStorage.removeItem("lz_remote_"+gb); }catch(e){}
+}
 async function idbGet(gb){
   try{
     const db = await openIDB();
@@ -2784,14 +2793,21 @@ async function loadBookText(b, onProgress){
         const r = await fetch(localPath, {cache:"force-cache"});
         if(r.ok){
           const t = await r.text();
-          if(t && t.length > 2000) return t;
+          if(t && t.length > 2000 && !/^\s*(URL Source:|<!DOCTYPE|<html)/i.test(t.slice(0, 300))) return t;
         }
       }catch(e){}
     }
-    /* 2) IndexedDB 离线缓存 */
+    /* 2) IndexedDB 离线缓存（历史缓存可能被代理写入错误页，读时校验并丢弃） */
     try{
       const cached = await idbGet(gb);
-      if(cached && cached.length > 2000) return cached;
+      if(cached && cached.length > 2000){
+        const head = String(cached).slice(0, 400);
+        if(/^\s*(URL Source:|<!DOCTYPE|<html)/i.test(head)){
+          try{ await idbDel(gb); }catch(e){}
+        } else {
+          return cached;
+        }
+      }
     }catch(e){}
     if(isOfflineMode()) throw new Error("离线模式：这本书还没下载到本地。关闭离线模式或先点「离线下载本书」。");
     /* 3) 本机服务端代理（同源，无 CORS；首次抓取后落盘 books/pg<id>.txt） */
@@ -2799,7 +2815,7 @@ async function loadBookText(b, onProgress){
     if(/^https?:/.test(location.protocol)){
       try{
         const t = await fetchTextProgress(apiUrl("api/pg/") + gb, onProgress, 150000);
-        if(t && t.length > 2000 && !t.startsWith('{"error"')){
+        if(t && t.length > 2000 && !t.startsWith('{"error"') && !/^\s*(URL Source:|<!DOCTYPE|<html)/i.test(t.slice(0, 300))){
           try{ await idbPut(gb, t, t.length, b.t); }catch(e){}
           return t;
         }
@@ -2815,11 +2831,12 @@ async function loadBookText(b, onProgress){
     for(const url of mirrors){
       try{
         const txt = await fetchTextProgress(url, onProgress, 45000);
-        if(txt && txt.length > 2000){
+        /* 校验是 Gutenberg 正文而非错误页/HTML（镜像偶尔返回 200 + 网页） */
+        if(txt && txt.length > 2000 && !/^\s*(URL Source:|<!DOCTYPE|<html)/i.test(txt.slice(0, 400))){
           try{ await idbPut(gb, txt, txt.length, b.t); }catch(e){}
           return txt;
         }
-        lastErr = new Error("返回内容过短");
+        lastErr = new Error("返回内容不是正文");
       }catch(e){ lastErr = e; }
     }
     /* 5) 跨域阅读代理（Capacitor/无本地服务时最后兜底） */
@@ -2831,11 +2848,14 @@ async function loadBookText(b, onProgress){
       try{
         let txt = await fetchTextProgress(url, onProgress, 60000);
         if(!txt || txt.length < 2000) continue;
-        /* r.jina.ai 会加 Markdown 头，切到正文 */
-        if(txt.startsWith('Title:')){
-          const cut = txt.indexOf('\n\n');
-          if(cut > 0) txt = txt.slice(cut + 2);
+        /* r.jina.ai 会加 Markdown 头（Title:/URL Source:/Markdown Content:），切到正文 */
+        if(/^(Title:|URL Source:|Markdown Content:)/.test(txt)){
+          const cut = txt.indexOf('Markdown Content:');
+          if(cut >= 0) txt = txt.slice(cut + 'Markdown Content:'.length);
+          else if(txt.startsWith('Title:')){ const c2 = txt.indexOf('\n\n'); if(c2 > 0) txt = txt.slice(c2 + 2); }
         }
+        txt = txt.replace(/^\s*URL Source:[^\n]*\n/i, '').replace(/^\s*Markdown Content:\s*\n?/i, '');
+        if(/^\s*<!DOCTYPE|<html/i.test(txt.slice(0, 300))) continue;
         try{ await idbPut(gb, txt, txt.length, b.t); }catch(e){}
         return txt;
       }catch(e){ lastErr = e; }
