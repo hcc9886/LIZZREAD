@@ -596,8 +596,8 @@ body.no-zh .sent .zh{display:none}
   </div>
 </div>
 
-<!-- 本地大词典（24 万条，17MB）——阻塞加载，保证点词时立刻有内容 -->
-<script src="./dict.js?v=7"></script>
+<!-- 本地大词典（24 万条，18MB）：<head> 里已用 defer 加载，这里只兜底唤醒，避免重复下载 18MB -->
+<script>document.addEventListener("DOMContentLoaded", function(){ if(!window.LIZ_DICT && typeof loadBigDict==="function") loadBigDict(); });</script>
 <script>
 /* =====================================================
   一、书库数据：英文书名 / 通行中文译名 / 作者 / 年份 / 难度 / 类型
@@ -2126,10 +2126,12 @@ async function idbGc(){
     const db = await openIDB();
     const tx = db.transaction("books","readonly");
     const all = await new Promise((res, rej)=>{ const r=tx.objectStore("books").getAll(); r.onsuccess=()=>res(r.result); r.onerror=rej; });
+    /* 只清理“按需下载”的书（file 字段为空表示非站内打包书），且按最近阅读时间排序 */
     all.sort((a,b)=> (a.lastReadAt||0)-(b.lastReadAt||0));
     const wr = db.transaction("books","readwrite");
     for(const b of all){
       if(total <= target) break;
+      if(b.file) continue;           /* 站内打包书不参与回收 */
       wr.objectStore("books").delete(b.gb);
       total -= (b.size||b.txt.length||0);
     }
@@ -3281,7 +3283,7 @@ function openReader(id){
         : "点词立即查义 · 划选短语整段翻译 · 「翻译本章」会逐句机翻并缓存，断网后仍可显示已有译文。"}</p>`
       : `
       <div class="rd-tools">
-        <button class="btn ghost small" id="zhToggle" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
+        <button class="btn ghost small" id="zhToggle2" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
         <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"整段排版":"逐句对照"}</button>
         <button class="btn ghost small" onclick="go('settings')">🎨 个性化</button>
       </div>
@@ -3534,8 +3536,11 @@ function toggleMode(){
 function toggleZh(){
   store.showzh = !store.showzh;
   document.body.classList.toggle("no-zh", !store.showzh);
-  const b = document.getElementById("zhToggle");
-  if(b) b.textContent = store.showzh ? "中文对照：开" : "中文对照：关";
+  /* 阅读器里有上下两个入口（移动端/桌面端），一起更新 */
+  for(const id of ["zhToggle", "zhToggle2"]){
+    const b = document.getElementById(id);
+    if(b) b.textContent = store.showzh ? "中文对照：开" : "中文对照：关";
+  }
 }
 /* 阅读背景色：只改 CSS 变量，不重绘阅读器 */
 function setBg(v){
@@ -5688,13 +5693,25 @@ async function downloadAll(){
   /* 只下载站内已打包的 272 本；其余 3000+ 本按需下载，避免 3GB 流量 */
   const list = BOOKS.filter(b=>typeof b.gb === "number" && b.src !== "pg");
   dlRunning = true; btn.disabled = true;
-  let ok = 0;
-  for(let i=0;i<list.length;i++){
+  let ok = 0, fail = 0;
+  const total = list.length;
+  for(let i=0;i<total;i++){
+    const b = list[i];
     try{
-      const r = await fetch("./books/pg"+list[i].gb+".txt");
-      if(r.ok){ await r.text(); ok++; }
-    }catch(e){}
-    btn.textContent = `📶 下载中 ${i+1}/${list.length}`;
+      /* 已缓存就跳过，避免重复下载 */
+      const cached = await idbGet(b.gb).catch(()=>null);
+      if(cached && cached.length > 2000){ ok++; }
+      else{
+        const r = await fetch("./books/pg"+b.gb+".txt", {cache:"force-cache"});
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        const txt = await r.text();
+        if(!txt || txt.length < 2000) throw new Error("内容过短");
+        await idbPut(b.gb, txt, txt.length, b.t);
+        ok++;
+      }
+    }catch(e){ fail++; }
+    btn.textContent = `📶 下载中 ${i+1}/${total}（成功 ${ok}${fail?(" · 失败 "+fail):""}）`;
+    if(i % 10 === 0) await new Promise(r=>setTimeout(r, 0));
   }
   btn.textContent = `📶 已离线 ${ok}/${list.length}`;
   btn.disabled = false; dlRunning = false;
@@ -7723,7 +7740,8 @@ document.addEventListener("keydown", e=>{
   if(!isReader) return;
   /* 空格翻页（注意不拦截输入框） */
   const tgt = e.target.tagName;
-  if(tgt==="INPUT"||tgt==="TEXTAREA"||tgt==="SELECT") return;
+  const editable = e.target.isContentEditable || (e.target.closest && e.target.closest("[contenteditable='true']"));
+  if(tgt==="INPUT"||tgt==="TEXTAREA"||tgt==="SELECT"||editable) return;
   const pct = window.innerHeight * 0.8;
   if(e.code==="Space"){ e.preventDefault(); window.scrollBy(0, pct); return; }
   if(e.key==="j"){ window.scrollBy(0, 400); return; }
@@ -7734,7 +7752,7 @@ document.addEventListener("keydown", e=>{
 });
 
 /* 划词整段翻译：用户在阅读器里选中文本时 → 右下角出现小图标 → 点了弹层 */
-document.addEventListener("mouseup", e=>{
+function showSelBubble(){
   const isReader = document.getElementById("view-reader").classList.contains("on");
   if(!isReader) return;
   const sel = window.getSelection();
@@ -7756,8 +7774,21 @@ document.addEventListener("mouseup", e=>{
     }).catch(()=>{ b.textContent="翻译失败"; setTimeout(()=>b.remove(),1500); });
   };
   document.body.appendChild(b);
-  setTimeout(()=>{ if(document.getElementById("lz-sel-bubble")===b) b.remove(); }, 4000);
+}
+/* 桌面：鼠标松开；手机：长按选择结束（touchend / selectionchange） */
+document.addEventListener("mouseup", showSelBubble);
+document.addEventListener("touchend", ()=>setTimeout(showSelBubble, 60), {passive:true});
+let _selTimer = 0;
+document.addEventListener("selectionchange", ()=>{
+  clearTimeout(_selTimer);
+  _selTimer = setTimeout(()=>{ if((window.getSelection().toString()||"").trim().length >= 4) showSelBubble(); }, 350);
 });
+/* 浮标 4 秒后自动消失 */
+function _selBubbleAutoHide(){
+  const b = document.getElementById("lz-sel-bubble");
+  if(b) setTimeout(()=>{ if(document.getElementById("lz-sel-bubble")===b) b.remove(); }, 4000);
+}
+document.addEventListener("mouseup", _selBubbleAutoHide);
 
 /* 生词自动加入开关：点击单词弹完释义，如果本地词典命中则自动收入生词本 */
 const _AUTO_VOCAB = "lz_auto_vocab";

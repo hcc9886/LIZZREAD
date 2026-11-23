@@ -373,14 +373,26 @@ function serveFile(req, res, file, { cache = false } = {}){
   fs.stat(file, (err, st) => {
     if(err || !st.isFile()){ sendJSON(res, 404, {error:'not found'}); return; }
     const ext = path.extname(file).toLowerCase();
-    const headers = {
+    const baseHeaders = {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Content-Length': st.size,
       'Cache-Control': cache ? 'public, max-age=604800' : 'no-cache',
       'Access-Control-Allow-Origin': '*'
     };
-    if(req.method === 'HEAD'){ res.writeHead(200, headers); res.end(); return; }
-    res.writeHead(200, headers);
+    /* gzip：文本类资源压缩后体积约为 1/4（首页 448KB → ~90KB），慢网络首屏明显更快 */
+    const GZIP_EXT = new Set(['.html','.js','.css','.json','.svg','.txt','.md','.xml','.webmanifest']);
+    const gzOn = GZIP_EXT.has(ext) && st.size > 1024 && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+    if(req.method === 'HEAD'){
+      res.writeHead(200, gzOn ? Object.assign({'Vary':'Accept-Encoding'}, baseHeaders) : Object.assign({'Content-Length': st.size}, baseHeaders));
+      res.end(); return;
+    }
+    if(gzOn){
+      res.writeHead(200, Object.assign({'Content-Encoding':'gzip','Vary':'Accept-Encoding'}, baseHeaders));
+      const gz = zlib.createGzip({level: 6});
+      gz.on('error', ()=>{ try{ res.destroy(); }catch(e){} });
+      fs.createReadStream(file).pipe(gz).pipe(res);
+      return;
+    }
+    res.writeHead(200, Object.assign({'Content-Length': st.size}, baseHeaders));
     fs.createReadStream(file).pipe(res);
   });
 }
