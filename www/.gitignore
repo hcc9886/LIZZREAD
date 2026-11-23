@@ -9,3 +9,9 @@ sentences/zh-cache.json
 # OS / editor
 .DS_Store
 *.swp
+
+# 本地构建产物与工具链
+.sdk/
+dist/*.apk
+android/app/build/
+.gradle/

@@ -484,10 +484,10 @@ body.no-zh .sent .zh{display:none}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn" onclick="go('sreview')">🎧 生词模式（复习 / 练习）</button>
       <button class="btn ghost small" id="revBtn" onclick="goReviewew()" style="display:none">📝 今日复习</button>
-      <button class="btn ghost small" onclick="exportVocab()">⬇️ 导出 JSON</button>
+      <button class="btn ghost small" onclick="wsExport()">⬇️ 导出 JSON</button>
       <button class="btn ghost small" onclick="document.getElementById('vocabImport').click()">⬆️ 导入</button>
-      <input type="file" id="vocabImport" accept=".json" style="display:none" onchange="importVocab(this.files[0])">
-      <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};localStorage.removeItem(pk('progress'));renderVocab();}">♻️ 清空</button>
+      <input type="file" id="vocabImport" accept=".json" style="display:none" onchange="wsImport(this)">
+      <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
   </section>
@@ -2246,7 +2246,16 @@ window.addEventListener("beforeinstallprompt", e=>{
     <button class="btn small" id="installBtn">安装</button>
     <button class="btn ghost small" id="installLater">以后再说</button>`;
   document.body.appendChild(div);
-  document.getElementById("installBtn").onclick = ()=>{ _bia.prompt(); _bia.userChoice.then(()=>div.remove()); };
+  document.getElementById("installBtn").onclick = ()=>{
+    try{
+      if(!_bia || !_bia.prompt){ div.remove(); return; }
+      _bia.prompt();
+      _bia.userChoice.then(()=>div.remove()).catch(()=>div.remove());
+    }catch(e){
+      div.remove();
+      toast("请用浏览器菜单里的「安装应用 / 添加到主屏幕」");
+    }
+  };
   document.getElementById("installLater").onclick = ()=>div.remove();
 });
 
@@ -2355,8 +2364,13 @@ function renderLibrary(){
   const filtered = (fLv!=="all"||fGenre!=="all"||kw);
   renderRecs();
   const L0 = LANG_INFO[activeLang()] || {};
-  document.getElementById("gridTitle").textContent =
-    L("library.title", "全部书目") + `（${list.length} 本 · ${L0.native || activeLang()}）`;
+  let streak = 0;
+  try{ streak = (JSON.parse(localStorage.getItem("lz_streak") || "{}").streak) || 0; }catch(e){}
+  const tEl = document.getElementById("gridTitle");
+  if(tEl){
+    tEl.innerHTML = escHtml(L("library.title", "全部书目") + `（${list.length} 本 · ${L0.native || activeLang()}）`) +
+      (streak > 1 ? ` <span class="badge" style="background:var(--brand-soft);color:var(--brand-deep);font-size:11px">🔥 连签 ${streak} 天</span>` : "");
+  }
   const shown = list.slice(0, libLimit);
   document.getElementById("bookGrid").innerHTML =
     shown.length ? shown.map(b=>bookCard(b,false)).join("") +
@@ -5650,10 +5664,10 @@ function asmRenderStage(){
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
       ${chunks.map((c,i)=>{
         const v = asmState.userChunks[i];
-        return `<div class="asm-slot ${v?"filled":""}" onclick="asmSlotClick(${i})">
+        return `<div class="asm-slot ${v?"filled":""}" onclick="asmSlotClick(${i})" title="${v?"点击取回这一块":"点击把当前块放到这里"}">
           <span style="font-size:12px;color:var(--muted);min-width:20px">${i+1}</span>
           <span style="font:600 14px var(--font);color:${v?"var(--brand-deep)":"var(--muted)"}">${v?escHtml(c):"点下方意群块放入"}</span>
-          ${v?`<span style="margin-left:auto;font-size:12px;color:var(--muted)">✕</span>`:""}</div>`;
+          ${v?`<span style="margin-left:auto;font-size:12px;color:var(--muted)">✕ 取回</span>`:""}</div>`;
       }).join("")}
     </div>
     <div style="font-size:13px;color:var(--muted);margin:10px 0 6px">② 意群块（${remaining.length} 块待放）</div>
@@ -5672,7 +5686,8 @@ function asmRenderStage(){
   if(!s.zh) autoTranslateAsm(s);
 }
 function asmSlotClick(i){
-  if(asmState.userChunks[i]){
+  /* 点已填槽位 = 把这块意群退回下方的块池 */
+  if(asmState && asmState.userChunks[i]){
     asmState.userChunks[i] = null;
     asmRenderStage();
   }
@@ -6083,7 +6098,14 @@ function statsStreak(){
   return streak;
 }
 let _readTimer = null, _readMarkAt = 0;
+let _streakMarked = false;
+function markStreakByReading(){
+  if(_streakMarked) return;
+  _streakMarked = true;
+  try{ if(typeof dailyStreak === "function") dailyStreak(); }catch(e){}
+}
 function readerTimerStart(){
+  setTimeout(markStreakByReading, 5000);
   if(_readTimer) return;
   _readMarkAt = Date.now();
   _readTimer = setInterval(() => {
@@ -6250,8 +6272,11 @@ function hasAnyPaid(){ return !!proState(); }
 function planLabel(){
   const st = proState();
   if(!st) return "免费版";
-  if(st.permanent || !st.expires) return "永久会员";
-  const d = Math.max(0, Math.ceil((st.expires - Date.now()) / 86400000));
+  const d = Math.max(0, Math.ceil(((st.expires || 0) - Date.now()) / 86400000));
+  if(st.scope === "one"){
+    return "单语言会员（" + ((LANG_INFO[st.lang] || {}).native || st.lang || "已选语言") + (st.expires ? "，" + d + " 天" : "，永久") + "）";
+  }
+  if(st.permanent || !st.expires) return "永久会员（全部语言）";
   return (PLAN_DEF[st.plan]?.name || "会员") + "（剩 " + d + " 天）";
 }
 function activatePro(plan, source){
@@ -6284,9 +6309,11 @@ function localRedeemed(){
   try{ return JSON.parse(localStorage.getItem("lz_redeemed_codes") || "{}") || {}; }catch(e){ return {}; }
 }
 function saveLocalRedeemed(o){ try{ localStorage.setItem("lz_redeemed_codes", JSON.stringify(o)); }catch(e){} }
-function applyPro(plan, expires, source, lang){
+function applyPro(plan, expires, source, lang, scopeOverride){
   const def = PLAN_DEF[plan] || {};
-  const st = {plan, scope: def.scope || "all", lang: lang || "", expires: expires || 0,
+  /* 单语言方案：scope 优先取调用方传入（激活码/REDEEM_CODES），其次 PLAN_DEF，最后按是否给了 lang 推断 */
+  const scope = scopeOverride || def.scope || (lang ? "one" : "all");
+  const st = {plan, scope, lang: scope === "one" ? (lang || "") : "", expires: expires || 0,
               permanent: plan === "permanent" || !expires, at: Date.now(), source: source || "activation"};
   localStorage.setItem(pk("pro"), JSON.stringify(st));
   updatePlanBadge();
@@ -6308,7 +6335,7 @@ async function activateCode(code, silent){
     return false;
   }
   /* 优先服务端校验：防止同一码在另一台设备重复使用 */
-  let serverOk = false, serverMsg = "", serverExpires = 0, serverPlan = def.plan;
+  let serverOk = false, serverMsg = "", serverExpires = 0, serverPlan = def.plan, serverScope = def.scope || "";
   if(/^https?:/.test(location.protocol)){
     try{
       const r = await fetch(apiUrl("api/redeem"), {
@@ -6320,6 +6347,7 @@ async function activateCode(code, silent){
       if(r.ok && j.ok){
         serverOk = true;
         serverPlan = j.plan || def.plan;
+        serverScope = j.scope || def.scope || "";
         serverExpires = Number(j.expires || 0);
       } else if(r.status === 409){
         if(!silent) toast(j.message || "这个激活码已经在另一台设备使用过了（一机一码一次）。");
@@ -6342,7 +6370,9 @@ async function activateCode(code, silent){
   }
   used[c] = {at: now, plan: serverPlan || def.plan, device: did};
   saveLocalRedeemed(used);
-  applyPro(serverPlan || def.plan, expires, "code:" + c, def.scope === "one" ? (PAYMENT_LANGS.lang || activeLang()) : "");
+  applyPro(serverPlan || def.plan, expires, "code:" + c,
+           (serverScope || def.scope) === "one" ? (PAYMENT_LANGS.lang || activeLang()) : "",
+           serverScope || def.scope);
   if(!silent) toast("激活成功：" + (PLAN_DEF[serverPlan || def.plan]?.name || def.label) + (expires ? "，有效期至 " + new Date(expires).toLocaleDateString() : "，永久有效") + "。");
   return true;
 }
@@ -6360,7 +6390,15 @@ function freeQuotaLeft(){
   if(langIsPaid()) return Infinity;
   let q = langQuota();
   if(activeLang() !== "en" && !enabledExtraLangs().includes(activeLang())) q = Math.round(q * 0.6);
-  return Math.max(0, q - ((statsToday().translated) || 0));
+  /* 按语言统计今日已用额度（历史上未按语言分开的记录不计入） */
+  let used = 0;
+  try{
+    const all = statsAll();
+    const lb = (all.byLang || {})[activeLang()] || {};
+    const today = _dateKey();
+    used = ((lb.days || {})[today] || {}).translated || 0;
+  }catch(e){ used = 0; }
+  return Math.max(0, q - used);
 }
 function consumeTranslate(n){
   if(isPro() || n <= 0) return n;
@@ -7183,8 +7221,11 @@ function dailyStreak(){
   s.date = today;
   localStorage.setItem(KEY, JSON.stringify(s));
   /* 首次打开书城时弹出 */
-  const show = document.getElementById("streakShow");
-  if(show){ show.textContent = "🔥 连签 " + s.streak + " 天"; show.style.display = "inline"; }
+  /* 同步到书城标题旁的徽标（下次渲染 renderLibrary 时生效） */
+  try{
+    const tEl = document.getElementById("gridTitle");
+    if(tEl && s.streak > 1) tEl.insertAdjacentHTML("beforeend", ` <span class="badge" style="background:var(--brand-soft);color:var(--brand-deep);font-size:11px">🔥 连签 ${s.streak} 天</span>`);
+  }catch(e){}
 }
 window.addEventListener("beforeunload", saveProgressNow);
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") saveProgressNow(); });

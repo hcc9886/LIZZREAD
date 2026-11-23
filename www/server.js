@@ -507,7 +507,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     writeRedeemed(used);
-    sendJSON(res, 200, {ok:true, plan: def.plan, expires: entry.expires, at: now, seats, used: devs.length});
+    sendJSON(res, 200, {ok:true, plan: def.plan, scope: def.scope || 'all', expires: entry.expires, at: now, seats, used: devs.length});
     return;
   }
 
