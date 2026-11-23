@@ -240,6 +240,8 @@ function ensureDir(dir){
   if(!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive:true});
 }
 const COVER_MIRRORS = [
+  /* 预抓到仓库的封面优先（covers/<id>.jpg，随站点发布） */
+  id => ({ file: path.join(ROOT, 'covers', id + '.jpg') }),
   id => `https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.cover.medium.jpg`,
   id => `https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.cover.small.jpg`,
   id => `https://www.gutenberg.org/cache/epub/${id}/pg${id}.cover.medium.jpg`
@@ -251,7 +253,12 @@ async function ensureCover(id){
   let lastErr = null;
   for(const make of COVER_MIRRORS){
     try{
-      const r = await fetch(make(id), {
+      const spec = make(id);
+      if(typeof spec === 'object' && spec.file){
+        if(fs.existsSync(spec.file) && fs.statSync(spec.file).size > 500) return spec.file;
+        continue;
+      }
+      const r = await fetch(spec, {
         headers:{'User-Agent':'LIZZREAD/2.0','Accept-Encoding':'identity'},
         signal: AbortSignal.timeout(30000)
       });
@@ -701,6 +708,16 @@ const server = http.createServer(async (req, res) => {
     } else {
       sendJSON(res, 404, {error:'没有查到', word, lang});
     }
+    return;
+  }
+
+  /* /covers/<id>.jpg 不存在时 → 302 到镜像（GitHub Pages 上没有 Node，靠这一步兜底） */
+  const cvPath = u.pathname.match(/^\/covers\/(\d{1,6})\.jpg$/);
+  if(cvPath){
+    const fp = path.join(ROOT, 'covers', cvPath[1] + '.jpg');
+    if(fs.existsSync(fp)){ serveFile(req, res, fp, { cache: true }); return; }
+    res.writeHead(302, {'Location': 'https://gutenberg.pglaf.org/cache/epub/' + cvPath[1] + '/pg' + cvPath[1] + '.cover.medium.jpg', 'Cache-Control':'public, max-age=86400'});
+    res.end();
     return;
   }
 

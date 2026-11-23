@@ -20,10 +20,10 @@ POST /api/iap/verify（服务端用 RevenueCat REST 再查一次，防改包）
 
 | 商品 ID | 类型 | 建议价格 | 解锁内容 |
 |---|---|---|---|
-| `com.lizzread.all.month` | 自动续期订阅 | ¥25/月 | 全部 16 门语言不限量 |
-| `com.lizzread.all.quarter` | 自动续期订阅 | ¥68/季 | 同上（覆盖 30% 抽成） |
-| `com.lizzread.all.year` | 自动续期订阅 | ¥198/年 | 同上 |
-| `com.lizzread.one.month` | 自动续期订阅 | ¥12/月 | 当前语言单语言 |
+| `com.lizzread.all.month` | 自动续期订阅 | ¥38/月 | 全部 16 门语言不限量 |
+| `com.lizzread.all.quarter` | 自动续期订阅 | ¥98/季 | 同上（覆盖 30% 抽成） |
+| `com.lizzread.all.year` | 自动续期订阅 | ¥298/年 | 同上 |
+| `com.lizzread.one.month` | 自动续期订阅 | ¥18/月 | 当前语言单语言 |
 
 > App Store 抽成 30%（首年）/15%（第二年），所以 App 内定价比网页贵约 20%–30%，这不违反规则。
 

@@ -20,6 +20,7 @@
 <script src="data/i18n.js?v=3"></script>
 <script src="data/lang-recs.js?v=1"></script>
 <script src="dict.js?v=7" defer></script>
+<script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script>if(/^https?:$/.test(location.protocol)){document.write('<link rel="manifest" href="manifest.json">');}</script>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -807,13 +808,24 @@ ${lines.map((l,i)=>`<text x="20" y="${118+i*(fs+6)}" font-size="${fs}" font-weig
   return uri;
 }
 
-/* 原版封面：优先 Gutenberg 官方 cover.medium.jpg（经本机 /api/cover 缓存，离线可用） */
+/* 原版封面：本地打包的 covers/<gb>.jpg 优先（离线+GitHub Pages 都能显示）；
+   本地没有再回退镜像；全部失败时退回自动生成的封面图 */
+/* 已预抓的封面清单（covers/index.js 由 scripts/fetch-covers.js 生成）。
+   该脚本在 head 里 defer 加载，执行到这里时可能还没到位，所以惰性构建。 */
+let _coverSet = null;
+function coverKnown(gb){
+  const list = window.LZ_COVERS;
+  if(!list || !list.length) return false;           /* 清单未到：交给调用方回退 */
+  if(!_coverSet) _coverSet = new Set(list.map(Number));
+  return _coverSet.has(Number(gb));
+}
 function coverSrc(b){
-  if(b && b.gb){
-    if(/^https?:/.test(location.protocol)) return "/api/cover/" + Number(b.gb);
-    return "https://gutenberg.pglaf.org/cache/epub/" + Number(b.gb) + "/pg" + Number(b.gb) + ".cover.medium.jpg";
-  }
-  return coverArt(b);
+  if(!b || !b.gb) return coverArt(b);
+  const gb = Number(b.gb);
+  const local = "covers/" + gb + ".jpg";
+  if(typeof coverKnown === "function" && coverKnown(gb)) return local;
+  if(typeof coverKnown !== "function") return local;
+  return "https://gutenberg.pglaf.org/cache/epub/" + gb + "/pg" + gb + ".cover.medium.jpg";
 }
 
 /* =====================================================
@@ -3949,7 +3961,7 @@ function addVocab(w){
   const d = dictEntry(w);
   const all = getSents(curBook.id);
   const low = String(w).toLowerCase();
-  const bookId = curBook ? (curBook.gb ? gbToBookId(curBook.gb) : curBook.id) : "";
+  const bookId = curBook ? (sentBookIdFor(curBook) || curBook.id) : "";
   const sourceSentenceId = bookId ? (bookId + "_s" + String((sheetSent||0)+1).padStart(3,"0")) : "";
   store.vocab = [{
     w,
@@ -5739,7 +5751,7 @@ async function loadAsmBooks(){
   if(asmBooks) return asmBooks;
   try{
     if(/^https?:/.test(location.protocol)){
-      const r = await fetch("./sentences/books.json?v=2", {cache:"force-cache"});
+      const r = await fetch("./sentences/books.json?v=3", {cache:"force-cache"});
       if(r.ok) asmBooks = await r.json();
     }
   }catch(e){}
@@ -5752,11 +5764,26 @@ async function loadAsmBooks(){
 function escHtml(t){ return String(t==null?"":t).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 function escAttr(t){ return escHtml(t).replace(/`/g,"&#96;"); }
 function asmBookTitle(bookId){
-  const gb = Number(String(bookId).replace(/^book0*/, "")) || 0;
+  /* 多语言句子包：de-2229 / ja-773 / zh-24240 */
+  const lm = String(bookId||"").match(/^([a-z]{2})-\d+$/);
+  if(lm){
+    const list = (asmBooks || []);
+    const item = list.find(x => x && x.bookId === bookId);
+    if(item && item.title) return item.title;
+  }
+  const gb = Number(String(bookId).replace(/^book0*/, "").replace(/^[a-z]{2}-/, "")) || 0;
   /* 句库是英语书，标题要从英语书库里找，避免切换学习语言后显示成别国书名 */
   const pool = (window.LZ_BOOKS_EN && window.LZ_BOOKS_EN.length) ? window.LZ_BOOKS_EN : BOOKS;
   const b = pool.find(x => x.gb === gb);
   return b ? dispTitle(b) : bookId;
+}
+function asmHasPack(){
+  try{
+    const bid = (asmState && asmState.bookId) || "";
+    const m = String(bid).match(/^([a-z]{2})-\d+$/);
+    if(!m) return activeLang() === "en";       /* book<gb> 为英语包 */
+    return m[1] === activeLang();
+  }catch(e){ return false; }
 }
 function renderAssembly(){
   const body = document.getElementById("assemblyBody");
@@ -5791,6 +5818,12 @@ function renderAssembly(){
     </div>
     <p class="tip">数据来自 ${(asmBooks||[]).length || "280"}+ 本公版书的 13 万句预制句子包；新书/导入书可在阅读器里点「🧩 拆解本句」即时生成意群。</p>`;
   (loadAsmBooks() || Promise.resolve([])).then(raw => {
+    /* 当前学习语言优先：多语言句子包的 bookId 形如 de-2229 / ja-773 */
+    const cur = activeLang();
+    raw = raw.slice().sort((a,b)=>{
+      const sa = (a.lang===cur?0:1), sb = (b.lang===cur?0:1);
+      return sa - sb || (b.n||0) - (a.n||0);
+    });
     const list = Array.isArray(raw) ? raw : [];
     const sel = document.getElementById("asmBook");
     if(!sel) return;
@@ -5845,7 +5878,7 @@ async function asmUsePack(bookId, sentence){
     if(!arr || !arr.length) throw new Error("句子数据不可用");
     const lv = document.getElementById("asmLv")?.value || "all";
     const pool0 = (lv==="all" ? arr : (arr.filter(s=>s.level===lv).length ? arr.filter(s=>s.level===lv) : arr))
-      .filter(s=> s && s.text && s.text.trim().length >= 18 && /[A-Za-z]{4,}/.test(s.text)
+      .filter(s=> s && s.text && s.text.trim().length >= 12 && /[\p{L}]{2,}/u.test(s.text)
         && !/^(chapter|contents|part\b|copyright|transcriber|produced by)/i.test(s.text.trim()));
     const pool = pool0.length ? pool0 : arr;
     const s = sentence || pool[Math.floor(Math.random()*pool.length)];
@@ -6003,8 +6036,8 @@ function asmRenderStage(){
   stage.innerHTML = `
     <div class="asm-sent">
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${asmState.custom?"来自当前阅读":"📖 "+escHtml(asmBookTitle(asmState.bookId))} · ${s.level||"B1"}
-        <span class="lang-badge" style="margin-left:6px">练习语言：English（句库目前只覆盖英语原著）</span></div>
-      <div id="asmSentReveal">${asmTextUnlocked ? `<button class="btn ghost small" onclick="asmToggleText()">隐藏原句</button>` : `<span style="color:var(--muted)">原句已隐藏（先看中文意思，自己拼出英文）</span><button class="btn ghost small" style="margin-left:8px" onclick="asmToggleText()">看原句</button>`}</div>
+        <span class="lang-badge" style="margin-left:6px">练习语言：${escHtml((LANG_INFO[activeLang()]||{}).native || "English")}${asmHasPack() ? "" : "（本书暂用即时生成句子）"}</span></div>
+      <div id="asmSentReveal">${asmTextUnlocked ? `<button class="btn ghost small" onclick="asmToggleText()">隐藏原句</button>` : `<span style="color:var(--muted)">原句已隐藏（先看译文提示，再自己拼出原句）</span><button class="btn ghost small" style="margin-left:8px" onclick="asmToggleText()">看原句</button>`}</div>
       ${asmTextUnlocked ? `<div id="asmSentText" style="font:16px/1.65 var(--serif);margin-top:6px">${escHtml(s.text)}</div>` : ""}
       <div class="asm-zh" id="asmZh">${s.zh ? ("💬 "+escHtml(s.zh)) : `<button class="btn ghost small" onclick="asmTranslate()">🌐 翻译这句话</button>`}</div>
       <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
@@ -6229,7 +6262,8 @@ function renderSettings(){
         <button class="btn ghost small" onclick="clearOfflineCache()">清空缓存</button></div>
       <div class="pref-row"><label>教程</label>
         <button class="btn ghost small" onclick="go('guide')">🎓 打开新手教程</button>
-        <button class="btn ghost small" onclick="showOnboarding(true)">▶ 重播引导</button></div>
+        <button class="btn ghost small" onclick="showOnboarding(true)">▶ 重播功能导览</button>
+        <button class="btn ghost small" onclick="startTour(0)">🧭 分步使用指引</button></div>
     </div>
     <div class="settings-card">
       <h3>🌉 释义语言（母语桥接）</h3>
@@ -6314,6 +6348,83 @@ const GUIDE_STEPS = [
   {ico:"🎨", h:"6. 个性化你的图书馆", b:`「🎨 个性化」里有 10 套背景、6 种强调色、字号/字体/版心宽度、中文对照、离线模式、自动预翻译；全部按账号保存，立即生效。`},
   {ico:"⭐", h:"7. 把读到的东西留下来", b:`生词本自动收集 + SM-2 复习；金句本收藏整句；阅读进度自动恢复；底部进度条与快捷键 Space/j/k/b/e 让长书更好读。`}
 ];
+/* ================= 新人引导（带用户一步步走完核心功能） ================= */
+const TOUR_STEPS = [
+  { id:"lang",   title:"① 选一门要学的语言",
+    text:"右上角「🌐 语言」里可以切换 16 门语言：英语、中文、德语、法语、意大利语、西班牙语、日语、韩语，以及荷兰语、葡萄牙语、拉丁语、希腊语、芬兰语、匈牙利语、瑞典语、世界语。每门语言有自己的书库和等级标准（CEFR / HSK / JLPT / TOPIK）。",
+    sel:"#langChips", action:"点击语言按钮切换" },
+  { id:"level",  title:"② 认准自己的等级",
+    text:"书城顶部会显示你当前等级（如 CEFR B1、JLPT N3、HSK3），并给出「这个等级读什么」的推荐。不确定等级？点「📜 升级考试」做 8 道题，系统会自动判定。",
+    sel:"#recBanner", action:"看推荐，或点「升级考试」" },
+  { id:"open",   title:"③ 点开一本书开始读",
+    text:"点击任意书卡进入阅读器。第一句上方会显示「已读进度」；没下载过的整本书首次打开会自动联网取全文（几十秒）。",
+    sel:"#gridTitle", action:"点一本书试试" },
+  { id:"word",   title:"④ 点任意单词查释义",
+    text:"阅读时点正文里的任何一个词，会立刻弹出：常用义、本句语境义、英英释义与音标、多语言对照（可折叠）、熟练度标记。这是本软件最核心的功能。",
+    sel:"#view-reader", action:"在正文里点一个词" },
+  { id:"trans",  title:"⑤ 整章翻译",
+    text:"阅读器顶部有「🌐 翻译本章」，一键把整章中文填到每句下面；也可以点单句旁的小按钮只翻那一句。译文会缓存，断网也能看。",
+    sel:"#view-reader", action:"点「翻译本章」" },
+  { id:"asm",    title:"⑥ 句子拼装（练语序）",
+    text:"点词弹窗里的「🧩 在句中练」，把打乱的意群按正确顺序拼回去——这是练语感最有效的方式。答案默认隐藏，看过答案就不计分。",
+    sel:"#view-reader", action:"点词的弹窗里选「在句中练」" },
+  { id:"vocab",  title:"⑦ 生词本与复习",
+    text:"点词时可以一键加入生词本。生词本里有「生词模式」，用间隔重复（SRS）帮你反复记；颜色标记帮你区分「陌生 / 学习中 / 已掌握」。",
+    sel:"#nav-vocab", action:"打开生词本看看" },
+  { id:"import", title:"⑧ 导入自己的书 / 网址",
+    text:"书城上方有「📥 导入书籍」（支持 EPUB/PDF/TXT/DOCX 等 16 种格式）、「🔗 网址导入」（Gutenberg、青空文库、维基文库、RSS、任意网页）、「📋 粘贴正文」。导入后一样可以点词和翻译。",
+    sel:"#view-library", action:"试一次网址导入" },
+  { id:"done",   title:"⑨ 你已上手",
+    text:"剩下的都可以慢慢探索：书单归类、金句收藏、学习报告、等级考试、会员订阅。随时可以点右上角「❓ 新手教程」重新看这套引导。",
+    sel:"#mainNav", action:"完成" }
+];
+let tourIdx = 0;
+function tourState(){ try{ return JSON.parse(localStorage.getItem("lz_tour") || "{}"); }catch(e){ return {}; } }
+function tourSave(){ try{ localStorage.setItem("lz_tour", JSON.stringify(tourState())); }catch(e){} }
+function startTour(from){
+  tourIdx = Math.max(0, Math.min(TOUR_STEPS.length - 1, Number(from) || 0));
+  renderTour();
+}
+function renderTour(){
+  document.getElementById("lzTour")?.remove();
+  const st = TOUR_STEPS[tourIdx];
+  if(!st){ endTour(); return; }
+  const target = document.querySelector(st.sel);
+  let rect = null;
+  if(target){
+    target.scrollIntoView({ block:"center", behavior:"smooth" });
+    rect = target.getBoundingClientRect();
+  }
+  const box = document.createElement("div");
+  box.id = "lzTour";
+  box.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(8,14,10,.45);backdrop-filter:blur(1px)";
+  box.onclick = e => { if(e.target === box) endTour(); };
+  const cardTop = rect ? Math.min(window.innerHeight - 300, rect.bottom + 14) : (window.innerHeight/2 - 150);
+  const cardLeft = rect ? Math.max(16, Math.min(window.innerWidth - 380, rect.left)) : 16;
+  box.innerHTML = `
+    ${rect ? `<div style="position:absolute;left:${Math.max(0,rect.left-8)}px;top:${Math.max(0,rect.top-8)}px;width:${rect.width+16}px;height:${rect.height+16}px;border:2px solid var(--brand);border-radius:12px;box-shadow:0 0 0 9999px rgba(8,14,10,.45);pointer-events:none"></div>` : ""}
+    <div class="box" style="position:absolute;left:${cardLeft}px;top:${cardTop}px;width:min(360px, calc(100vw - 32px));background:var(--surface);border-radius:14px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <b style="font:700 16px var(--serif)">${escHtml(st.title)}</b>
+        <span class="tip" style="margin-left:auto">${tourIdx+1}/${TOUR_STEPS.length}</span>
+        <button style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer" onclick="endTour()">×</button>
+      </div>
+      <p style="font-size:13.5px;line-height:1.75;color:var(--text);margin:6px 0 10px">${escHtml(st.text)}</p>
+      <div class="tip" style="margin:0 0 10px;color:var(--brand-deep)">👉 ${escHtml(st.action)}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn small" onclick="tourNext()">${tourIdx === TOUR_STEPS.length-1 ? "完成" : "下一步 →"}</button>
+        ${tourIdx>0 ? `<button class="btn ghost small" onclick="tourPrev()">← 上一步</button>` : ""}
+        <button class="btn ghost small" onclick="endTour()" style="margin-left:auto">跳过</button>
+      </div>
+    </div>`;
+  document.body.appendChild(box);
+}
+function tourNext(){ if(tourIdx >= TOUR_STEPS.length-1){ endTour(); return; } tourIdx++; renderTour(); }
+function tourPrev(){ tourIdx = Math.max(0, tourIdx-1); renderTour(); }
+function endTour(completed){
+  document.getElementById("lzTour")?.remove();
+  const s = tourState(); s.done = completed !== false; s.at = tourIdx; tourSave();
+}
 function langGuideIntro(){
   const code = activeLang();
   const info = LANG_INFO[code] || {};
@@ -6373,7 +6484,7 @@ function renderGuide(){
     <div class="settings-card">
       <h3>常见问题</h3>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>点词/翻译没反应？</b>先看设置里「离线模式」是否打开；关闭它，或确认这本书的本章已缓存。翻译源是 Google/MyMemory，网络受限时会自动降级，已翻过的句子永远秒显。</div></div>
-      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>阅读、查词、词典、拼装全部免费；每天 120 句整章翻译、3 本离线书。会员 ¥12/月或 ¥98/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
+      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>阅读、查词、词典、拼装全部免费；每天 120 句整章翻译、3 本离线书。会员 ¥18/月起、全语言 ¥268/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>新书第一次打开很慢？</b>3300 本书默认按需下载完整全文（不删节）。常用 272 本已打包在本地秒开；其余第一次需联网，之后存入 IndexedDB。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>导入 PDF 提示失败？</b>扫描版 PDF 没有文字层，需先 OCR；普通文字版 PDF 可直接导入。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>怎么离线？</b>打开一本书后点「📶 离线本书」，或设置里「离线模式」。译文要离线显示，需先在线点「翻译本章」。</div></div>
@@ -6548,15 +6659,15 @@ function openKpi(){
 }
 
 /* =====================================================
-  十一·F 会员订阅（¥12/月 · ¥98/年）与免费增值分层
+  十一·F 会员订阅（单语言 ¥18/月 · 全语言 ¥268/年）与免费增值分层
 ===================================================== */
 const LZ_PRO_KEY = "lz_pro_v1";
 const PLAN_DEF = {
   free:      { name:"免费版",     price:0,  unit:"",     days:0,   months:0,  scope:"free" },
-  lang:      { name:"单语言会员", price:12, unit:"/月",  days:31,  months:1,  scope:"one" },
-  all_month: { name:"全语言月度", price:25, unit:"/月",  days:31,  months:1,  scope:"all" },
-  all_quarter:{name:"全语言季度", price:60, unit:"/季",  days:92,  months:3,  scope:"all" },
-  all_year:  { name:"全语言年度", price:168,unit:"/年",  days:366, months:12, scope:"all" },
+  lang:      { name:"单语言会员", price:18, unit:"/月",  days:31,  months:1,  scope:"one" },
+  all_month: { name:"全语言月度", price:38, unit:"/月",  days:31,  months:1,  scope:"all" },
+  all_quarter:{name:"全语言季度", price:88, unit:"/季",  days:92,  months:3,  scope:"all" },
+  all_year:  { name:"全语言年度", price:268,unit:"/年",  days:366, months:12, scope:"all" },
   month:     { name:"全语言月度", price:12, unit:"/月", days:31, months:1, scope:"all" },
   quarter:   { name:"全语言季度", price:30, unit:"/季", days:92, months:3,  scope:"all" },
   year:      { name:"全语言年度", price:98, unit:"/年", days:366, months:12, scope:"all" },
@@ -6851,7 +6962,7 @@ function showPaywall(reason){
         「${escHtml(reason)}」属于会员功能。会员解锁：<b>全部 7 门学习语言</b>、不限量整章翻译、整书预翻译、全部离线下载、学习报告导出。
       </p>
       <div style="display:grid;gap:8px">
-        <button class="btn" onclick="selectCheckout('month')">月度会员 ¥12 / 月</button>
+        <button class="btn" onclick="selectCheckout('month')">月度会员 ¥12 / 月（内测价）</button>
         <button class="btn ghost" onclick="selectCheckout('quarter')">季度会员 ¥30 / 季（约 ¥10/月）</button>
         <button class="btn ghost" onclick="selectCheckout('year')">年度会员 ¥98 / 年（约 ¥8.2/月）</button>
       </div>
@@ -6918,7 +7029,7 @@ function showCheckoutSheet(plan){
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost small" onclick="closePaywall();go('plan')">查看全部权益 →</button>
-        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥60/季）</button>` : ""}
+        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥88/季）</button>` : ""}
       </div>
     </div>`;
   el.classList.add("on");
@@ -7176,7 +7287,7 @@ function renderPlan(){
       <div class="plan-card hot">
         <span class="tagline">按需订阅</span>
         <div class="plan-name">单语言会员</div>
-        <div class="plan-price">¥12<small>/月</small></div>
+        <div class="plan-price">¥18<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">选定 1 门语言（英语已免费）</li>
           <li class="ok">该语言不限量整章翻译</li>
@@ -7184,40 +7295,40 @@ function renderPlan(){
           <li class="ok">学习报告导出</li>
           <li class="ok">句子拼装完整记录</li>
         </div>
-        <button class="btn" onclick="selectCheckout('lang')">选语言开通 ¥12</button>
+        <button class="btn" onclick="selectCheckout('lang')">选语言开通 ¥18</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 月度</div>
-        <div class="plan-price">¥25<small>/月</small></div>
+        <div class="plan-price">¥38<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">全部 8 门学习语言</li>
           <li class="ok">不限量翻译 + 整书预翻译</li>
           <li class="ok">学期计划包</li>
         </div>
-        <button class="btn ghost" onclick="selectCheckout('all_month')">开通 ¥25</button>
+        <button class="btn ghost" onclick="selectCheckout('all_month')">开通 ¥38</button>
       </div>
       <div class="plan-card hot">
         <span class="tagline">推荐 · 一个学期</span>
         <div class="plan-name">全语言 · 季度</div>
-        <div class="plan-price">¥60<small>/季</small></div>
+        <div class="plan-price">¥88<small>/季</small></div>
         <div class="plan-feat">
           <li class="ok">全部 8 门学习语言</li>
           <li class="ok">不限量翻译 + 全部离线</li>
           <li class="ok">学期计划包（16 周书单打卡）</li>
           <li class="ok">班级/小组共用生词本（5 个名额）</li>
         </div>
-        <button class="btn" onclick="selectCheckout('all_quarter')">开通 ¥60</button>
+        <button class="btn" onclick="selectCheckout('all_quarter')">开通 ¥88</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 年度</div>
-        <div class="plan-price">¥168<small>/年</small></div>
+        <div class="plan-price">¥268<small>/年</small></div>
         <div class="plan-feat">
           <li class="ok">季度会员全部权益</li>
           <li class="ok">折合 ¥14/月</li>
           <li class="ok">一年内新功能免费</li>
           <li class="ok">班级共享 20 个名额</li>
         </div>
-        <button class="btn" onclick="selectCheckout('all_year')">开通 ¥168</button>
+        <button class="btn" onclick="selectCheckout('all_year')">开通 ¥268</button>
       </div>
     </div>
     <div class="settings-card">
@@ -7261,7 +7372,7 @@ function renderPlan(){
         <button class="btn" onclick="planActivate()">立即激活</button>
       </div>
       <div class="paywall-note">
-        <b>价格</b>：单语言 ¥12/月；全语言 ¥25/月、¥60/季、¥168/年（含税）。<br>
+        <b>价格</b>：单语言 ¥18/月；全语言 ¥38/月、¥88/季、¥268/年（含税）。<br>
         <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
     </div>`}
@@ -7270,7 +7381,7 @@ function renderPlan(){
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="color:var(--muted);text-align:left">
-            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥12</th><th>全语言 ¥25/月</th><th>全语言 ¥60/季</th><th>全语言 ¥168/年</th></tr></thead>
+            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥18</th><th>全语言 ¥38/月</th><th>全语言 ¥88/季</th><th>全语言 ¥268/年</th></tr></thead>
           <tbody>
             ${[
               ["学习语言","英 + 1 自选","英 + 1 门","全部 8 门","全部 8 门","全部 8 门"],
@@ -7983,6 +8094,22 @@ applyPrefs();
     renderLibrary();
     try{ await loadLanguageTranslations(); }catch(e){}
   }catch(e){ console.warn("语言初始化失败", e); }
+  /* 首次访问：自动开始分步使用指引（可随时跳过，之后可在教程页重看） */
+  try{
+    const t = tourState();
+    if(!t.done) setTimeout(()=>startTour(t.at || 0), 1200);
+  }catch(e){}
+})();
+/* 顶栏「❓ 教程」快捷按钮 */
+(function addGuideLink(){
+  const nav = document.getElementById("mainNav");
+  if(!nav || document.getElementById("navGuideQuick")) return;
+  const a = document.createElement("button");
+  a.id = "navGuideQuick";
+  a.className = "navlink";
+  a.textContent = "❓ 教程";
+  a.onclick = () => go("guide");
+  nav.appendChild(a);
 })();
 
 /* =====================================================
@@ -8009,7 +8136,7 @@ window.lzWordInfo = function(word){
 async function openAssemblyForCurrentWord(){
   if(!curBook){ alert("先在阅读器里打开一本书"); return; }
   if(!window.AssemblyCore || !window.AssemblyPanel){ alert("拼装模块加载中，请刷新重试"); return; }
-  const bookId = curBook.gb ? gbToBookId(curBook.gb) : curBook.id;
+  const bookId = sentBookIdFor(curBook) || curBook.id;
   const all = getSents(curBook.id);
   const curSent = all[sheetSent] || null;
   closeSheet();
@@ -8045,6 +8172,15 @@ async function openAssemblyForCurrentWord(){
   window.AssemblyPanel.openAssembly(best, sheetWord, ctx);
 }
 /* 是否存在本书的预制句子包（离线壳/导入书没有） */
+/* 当前书的句子包 ID：多语言书用 <lang>-<gb>，英语书用 book<gb> */
+function sentBookIdFor(b){
+  if(!b) return "";
+  if(b.gb){
+    const code = activeLang();
+    return code === "en" ? ("book" + String(b.gb).padStart(3,"0")) : (code + "-" + b.gb);
+  }
+  return b.id || "";
+}
 function BOOKS_SENT_POOL(bookId){
   try{
     if(!/^https?:/.test(location.protocol)) return false;

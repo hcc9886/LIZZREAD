@@ -8,8 +8,20 @@ echo "== 1/4 同步网页到 www/ =="
 rsync -a --delete \
   --exclude node_modules --exclude android --exclude ios --exclude .git \
   --exclude .trae-html-share-packages --exclude extension --exclude scripts \
-  --exclude .screenshots --exclude www --exclude ".backup" --exclude ".sdk" --exclude "dist" --exclude "*.original" \
+  --exclude .screenshots --exclude www --exclude ".backup" --exclude ".sdk" --exclude "dist" --exclude "covers" --exclude "covers-pick" --exclude "covers-app" --exclude "*.original" \
   --exclude redemptions.json --exclude "*.part-*" --exclude .DS_Store ./ www/
+
+echo "== 1.5 精简封面（APK 只带热门书封面，其余走网络） =="
+if [ -d covers ]; then
+  node scripts/pack-covers.js >/dev/null
+  mkdir -p covers-app
+  rsync -a --delete covers-pick/ covers-app/
+  cp covers/index.js covers-app/index.js    # 清单仍为全量（App 内缺失的走镜像）
+fi
+
+# 精简封面作为 www/covers 发布
+mkdir -p www/covers
+rsync -a covers-app/ www/covers/
 
 echo "== 2/4 Capacitor sync android =="
 node node_modules/@capacitor/cli/bin/capacitor sync android
