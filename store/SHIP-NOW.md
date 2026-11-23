@@ -32,7 +32,7 @@
 
 ## 三、② Android APK：现在就能发
 
-文件：**`dist/LIZZREAD-2.0.0-release.apk`（73MB，正式签名）**
+文件：**`dist/LIZZREAD-2.0.0-release.apk`（131MB，正式签名，内含 609 本全文可离线读）**
 （旧的 debug 包已废弃；release 包更小、可直接上架华为/Google）
 
 发送方式：微信文件传输 / 数据线 / 网盘 → 手机点开安装 → 允许「未知来源」
