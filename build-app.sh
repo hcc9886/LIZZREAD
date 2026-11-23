@@ -23,7 +23,7 @@ if [ -d covers ]; then
   node scripts/pack-covers.js >/dev/null
   mkdir -p covers-app
   rsync -a --delete covers-pick/ covers-app/
-  cp covers/index.js covers-app/index.js    # 清单仍为全量（App 内缺失的走镜像）
+  cp covers-pick/index.js covers-app/index.js   # 清单只列实际打包的封面，缺失的回退到镜像
 fi
 
 # 精简封面作为 www/covers 发布

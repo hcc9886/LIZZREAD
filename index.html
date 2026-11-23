@@ -806,7 +806,8 @@ ${lines.map((l,i)=>`<text x="20" y="${118+i*(fs+6)}" font-size="${fs}" font-weig
 <text x="20" y="384" fill="rgba(255,255,255,.5)" font-family="Arial,sans-serif" font-size="7" letter-spacing="1">LIZZREAD · READ THE WORLD</text>
 <rect x="0" y="0" width="300" height="400" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
 </svg>`;
-  const uri = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+  /* 单引号必须编码：data URI 会被放进 onclick="this.src='...'" 里，未编码会截断 JS 字符串 */
+  const uri = ("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)).replace(/'/g, "%27");
   _coverCache.set(key, uri);
   return uri;
 }
