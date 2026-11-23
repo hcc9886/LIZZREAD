@@ -97,3 +97,36 @@ App 购买成功后会 `POST /api/iap/verify {appUserId, product}`，服务端�
 | 2.3.2 | 订阅条款缺失 | 购买页已放「隐私政策」链接，审核备注里写明「自动续订，可在 App Store 账户设置中取消」 |
 | 3.1.2 | 恢复购买按钮缺失 | 已加「♻️ 恢复购买」（设置 → 关于） |
 | 4.2 | 功能太单薄 | 16 门语言、分级推荐、拼装、SRS、报告 |
+
+---
+
+## 7. 多份订阅叠加规则（重要）
+
+用户可能同时买「单语言 A」「单语言 B」「全语言」——**不能互相覆盖**。
+代码里的权益模型（`lz_entitlements_v2`）是这样存的：
+
+```json
+{
+  "all":  { "expires": 1798091506727, "permanent": false, "plan": "all_quarter", "sources": ["iap:com.lizzread.all.quarter"] },
+  "one":  { "de": { "expires": ..., "plan": "lang", "sources": [...] },
+            "ja": { "expires": ..., "plan": "lang", "sources": [...] } },
+  "permanent": false
+}
+```
+
+规则：
+
+| 场景 | 结果 |
+|---|---|
+| 买两次同一语言月卡 | 取**最晚到期**，不叠加时长（避免刷漏洞） |
+| 买单语言 A + 单语言 B | 两门都解锁，界面显示「Deutsch·31天 + 日本語·62天」 |
+| 买单语言 A + 全语言 | 全部解锁；A 的单语言条目保留，到期后仍受全语言覆盖 |
+| 买永久码 + 任意订阅 | 永久优先生效 |
+| 旧版本只存一个 pro 对象 | 首次启动**自动迁移**成新结构，不丢权益 |
+
+RevenueCat 侧：三个全语言商品挂同一个 entitlement `all`，单语言商品挂 `one`。
+恢复购买时用 `customerInfo.entitlements.active`，把 `expirationDate` 传进 `applyStoreEntitlement()` 即可，
+叠加逻辑由客户端统一处理——**不需要为每个商品单独写判断**。
+
+服务端 `/api/iap/verify` 返回的 `entitlements` 数组同样会带上每份权益的到期时间，
+客户端以「较晚的到期时间」为准，防篡改也防丢失。

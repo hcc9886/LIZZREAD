@@ -116,3 +116,27 @@ keytool -genkey -v -keystore android/app/lizzread.keystore \
 > ⚠️ 华为上架**必须提供软件著作权证书**（软著）。申请：中国版权保护中心
 > https://www.ccopyright.com.cn/ ，线上登记，约 30 个工作日（可加急），需要源码前 30 页 + 后 30 页 + 说明书。
 > 这是华为独有的硬门槛，请尽早启动。
+
+---
+
+## 六、鸿蒙 HarmonyOS NEXT 替代方案（省钱/省力）
+
+华为 688 元/年的“HarmonyOS 应用开发认证”不是必须的。若不想付费：
+
+### 方案 1：只上 AppGallery（推荐，0 额外费用）
+- 用 Android APK 上架，覆盖绝大多数华为/荣耀手机（含仍兼容 AOSP 的鸿蒙 4.x）
+- 企业实名 + 软著即可，**不需要**鸿蒙开发认证
+- 纯血鸿蒙用户会看到“Android 应用”，可通过 AppGallery 的兼容层安装（华为目前仍支持）
+
+### 方案 2：用 DevEco Studio 自建 Web 壳（免费）
+- 下载 https://developer.huawei.com/consumer/cn/deveco-studio/ （免费，Windows 也能跑）
+- 新建 Empty Ability 工程 → 放一个 `Web` 组件加载打包好的 `www/`
+- 打包签名走 AGC 自动签名（免费）
+- 工作量：约 3–5 人日（Web 壳 + 文件读写 + 支付 IAP Kit 鸿蒙版）
+- 提交到「应用市场（HarmonyOS 版）」栏目
+
+### 方案 3：先不做鸿蒙原生
+- 鸿蒙 NEXT 设备占比仍低，先把 iOS + Android + AppGallery 做扎实
+- 等用户量起来再投入，避免前期成本
+
+> 结论：**不要买 688 元的认证**，除非你要走方案 2 并且华为明确要求（目前 HarmonyOS 应用上架不强制该认证）。

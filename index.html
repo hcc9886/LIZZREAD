@@ -6293,7 +6293,7 @@ function renderSettings(){
     </div>
     <div class="settings-card">
       <h3>ℹ️ 关于 LIZZREAD</h3>
-      <div class="sub">版本 2.0 · 8 门语言经典阅读器 · 书源 Project Gutenberg / 青空文库（均为公版）</div>
+      <div class="sub">版本 2.0 · 16 门语言经典阅读器 · 书源 Project Gutenberg / 青空文库（均为公版）</div>
       <div class="lang-row">
         <button class="btn ghost small" onclick="checkAppUpdate(true)">🔄 检查更新</button>
         <button class="btn ghost small" onclick="restorePurchases()">♻️ 恢复购买</button>
@@ -6748,14 +6748,132 @@ function enableExtraLang(code){
 }
 const FREE_TRANSLATE_DAILY = 120;   /* 免费版每天可翻译的句子数 */
 const FREE_OFFLINE_BOOKS = 3;       /* 免费版可离线保存的整书数 */
+/* ========== 权益叠加模型 ==========
+   同时持有「全语言会员」和「单语言会员」时不应互相覆盖，而要合并：
+   - entitlements.all       所有语言的会员（取最晚到期时间）
+   - entitlements.one[code] 单个语言的会员
+   - entitlements.permanent 永久标记
+   旧版本只存一个 pro 对象；这里自动迁移，避免老用户丢权益。 */
+const ENT_KEY = "lz_entitlements_v2";
+function emptyEnt(){
+  return { all: { expires:0, permanent:false, plan:"", sources:[] },
+           one: {}, permanent:false, updatedAt: Date.now() };
+}
+function loadEnt(){
+  let e = null;
+  try{ e = JSON.parse(localStorage.getItem(ENT_KEY) || "null"); }catch(e2){ e = null; }
+  if(!e || !e.all){
+    e = emptyEnt();
+    /* 迁移旧数据：pk("pro") 里可能有一个 {plan, scope, lang, expires} */
+    try{
+      const old = JSON.parse(localStorage.getItem(pk("pro")) || "null");
+      if(old){
+        const exp = old.permanent ? 0 : (Number(old.expires) || 0);
+        const scope = old.scope || (old.plan === "lang" ? "one" : "all");
+        if(scope === "one" && old.lang){
+          e.one[old.lang] = { expires: exp, permanent: !!old.permanent, plan: old.plan || "lang", sources: ["migrated"] };
+        } else {
+          e.all = { expires: exp, permanent: !!old.permanent, plan: old.plan || "all_month", sources: ["migrated"] };
+        }
+        e.permanent = !!old.permanent;
+        e.updatedAt = Date.now();
+        saveEnt(e);
+      }
+    }catch(e3){}
+  }
+  if(!e.one) e.one = {};
+  /* 清理已过期的单语言条目 */
+  const now = Date.now();
+  for(const k of Object.keys(e.one)){
+    const v = e.one[k];
+    if(!v.permanent && v.expires && v.expires < now) delete e.one[k];
+  }
+  return e;
+}
+function saveEnt(e){
+  e.updatedAt = Date.now();
+  try{ localStorage.setItem(ENT_KEY, JSON.stringify(e)); }catch(err){}
+  /* 同时写一份「兼容状态」，供仍读取 pk("pro") 的旧代码使用 */
+  const st = proState();
+  try{ localStorage.setItem(pk("pro"), st ? JSON.stringify(st) : ""); }catch(err){}
+}
+/* 叠加一项权益：同一语言 / 全语言取「最晚到期」，不会覆盖更长的那个 */
+function addEntitlement(scope, lang, expires, permanent, plan, source){
+  const e = loadEnt();
+  if(permanent || !expires){
+    e.permanent = true;
+    if(scope === "one" && lang){ e.one[lang] = { expires:0, permanent:true, plan: plan||"lang", sources:[source||"activation"] }; }
+    else { e.all = { expires:0, permanent:true, plan: plan||"permanent", sources:[source||"activation"] }; }
+  } else {
+    if(scope === "one" && lang){
+      const cur = e.one[lang] || { expires:0, permanent:false, plan:"", sources:[] };
+      if(!cur.permanent){
+        cur.expires = Math.max(Number(cur.expires)||0, Number(expires));
+        cur.plan = (Number(expires) >= (Number(cur.expires)||0)) ? (plan || cur.plan) : cur.plan;
+        cur.sources = [...new Set([...(cur.sources||[]), source||"activation"])];
+        cur.permanent = false;
+        e.one[lang] = cur;
+      }
+    } else {
+      if(!e.all.permanent){
+        const keep = Math.max(Number(e.all.expires)||0, Number(expires));
+        e.all = { expires: keep, permanent: false, plan: (Number(expires) >= (Number(e.all.expires)||0)) ? (plan || "all_month") : (e.all.plan || "all_month"),
+                  sources: [...new Set([...(e.all.sources||[]), source||"activation"])] };
+      }
+    }
+  }
+  saveEnt(e);
+  return e;
+}
+/* 展示用的合并状态：最多到期的权益作为「主方案」 */
 function proState(){
   try{
-    const o = JSON.parse(localStorage.getItem(pk("pro")) || "null");
-    if(!o) return null;
-    if(o.permanent) return o;
-    if(o.expires && o.expires < Date.now()) return null;
-    return o;
-  }catch(e){ return null; }
+    const e = loadEnt();
+    const now = Date.now();
+    const allActive = e.permanent || e.all.permanent || (e.all.expires && e.all.expires > now);
+    const ones = Object.entries(e.one).filter(([, v]) => v.permanent || (v.expires && v.expires > now));
+    if(!allActive && !ones.length) return null;
+    if(allActive){
+      return { plan: e.all.plan || "all_month", scope:"all", lang:"",
+               expires: e.permanent || e.all.permanent ? 0 : e.all.expires,
+               permanent: e.permanent || e.all.permanent, at: e.updatedAt || now, source: (e.all.sources||[]).join(","),
+               ones: ones.map(([k,v]) => ({ lang:k, expires:v.expires, permanent:v.permanent })) };
+    }
+    /* 没有全语言时，取到期最晚的单语言 */
+    ones.sort((a,b) => (b[1].permanent?Infinity:b[1].expires) - (a[1].permanent?Infinity:a[1].expires));
+    const [lang, v] = ones[0];
+    return { plan: v.plan || "lang", scope:"one", lang,
+             expires: v.permanent ? 0 : v.expires, permanent: !!v.permanent, at: e.updatedAt || now,
+             source: (v.sources||[]).join(","),
+             ones: ones.map(([k, vv]) => ({ lang:k, expires:vv.expires, permanent:vv.permanent })) };
+  }catch(e2){ return null; }
+}
+/* 某门语言是否有会员（叠加判定：全语言 > 单语言 > 永久） */
+function entHasLang(code){
+  const c = code || activeLang();
+  if(c === "en") return true;
+  try{
+    const e = loadEnt();
+    const now = Date.now();
+    if(e.permanent || e.all.permanent) return true;
+    if(e.all.expires && e.all.expires > now) return true;
+    const v = e.one[c];
+    if(v && (v.permanent || (v.expires && v.expires > now))) return true;
+  }catch(err){}
+  return false;
+}
+function entSummary(){
+  try{
+    const e = loadEnt();
+    const now = Date.now();
+    const out = [];
+    if(e.permanent || e.all.permanent) out.push("全语言·永久");
+    else if(e.all.expires > now) out.push("全语言·" + Math.ceil((e.all.expires-now)/86400000) + "天");
+    for(const [k,v] of Object.entries(e.one)){
+      if(v.permanent || v.expires > now) out.push(((LANG_INFO[k]||{}).native||k) + "·" + (v.permanent?"永久":Math.ceil((v.expires-now)/86400000)+"天"));
+    }
+    return out;
+  }catch(err){ return []; }
 }
 /* 权益：单语言会员只解锁指定学习语言；全语言会员解锁全部 */
 function proScope(){ const st = proState(); return st ? (st.scope || (st.plan === "lang" ? "one" : "all")) : "free"; }
@@ -6766,6 +6884,9 @@ function hasAnyPaid(){ return !!proState(); }
 function planLabel(){
   const st = proState();
   if(!st) return "免费版";
+  /* 叠加显示：全语言 + 若干单语言 */
+  const parts = entSummary();
+  if(parts.length > 1) return "已开通：" + parts.join(" + ");
   const d = Math.max(0, Math.ceil(((st.expires || 0) - Date.now()) / 86400000));
   if(st.scope === "one"){
     return "单语言会员（" + ((LANG_INFO[st.lang] || {}).native || st.lang || "已选语言") + (st.expires ? "，" + d + " 天" : "，永久") + "）";
@@ -6840,14 +6961,13 @@ function applyPro(plan, expires, source, lang, scopeOverride){
   /* 兼容字符串日期（App Store / Google Play 返回 ISO 时间） */
   if(typeof expires === "string"){ const d = Date.parse(expires); expires = isNaN(d) ? 0 : d; }
   const def = PLAN_DEF[plan] || {};
-  /* 单语言方案：scope 优先取调用方传入（激活码/REDEEM_CODES），其次 PLAN_DEF，最后按是否给了 lang 推断 */
   const scope = scopeOverride || def.scope || (lang ? "one" : "all");
-  const st = {plan, scope, lang: scope === "one" ? (lang || "") : "", expires: expires || 0,
-              permanent: plan === "permanent" || !expires, at: Date.now(), source: source || "activation"};
-  localStorage.setItem(pk("pro"), JSON.stringify(st));
+  const permanent = plan === "permanent" || !expires;
+  /* 叠加而不是覆盖：同时买了两门单语言 / 单语言 + 全语言，都保留，取各自最晚到期 */
+  addEntitlement(scope, scope === "one" ? (lang || activeLang()) : "", Number(expires) || 0, permanent, plan, source || "activation");
   updatePlanBadge();
   if(document.getElementById("view-plan") && document.getElementById("view-plan").classList.contains("on")) renderPlan();
-  return st;
+  return proState();
 }
 async function activateCode(code, silent){
   const c = normalizeCode(code);
@@ -6911,6 +7031,7 @@ function updatePlanBadge(){
 }
 function langIsPaid(code){
   const c = code || activeLang();
+  if(entHasLang(c)) return true;
   if(isAllLang()) return true;
   if(proScope() === "one") return proLang() === c || c === "en";
   return false;
@@ -7012,7 +7133,7 @@ function showCheckoutSheet(plan){
         <span style="color:var(--muted);font-size:12px">服务期 ${def.days} 天</span>
       </div>
       <div class="plan-feat">
-        <li class="ok">${def.scope === "all" ? "全部 8 门学习语言" : "选定 1 门语言（英语已免费）"}</li>
+        <li class="ok">${def.scope === "all" ? "全部 16 门学习语言" : "选定 1 门语言（英语已免费）"}</li>
         <li class="ok">不限量整章翻译 / 整书预翻译</li>
         <li class="ok">全部书籍离线下载</li>
         <li class="ok">学习报告导出</li>
@@ -7259,8 +7380,9 @@ function renderPlan(){
     <h2 class="sec">💎 会员与订阅 <span class="tip" style="display:inline">阅读与查词永久免费；翻译、离线、多语言按需订阅</span></h2>
     <div class="report-hero">
       <h3>当前：${current}</h3>
+      ${entSummary().length > 1 ? `<p style="margin-top:6px">叠加权益：${entSummary().map(x=>`<span class="lang-badge" style="margin:0 4px 4px 0;background:var(--brand-soft);color:var(--brand-deep)">${escHtml(x)}</span>`).join("")}</p>` : ""}
       <p>${st
-        ? (proScope() === "all" ? "全语言会员：8 门语言不限量翻译、整书预翻译、全部离线、学期计划包、班级共享。" :
+        ? (proScope() === "all" ? "全语言会员：16 门语言不限量翻译、整书预翻译、全部离线、学期计划包、班级共享。" :
            "单语言会员：" + ((LANG_INFO[proLang()]||{}).native || proLang() || "已选语言") + " 不限量翻译与离线；其他语言按免费额度。")
         : "免费版：英语 120 句/天，其他语言 25–40 句/天；1 门自选语言 8 折额度，其他语言 6 折。"}</p>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
@@ -7274,7 +7396,7 @@ function renderPlan(){
         <div class="plan-name">免费版</div>
         <div class="plan-price">¥0</div>
         <div class="plan-feat">
-          <li class="ok">全部 7600+ 本公版书（8 门语言）</li>
+          <li class="ok">全部 7600+ 本公版书（16 门语言）</li>
           <li class="ok">点词查义 + 多国语言释义</li>
           <li class="ok">英语 ${(LANG_INFO.en||{}).quota||120} 句/天 · 其他语言 25–40 句/天</li>
           <li class="ok">句子拼装基础练习</li>
@@ -7301,7 +7423,7 @@ function renderPlan(){
         <div class="plan-name">全语言 · 月度</div>
         <div class="plan-price">¥38<small>/月</small></div>
         <div class="plan-feat">
-          <li class="ok">全部 8 门学习语言</li>
+          <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 整书预翻译</li>
           <li class="ok">学期计划包</li>
         </div>
@@ -7312,7 +7434,7 @@ function renderPlan(){
         <div class="plan-name">全语言 · 季度</div>
         <div class="plan-price">¥88<small>/季</small></div>
         <div class="plan-feat">
-          <li class="ok">全部 8 门学习语言</li>
+          <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 全部离线</li>
           <li class="ok">学期计划包（16 周书单打卡）</li>
           <li class="ok">班级/小组共用生词本（5 个名额）</li>
