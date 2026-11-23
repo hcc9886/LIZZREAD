@@ -2468,9 +2468,9 @@ function renderRecs(){
     /* 非当前等级的推荐默认折叠成一行，避免占满首屏 */
     if(!open){
       return `<div class="rec-fold" onclick="openRecBlock('${escHtml(lv)}')">
-        <b>${escHtml(info.label || info.lvLabel || "等级")} ${escHtml(lv)}</b>
-        <span class="tip" style="margin:0">${titles.length} 本推荐 · 点开展开</span>
-        <span style="margin-left:auto;color:var(--brand-deep)">展开 ›</span></div>`;
+        <b>${escHtml(lv)}</b>
+        <span class="rec-fold-tip">${titles.length} 本推荐</span>
+        <span class="rec-fold-go">展开 ›</span></div>`;
     }
     return `<div class="rec-block" style="margin:6px 0 14px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
