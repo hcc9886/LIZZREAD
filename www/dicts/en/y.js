@@ -1,1 +1,0 @@
-window.LZD=window.LZD||{};window.LZD.y={"you":["pron.","你；你们"],"your":["det.","你的；你们的"],"yours":["pron.","你的；你们的"],"yourself":["pron.","你自己"],"yourselves":["pron.","你们自己"],"yet":["conj./","然而；还"],"youth":["n.","年轻人；青春"],"year":["n.","年"],"young":["adj.","年轻的"]};

@@ -1,1 +1,0 @@
-window.LZD=window.LZD||{};window.LZD.v={"various":["adj.","各种各样的"],"very":["adv.","非常"],"visitor":["n.","访客"],"village":["n.","村庄"],"voice":["n.","声音"],"vague":["adj.","模糊的"],"valid":["adj.","有效的"],"versus":["prep.","对（比赛）"],"via":["prep.","通过"]};

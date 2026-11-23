@@ -1,1 +1,0 @@
-window.LZ_LANG_EO_TR = [{"t":"Fundamenta Krestomatio","zh":"基础文选","en":"Fundamenta Krestomatio","a":"Zamenhof","lv":"B1","g":"lit","d":"世界语奠基选本。","gb":8224,"demo":["FundamentaKrestomatio"]},{"t":"Robinsono Kruso","zh":"鲁滨逊漂流记（世界语）","en":"Robinsono Kruso","a":"Defoe","lv":"B2","g":"adv","d":"世界语译作。","gb":11511,"demo":["RobinsonoKruso"]}];

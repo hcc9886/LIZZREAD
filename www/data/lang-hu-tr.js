@@ -1,1 +1,0 @@
-window.LZ_LANG_HU_TR = [{"t":"A mester","zh":"大师","en":"A mester","a":"Surányi","lv":"B2","g":"lit","d":"匈牙利近代小说。","gb":19744,"demo":["Amester"]}];

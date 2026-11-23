@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#2F5D50"/>
-  <path d="M120 128h120a56 56 0 0 1 56 56v224a44 44 0 0 0-44-44H120z" fill="#F6F1E7"/>
-  <path d="M392 128H272a56 56 0 0 0-56 56v224a44 44 0 0 1 44-44h132z" fill="#D9CBB2"/>
-  <path d="M186 196h58M186 236h58M318 196h-58M318 236h-58" stroke="#2F5D50" stroke-width="14" stroke-linecap="round" fill="none"/>
-  <text x="256" y="470" font-family="Georgia, serif" font-size="60" fill="#F6F1E7" text-anchor="middle">LZ</text>
-</svg>
