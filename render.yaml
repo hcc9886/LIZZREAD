@@ -1,0 +1,17 @@
+# Render.com 一键部署（免费档会休眠，付费 $7/月 常驻）
+services:
+  - type: web
+    name: lizzread-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: REVENUECAT_SECRET
+        sync: false
+      - key: HUAWEI_APP_ID
+        sync: false
+      - key: HUAWEI_APP_SECRET
+        sync: false

@@ -54,6 +54,22 @@ else
 fi
 echo "== 4/4 完成：iOS 工程在 ios/，需在 Mac 上用 Xcode 打开（store/upload-ios.sh） =="
 
+echo "== 4.5 写入版本信息（App 内「检查更新」与 /api/version 用） =="
+VER="${APPVER:-2.0.0}"
+BUILD="$(date +%Y-%m-%dT%H:%M:%S%z)"
+VER="$VER" BUILD="$BUILD" node -e '
+const fs=require("fs");
+const ver=process.env.VER||"2.0.0", build=process.env.BUILD||"";
+const f="data/app-version.json";
+let j={}; try{ j=JSON.parse(fs.readFileSync(f,"utf8")); }catch(e){}
+j.latest=ver; j.build=build; if(!j.min) j.min=ver;
+fs.writeFileSync(f, JSON.stringify(j,null,2));
+fs.mkdirSync("www/data",{recursive:true});
+fs.writeFileSync("www/data/app-version.js", "window.LZ_BUILD="+JSON.stringify({version:ver,build:build})+";\n");
+fs.copyFileSync(f, "www/data/app-version.json");
+console.log("版本写入:", ver, build);
+'
+
 echo "== 5/5 版本号 =="
 APPVER="${APPVER:-2.0.0}"
 BUILDNUM="${BUILDNUM:-$(date +%Y%m%d%H)}"

@@ -1,0 +1,13 @@
+node_modules
+android
+ios
+www
+.sdk
+.git
+.backup
+dist
+covers-pick
+covers-app
+*.part-*
+*.original
+redemptions.json

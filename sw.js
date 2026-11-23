@@ -5,7 +5,8 @@
    - 字体/词典 → cache-first，首次出现时缓存
    - 外部翻译/词典 API → 不缓存（译文由 IndexedDB 持久化，离线读本地译文）
 */
-const CACHE = "lizzread_v25";
+const CACHE = "lizzread_v26";
+const BUILD = "2026-11-23";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -73,6 +74,16 @@ self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys =>
     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))
   )));
+});
+
+/* 页面可以问「你现在缓存的是哪个版本」，也可以命令立即接管 */
+self.addEventListener("message", e => {
+  const d = e.data || {};
+  if(d.type === "VERSION"){
+    if(e.ports && e.ports[0]) e.ports[0].postMessage({ version: CACHE, build: BUILD });
+  } else if(d.type === "SKIP_WAITING"){
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", e => {

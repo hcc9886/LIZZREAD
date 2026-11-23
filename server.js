@@ -562,14 +562,28 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  /* /api/version —— 客户端版本与更新提示（App 内“检查更新”与强制升级用） */
+  /* /api/version —— 客户端版本与更新提示（App 内“检查更新”与强制升级用）
+     版本信息来自 data/app-version.json（build-app.sh 每次构建自动写入） */
   if(u.pathname === '/api/version'){
+    let v = {};
+    try{ v = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'app-version.json'), 'utf8')); }catch(e){ v = {}; }
+    const apk = path.join(ROOT, 'download', 'LIZZREAD.apk');
+    const hasApk = fs.existsSync(apk);
     sendJSON(res, 200, {
       ok: true,
-      ios:     { latest: '2.0.0', min: '2.0.0', url: 'https://apps.apple.com/app/id0000000000' },
-      android: { latest: '2.0.0', min: '2.0.0', url: 'https://play.google.com/store/apps/details?id=com.lizzread.app' },
-      notes: '16 门语言 · 网址导入 · 翻译稳定性修复'
+      build: v.build || '',
+      ios:     v.ios     || { latest: v.latest || '2.0.0', min: v.min || '2.0.0', url: '' },
+      android: Object.assign({ latest: v.latest || '2.0.0', min: v.min || '2.0.0', url: '' },
+                             hasApk ? { apkUrl: '/download/LIZZREAD.apk', apkSize: fs.statSync(apk).size } : {}),
+      notes: v.notes || ''
     });
+    return;
+  }
+  /* 直链下载最新 APK（侧载用户点「立即更新」用） */
+  if(u.pathname === '/download/LIZZREAD.apk'){
+    const apk = path.join(ROOT, 'download', 'LIZZREAD.apk');
+    if(fs.existsSync(apk)){ serveFile(req, res, apk, { cache: false }); return; }
+    sendJSON(res, 404, { error: 'apk not found' });
     return;
   }
 
