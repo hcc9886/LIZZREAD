@@ -78,6 +78,7 @@ console.log("版本写入:", ver, build);
 '
 
 echo "== 5/5 版本号 =="
+APPVER="${APPVER:-$(node -e 'try{process.stdout.write(require("./data/app-version.json").latest)}catch(e){process.stdout.write("2.0.0")}' 2>/dev/null)}"
 APPVER="${APPVER:-2.0.0}"
 BUILDNUM="${BUILDNUM:-$(date +%Y%m%d%H)}"
 echo "版本 $APPVER ($BUILDNUM)  — iOS 用 xcodebuild MARKETING_VERSION=$APPVER CURRENT_PROJECT_VERSION=$BUILDNUM"

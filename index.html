@@ -6966,6 +6966,7 @@ function renderSettings(){
       <div class="sub">版本 <b id="lzVerText">${APP_VERSION}</b> · 16 门语言经典阅读器 · 书源 Project Gutenberg / 青空文库（均为公版）</div>
       <div class="lang-row">
         <button class="btn ghost small" onclick="showIosInstallGuide(true)">📲 装到桌面</button>
+        <button class="btn ghost small" onclick="exportAllData()">💾 导出全部数据</button>
         <button class="btn ghost small" onclick="checkAppUpdate(true)">🔄 检查更新</button>
         <button class="btn ghost small" onclick="restorePurchases()">♻️ 恢复购买</button>
         <a class="btn ghost small" href="privacy.html" target="_blank" rel="noopener">隐私政策</a>
@@ -6978,9 +6979,8 @@ function renderSettings(){
   /* 异步显示「已是最新 / 有新版本」 */
   (async ()=>{
     try{
-      const r = await fetch(window.__LZ_NATIVE ? "public/api/version" : apiUrl("api/version"), {cache:"no-store"});
-      if(!r.ok) return;
-      const v = await r.json();
+      const v = await fetchVersionInfo();
+      if(!v) return;
       const el = document.getElementById("lzBuildTip");
       if(el) el.innerHTML = `构建：${escHtml(v.build || "—")} · ${v.latest === APP_VERSION ? "✅ 已是最新" : "🆕 有新版本 " + escHtml(v.latest || "")}`;
     }catch(e){}
@@ -8008,23 +8008,38 @@ document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState 
 /* 检查更新：对比服务端最新版本（App 内“设置 → 关于”可手动触发） */
 const APP_VERSION = (window.LZ_BUILD && window.LZ_BUILD.version) || "2.0.0";
 const SW_BUILD = (window.LZ_BUILD && window.LZ_BUILD.build) || "";
+async function fetchVersionInfo(){
+  /* 依次尝试：原生 public/api/version → 后端 /api/version → 静态 data/app-version.json */
+  const urls = window.__LZ_NATIVE
+    ? ["public/api/version", "public/data/app-version.json"]
+    : [apiUrl("api/version"), "data/app-version.json?v=" + Date.now()];
+  for(const u of urls){
+    try{
+      const r = await fetch(u, {cache:"no-store"});
+      if(!r.ok) continue;
+      const j = await r.json();
+      if(j && j.latest) return j;
+    }catch(e){}
+  }
+  return null;
+}
 async function checkAppUpdate(manual){
   try{
-    const r = await fetch(window.__LZ_NATIVE ? "public/api/version" : apiUrl("api/version"), {cache:"no-store"});
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    const v = await r.json();
+    const v = await fetchVersionInfo();
+    if(!v) throw new Error("拿不到版本信息");
     const plat = /iPhone|iPad/i.test(navigator.userAgent) ? "ios" : "android";
     const info = v[plat] || {};
     const cur = localStorage.getItem("lz_app_version") || APP_VERSION;
     const cmp = (a,b)=>{ const A=String(a).split(".").map(Number), B=String(b).split(".").map(Number); for(let i=0;i<3;i++){ if((A[i]||0)!==(B[i]||0)) return (A[i]||0)-(B[i]||0); } return 0; };
     if(info.latest && cmp(info.latest, cur) > 0){
       /* 侧载 APK：直接给下载链接；商店版：跳商店；都没有就提示 */
-      const direct = info.apkUrl && window.__LZ_NATIVE;
+      const direct = !!(info.apkUrl || v.apkUrl);
+      const apk = info.apkUrl || v.apkUrl || "";
       const box = ensurePaywall();
       box.innerHTML = `<div class="box"><div style="font:700 18px var(--serif)">发现新版本 ${escHtml(info.latest)}</div>
         <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0">${escHtml(v.notes||"")}</p>
         <div class="lang-row">
-          ${direct ? `<button class="btn small" onclick="downloadNewApk('${escapedAttr(info.apkUrl)}')">下载安装包</button>` : ""}
+          ${direct ? `<button class="btn small" onclick="downloadNewApk('${escapedAttr(apk)}')">下载安装包</button>` : ""}
           ${info.url ? `<a class="btn small" href="${escHtml(info.url)}" target="_blank" rel="noopener">去商店更新</a>` : ""}
           <button class="btn ghost small" onclick="closePaywall()">稍后</button></div>
         <div class="tip" style="margin-top:8px">当前版本 ${escHtml(cur)} → 最新 ${escHtml(info.latest)}${v.build?("（"+escHtml(v.build)+"）"):""}</div></div>`;
@@ -8928,6 +8943,23 @@ applyPrefs();
   }catch(e){}
 })();
 /* iOS「添加到主屏幕」引导：一次性，可再点顶部按钮重看 */
+/* 一键导出全部数据（换设备 / 重装前用） */
+function exportAllData(){
+  try{
+    const dump = { app:"LIZZREAD", version:(typeof APP_VERSION!=="undefined"?APP_VERSION:"2.0.0"), at:new Date().toISOString(), data:{} };
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(/^lz_|^lizzread/i.test(k)) dump.data[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify(dump, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "lizzread-backup-" + new Date().toISOString().slice(0,10) + ".json";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    toast("已导出备份文件");
+  }catch(e){ toast("导出失败：" + (e.message||"")); }
+}
 function showIosInstallGuide(force){
   try{
     if(!force && localStorage.getItem("lz_ios_hint_v2")) return;
