@@ -157,6 +157,10 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
 .lib-more-menu button:hover{background:var(--brand-soft);color:var(--brand-deep)}
 
+.rec-line{display:flex;align-items:center;gap:10px;padding:8px 12px;margin:0 0 8px;border-radius:10px;background:var(--brand-soft);color:var(--brand-deep);font-size:13px}
+.rec-line b{font-weight:600}
+.rec-line-btn{margin-left:auto;min-height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--brand);background:var(--surface);color:var(--brand-deep);font:500 12.5px var(--font);cursor:pointer;white-space:nowrap}
+.rec-line-x{border:none;background:none;color:var(--muted);font-size:13px;cursor:pointer;padding:4px 2px;min-width:28px}
 .filter-summary{display:flex;align-items:center;gap:8px;margin:0 0 8px}
 .fs-chip{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:500 13.5px var(--font);cursor:pointer;max-width:100%}
 .fs-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -495,7 +499,7 @@ body.no-zh .sent .zh{display:none}
 
 <header>
   <div class="bar">
-    <div class="logo" onclick="go('library')">LIZZ<b>READ</b><small>线上图书馆</small></div>
+    <div class="logo" onclick="go('library')">LIZZ<b>READ</b><small>16 门语言经典阅读</small></div>
     <button class="lang-pill lz-hide-on-library" id="langPill" onclick="openLangPanel()" title="切换学习语言 / 展示语言">
       <span id="langPillMain">🌐 英语</span><span id="langPillSub">中文</span>
     </button>
@@ -1704,6 +1708,15 @@ if(!store.showzh) document.body.classList.add("no-zh");
 let BOOKS_LANG = [];          /* 当前学习语言的书库（英文=BOOKS，其余=加载结果） */
 let BOOKS_EN = null;          /* 英文原始书库（导入合并过） */
 let _langBooted = false;
+/* 全站书籍总数（各语言相加） */
+function LANS_TOTAL(){
+  try{
+    /* 英语书库的实际条数不在 manifest 里，取 BOOKS 的真实长度，避免重复计数 */
+    const enN = (window.LZ_BOOKS_EN || []).length || (typeof BOOKS !== "undefined" ? BOOKS.length : 0);
+    const other = LANGS.filter(x => x.code !== "en").reduce((a,b)=>a+(b.count||0),0);
+    return (enN + other).toLocaleString("zh-CN");
+  }catch(e){ return "0"; }
+}
 function langSwitcherHtml(){
   return LANGS.map(x => {
     const paid = langIsPaid(x.code);
@@ -1895,6 +1908,7 @@ function openLangPanel(){
         <button style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer" onclick="closeLangPanel()">×</button>
       </div>
       <div class="sub">学习语言决定书库、词汇测试、点词与拼装；展示语言决定界面语言与译文目标。生词本与阅读进度按学习语言分开保存。</div>
+      <div class="tip" style="margin:6px 0 0">全站共 ${LANS_TOTAL()} 本书；其中 ${(window.LZ_LOCAL_BOOKS||[]).length} 本已内置全文，可完全离线阅读（书卡标「📶 已内置全文」）。</div>
       <div style="font:600 13px var(--font);margin:10px 0 6px">学习语言</div>
       <div class="lang-grid">
         ${LANGS.map(x => `<div class="lang-card ${activeLang()===x.code?'on':''}" onclick="pickLang('${x.code}')">
@@ -2752,23 +2766,24 @@ function renderLibrary(){
     (fGenre==="all"||b.g===fGenre) &&
     (!kw || ((b.t||"")+" "+(b.zh||"")+" "+dispAuthor(b)+" "+(GENRES()[b.g]||"")).toLowerCase().includes(kw))
   )];
+  /* 首屏不再放「为你推荐」和「这个等级读什么」——用户用筛选摘要（English · B1 · 全部类型）
+     就能直接筛到同等级的书，重复展示只会把书单挤到屏幕下面。
+     保留：已测等级时的一行轻提示（可关闭）。 */
   const lv = store.level;
   const banner = document.getElementById("recBanner");
-  if(lv && fLv==="all" && fGenre==="all" && !kw){
-    banner.innerHTML = `<div class="rec-banner">
-      🎯 已测得词汇等级 <b>${lv}</b>，下面标有「推荐」的书最适合你
-      <button class="btn ghost small" onclick="go('test')">重新测试</button></div>`;
-  } else banner.innerHTML="";
   const rec = document.getElementById("recSec");
-  if(lv && fLv==="all" && fGenre==="all" && !kw){
-    const recs = BOOKS.filter(b=>b.lv===lv).slice(0,30);
-    if(recs.length){
-      rec.innerHTML = `<h2 class="sec">为你推荐（${lv} 水平）</h2>
-        <div class="grid">${recs.map(b=>bookCard(b,true)).join("")}</div>`;
-    } else rec.innerHTML="";
-  } else rec.innerHTML="";
+  rec.innerHTML = "";
+  const recGrid = document.getElementById("recGrid");
+  if(recGrid) recGrid.innerHTML = "";
+  const bannerClosed = localStorage.getItem("lz_recbanner_off") === "1";
+  if(lv && fLv === "all" && !kw && !bannerClosed){
+    banner.innerHTML = `<div class="rec-line">
+      <span>🎯 你的等级 <b>${escHtml(lv)}</b></span>
+      <button class="rec-line-btn" onclick="setLv('${escHtml(lv)}')">只看 ${escHtml(lv)}</button>
+      <button class="rec-line-x" onclick="localStorage.setItem('lz_recbanner_off','1');renderLibrary();" aria-label="关闭">✕</button>
+    </div>`;
+  } else banner.innerHTML = "";
   const filtered = (fLv!=="all"||fGenre!=="all"||kw);
-  renderRecs();
   const L0 = LANG_INFO[activeLang()] || {};
   let streak = 0;
   try{ streak = (JSON.parse(localStorage.getItem("lz_streak") || "{}").streak) || 0; }catch(e){}
@@ -7166,7 +7181,7 @@ function renderGuide(){
     <div class="settings-card">
       <h3>常见问题</h3>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>点词/翻译没反应？</b>先看设置里「离线模式」是否打开；关闭它，或确认这本书的本章已缓存。翻译源是 Google/MyMemory，网络受限时会自动降级，已翻过的句子永远秒显。</div></div>
-      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>阅读、查词、词典、拼装全部免费；每天 120 句整章翻译（英语）/80 句（其他语言）、3 本离线书。会员 ¥18/月起、全语言 ¥268/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
+      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。会员 ¥28/月起、全语言 ¥388/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>新书第一次打开很慢？</b>3300 本书默认按需下载完整全文（不删节）。常用 272 本已打包在本地秒开；其余第一次需联网，之后存入 IndexedDB。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>导入 PDF 提示失败？</b>扫描版 PDF 没有文字层，需先 OCR；普通文字版 PDF 可直接导入。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>怎么离线？</b>打开一本书后点「📶 离线本书」，或设置里「离线模式」。译文要离线显示，需先在线点「翻译本章」。</div></div>
@@ -7832,7 +7847,7 @@ function showCheckoutSheet(plan){
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost small" onclick="closePaywall();go('plan')">查看全部权益 →</button>
-        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥88/季）</button>` : ""}
+        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥128/季）</button>` : ""}
       </div>
     </div>`;
   el.classList.add("on");
@@ -8117,7 +8132,8 @@ function renderPlan(){
           <li class="ok">英语 ${(LANG_INFO.en||{}).quota||120} 句/天 · 其他语言 25–40 句/天</li>
           <li class="ok">句子拼装基础练习</li>
           <li class="ok">离线保存 ${FREE_OFFLINE_BOOKS} 本</li>
-          <li class="ok">英语免费 + ${FREE_EXTRA_LANGS} 门自选语言（8 折额度）</li>
+          <li class="ok">16 门语言全部可浏览</li>
+          <li class="ok">翻译 英语 120 句/天 · 其他 80 句/天</li>
           <li class="no">整书预翻译 / 批量离线</li>
         </div>
         <button class="btn ghost" onclick="go('library')">${st ? "继续使用免费额度" : "当前方案"}</button>
@@ -8125,7 +8141,7 @@ function renderPlan(){
       <div class="plan-card hot">
         <span class="tagline">按需订阅</span>
         <div class="plan-name">单语言会员</div>
-        <div class="plan-price">¥18<small>/月</small></div>
+        <div class="plan-price">¥28<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">选定 1 门语言（英语已免费）</li>
           <li class="ok">该语言不限量整章翻译</li>
@@ -8133,40 +8149,40 @@ function renderPlan(){
           <li class="ok">学习报告导出</li>
           <li class="ok">句子拼装完整记录</li>
         </div>
-        <button class="btn" onclick="selectCheckout('lang')">选语言开通 ¥18</button>
+        <button class="btn" onclick="selectCheckout('lang')">选语言开通 ¥28</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 月度</div>
-        <div class="plan-price">¥38<small>/月</small></div>
+        <div class="plan-price">¥58<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 整书预翻译</li>
           <li class="ok">学期计划包</li>
         </div>
-        <button class="btn ghost" onclick="selectCheckout('all_month')">开通 ¥38</button>
+        <button class="btn ghost" onclick="selectCheckout('all_month')">开通 ¥58</button>
       </div>
       <div class="plan-card hot">
         <span class="tagline">推荐 · 一个学期</span>
         <div class="plan-name">全语言 · 季度</div>
-        <div class="plan-price">¥88<small>/季</small></div>
+        <div class="plan-price">¥128<small>/季</small></div>
         <div class="plan-feat">
           <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 全部离线</li>
           <li class="ok">学期计划包（16 周书单打卡）</li>
           <li class="ok">班级/小组共用生词本（5 个名额）</li>
         </div>
-        <button class="btn" onclick="selectCheckout('all_quarter')">开通 ¥88</button>
+        <button class="btn" onclick="selectCheckout('all_quarter')">开通 ¥128</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 年度</div>
-        <div class="plan-price">¥268<small>/年</small></div>
+        <div class="plan-price">¥388<small>/年</small></div>
         <div class="plan-feat">
           <li class="ok">季度会员全部权益</li>
-          <li class="ok">折合 ¥14/月</li>
+          <li class="ok">折合 ¥32/月</li>
           <li class="ok">一年内新功能免费</li>
           <li class="ok">班级共享 20 个名额</li>
         </div>
-        <button class="btn" onclick="selectCheckout('all_year')">开通 ¥268</button>
+        <button class="btn" onclick="selectCheckout('all_year')">开通 ¥388</button>
       </div>
     </div>
     <div class="settings-card">
@@ -8210,7 +8226,7 @@ function renderPlan(){
         <button class="btn" onclick="planActivate()">立即激活</button>
       </div>
       <div class="paywall-note">
-        <b>价格</b>：单语言 ¥18/月；全语言 ¥38/月、¥88/季、¥268/年（含税）。<br>
+        <b>价格</b>：单语言 ¥28/月；全语言 ¥58/月、¥128/季、¥388/年（含税）。<br>
         <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
     </div>`}
@@ -8219,7 +8235,7 @@ function renderPlan(){
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="color:var(--muted);text-align:left">
-            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥18</th><th>全语言 ¥38/月</th><th>全语言 ¥88/季</th><th>全语言 ¥268/年</th></tr></thead>
+            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥28</th><th>全语言 ¥58/月</th><th>全语言 ¥128/季</th><th>全语言 ¥388/年</th></tr></thead>
           <tbody>
             ${[
               ["学习语言","英 + 1 自选","英 + 1 门","全部 8 门","全部 8 门","全部 8 门"],
