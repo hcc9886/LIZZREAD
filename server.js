@@ -671,6 +671,92 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* ===== 支付：下单 / 查询 / 回调（支付宝 + 微信） ===== */
+  if(u.pathname.startsWith('/api/pay/')){
+    const pay = require('./server/pay.js');
+    const baseUrl = process.env.PAY_BASE_URL || (req.headers.origin || ('http://' + (req.headers.host || '127.0.0.1:8765')));
+    const readRaw = () => new Promise((resolve) => {
+      let t = '';
+      req.on('data', c => { t += c; if(t.length > 2e5) req.destroy(); });
+      req.on('end', () => resolve(t));
+      req.on('error', () => resolve(''));
+    });
+
+    /* 下单：{ plan, channel:'alipay'|'wechat', lang, device } */
+    if(u.pathname === '/api/pay/create' && req.method === 'POST'){
+      let body = {};
+      try{ body = JSON.parse(await readRaw() || '{}'); }catch(e){ body = {}; }
+      const plan = String(body.plan || '');
+      const channel = String(body.channel || 'alipay');
+      if(!pay.PLANS[plan]){ sendJSON(res, 400, {ok:false, message:'未知套餐'}); return; }
+      if(channel === 'alipay' && !pay.alipayConfigured()){
+        sendJSON(res, 503, {ok:false, code:'NOT_CONFIGURED', message:'支付宝未配置商户信息，请联系管理员或使用激活码'});
+        return;
+      }
+      if(channel === 'wechat' && !pay.wxpayConfigured()){
+        sendJSON(res, 503, {ok:false, code:'NOT_CONFIGURED', message:'微信支付未配置商户信息，请联系管理员或使用激活码'});
+        return;
+      }
+      try{
+        const order = pay.createOrder({ plan, channel, lang: body.lang, device: body.device });
+        if(channel === 'alipay'){
+          sendJSON(res, 200, {ok:true, order: order.id, type:'redirect', url: pay.alipayPagePay(order, baseUrl)});
+        } else {
+          const codeUrl = await pay.wxpayCreateNative(order, baseUrl);
+          sendJSON(res, 200, {ok:true, order: order.id, type:'qrcode', url: codeUrl});
+        }
+      }catch(e){
+        sendJSON(res, 500, {ok:false, message: e.message || '下单失败'});
+      }
+      return;
+    }
+
+    /* 查询订单状态：交给前端轮询 */
+    if(u.pathname === '/api/pay/status'){
+      const id = String(u.searchParams.get('order') || '');
+      const o = pay.getOrder(id);
+      if(!o){ sendJSON(res, 404, {ok:false, message:'订单不存在'}); return; }
+      sendJSON(res, 200, {ok:true, order:o.id, status:o.status, plan:o.plan, scope:o.scope,
+        lang:o.lang, days:o.days, paidAt:o.paidAt});
+      return;
+    }
+
+    /* 支付宝异步通知（form-urlencoded，验签后置为已支付） */
+    if(u.pathname === '/api/pay/notify/alipay' && req.method === 'POST'){
+      const raw = await readRaw();
+      const params = {};
+      for(const [k, v] of new URLSearchParams(raw)) params[k] = v;
+      const ok = pay.alipayVerify(params, process.env.ALIPAY_PUBLIC_KEY || '');
+      if(ok && (params.trade_status === 'TRADE_SUCCESS' || params.trade_status === 'TRADE_FINISHED')){
+        pay.markPaid(params.out_trade_no, params.trade_no);
+        res.writeHead(200, {'Content-Type':'text/plain'}); res.end('success');
+      } else {
+        res.writeHead(200, {'Content-Type':'text/plain'}); res.end('fail');
+      }
+      return;
+    }
+
+    /* 微信支付回调（JSON，AES-256-GCM 解密后置为已支付） */
+    if(u.pathname === '/api/pay/notify/wechat' && req.method === 'POST'){
+      try{
+        const raw = await readRaw();
+        const j = JSON.parse(raw || '{}');
+        const data = pay.wxpayDecrypt(j.resource);
+        if(data.trade_state === 'SUCCESS') pay.markPaid(data.out_trade_no, data.transaction_id);
+        sendJSON(res, 200, {code:'SUCCESS', message:'成功'});
+      }catch(e){
+        sendJSON(res, 500, {code:'FAIL', message: e.message || '回调处理失败'});
+      }
+      return;
+    }
+
+    /* 支付可用性探测：前端据此决定显示哪些支付方式 */
+    if(u.pathname === '/api/pay/config'){
+      sendJSON(res, 200, {ok:true, alipay: pay.alipayConfigured(), wechat: pay.wxpayConfigured(), plans: pay.PLANS});
+      return;
+    }
+  }
+
   /* /api/word?lang=de&word=Haus&to=zh —— 点词释义（外语词典代理 + 磁盘缓存） */
   if(u.pathname === '/api/word'){
     const lang = String(u.searchParams.get('lang') || 'en').toLowerCase().slice(0,4);

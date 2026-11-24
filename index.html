@@ -8009,6 +8009,94 @@ function isStoreBuild(){
    ② 微信小程序 + 安卓 → 微信支付（需后端下的 JSAPI/H5 单）
    ③ 网页 / APK       → 支付宝 + 微信 + 激活码
    ④ App 商店包        → 只走内购（原有逻辑） */
+/* ===== 在线支付（支付宝 / 微信） ===== */
+let _payCfg = null;
+async function fetchPayConfig(){
+  if(_payCfg) return _payCfg;
+  try{
+    const r = await fetch(apiUrl("api/pay/config"), {cache:"no-store"});
+    if(r.ok) _payCfg = await r.json();
+  }catch(e){}
+  return _payCfg || { alipay:false, wechat:false };
+}
+function deviceId(){
+  try{
+    let d = localStorage.getItem("lz_device");
+    if(!d){ d = "d" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("lz_device", d); }
+    return d;
+  }catch(e){ return "unknown"; }
+}
+async function startPay(plan, channel){
+  const el = ensurePaywall();
+  el.innerHTML = `<div class="box"><div style="font:600 16px var(--font)">正在下单…</div></div>`;
+  el.classList.add("on");
+  try{
+    const r = await fetch(apiUrl("api/pay/create"), {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ plan, channel, lang: activeLang(), device: deviceId() })
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.message || "下单失败");
+    if(j.type === "redirect"){
+      location.href = j.url;      /* 支付宝：直接跳转收银台 */
+      return;
+    }
+    /* 微信 Native：显示二维码 + 轮询 */
+    el.innerHTML = `<div class="box">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font:700 18px var(--serif)">微信扫码支付</div>
+        <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <div style="text-align:center;margin:14px 0">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(j.url)}" alt="微信支付二维码" style="width:220px;height:220px">
+        <div class="tip" style="margin-top:8px">用微信扫一扫完成支付，支付成功后自动开通</div>
+      </div>
+      <div class="lang-row"><button class="btn ghost small" onclick="closePaywall()">取消</button></div>
+    </div>`;
+    pollPayStatus(j.order);
+  }catch(e){
+    el.innerHTML = `<div class="box">
+      <div style="font:700 18px var(--serif)">暂时无法在线支付</div>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0">
+        ${escHtml(e.message || "请稍后重试")}<br><br>
+        你仍然可以用<b>激活码</b>开通，或联系客服。
+      </p>
+      <div class="lang-row"><button class="btn ghost small" onclick="closePaywall()">知道了</button></div>
+    </div>`;
+  }
+}
+async function pollPayStatus(order, tries){
+  tries = tries || 0;
+  if(tries > 100) return;
+  try{
+    const r = await fetch(apiUrl("api/pay/status?order=") + encodeURIComponent(order), {cache:"no-store"});
+    const j = await r.json();
+    if(j.ok && j.status === "paid"){
+      applyPro(j.plan, Date.now() + (j.days || 31) * 86400000, "pay:" + order, j.lang || "", j.scope || "all");
+      closePaywall();
+      toast("✅ 支付成功，会员已开通");
+      try{ renderPlan(); }catch(e){}
+      return;
+    }
+  }catch(e){}
+  setTimeout(()=>pollPayStatus(order, tries + 1), 3000);
+}
+/* 页面加载带 ?paid= 时主动查一次（支付宝回跳） */
+async function checkReturnedPayment(){
+  const m = location.search.match(/[?&]paid=([^&]+)/);
+  if(!m) return;
+  try{
+    const r = await fetch(apiUrl("api/pay/status?order=") + encodeURIComponent(m[1]), {cache:"no-store"});
+    const j = await r.json();
+    if(j.ok && j.status === "paid"){
+      applyPro(j.plan, Date.now() + (j.days || 31) * 86400000, "pay:" + m[1], j.lang || "", j.scope || "all");
+      toast("✅ 支付成功，会员已开通");
+    } else if(j.ok){
+      toast("支付结果确认中，稍后会自动开通");
+      pollPayStatus(m[1]);
+    }
+  }catch(e){}
+}
 function payChannelState(){
   const mini = isWechatMiniAppEnv();
   const ios = isIOSDevice();
@@ -8047,7 +8135,43 @@ function selectCheckout2(plan){
     el.classList.add("on");
     return;
   }
+  /* 网页版 / APK / 安卓小程序：优先在线支付 */
+  if(isWechatMiniAppEnv() ? st.mode === "mini_android" : true){
+    selectPayMethod(plan);
+    return;
+  }
   selectCheckout(plan);
+}
+/* 在线支付入口：配置了就显示，没配置就提示用激活码 */
+async function selectPayMethod(plan){
+  const cfg = await fetchPayConfig();
+  const el = ensurePaywall();
+  const hasAlipay = !!cfg.alipay, hasWx = !!cfg.wechat;
+  const def = PLAN_DEF[plan] || {};
+  if(!hasAlipay && !hasWx){
+    el.innerHTML = `<div class="box">
+      <div style="font:700 18px var(--serif)">${escHtml(def.name || "开通会员")}</div>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0">
+        在线支付（支付宝/微信）尚未开通。<br>
+        当前可用<b>激活码</b>开通，请联系客服获取。
+      </p>
+      <div class="lang-row"><button class="btn ghost small" onclick="closePaywall()">知道了</button></div>
+    </div>`;
+    el.classList.add("on");
+    return;
+  }
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font:700 18px var(--serif)">${escHtml(def.name || "开通会员")}</div>
+      <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+    </div>
+    <div style="display:grid;gap:8px;margin-top:14px">
+      ${hasAlipay ? `<button class="btn" onclick="startPay('${escapedAttr(plan)}','alipay')">支付宝支付</button>` : ""}
+      ${hasWx ? `<button class="btn ghost" onclick="startPay('${escapedAttr(plan)}','wechat')">微信扫码支付</button>` : ""}
+      <button class="btn ghost small" onclick="closePaywall()">用激活码开通</button>
+    </div>
+  </div>`;
+  el.classList.add("on");
 }
 function selectCheckout(plan){
   const def = PLAN_DEF[plan];
