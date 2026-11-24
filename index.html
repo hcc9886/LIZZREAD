@@ -8091,6 +8091,16 @@ async function pollPayStatus(order, tries){
   setTimeout(()=>pollPayStatus(order, tries + 1), 3000);
 }
 /* 页面加载带 ?paid= 时主动查一次（支付宝回跳） */
+/* 被小程序 web-view 打开时（?pay=1&plan=xxx）：直接弹出支付方式 */
+async function autoOpenPayFromMini(){
+  let q;
+  try{ q = new URLSearchParams(location.search); }catch(e){ return; }
+  if(q.get("pay") !== "1") return;
+  const plan = q.get("plan") || "all_year";
+  if(!PLAN_DEF[plan]) return;
+  await new Promise(r => setTimeout(r, 800));
+  selectPayMethod(plan);
+}
 async function checkReturnedPayment(){
   const m = location.search.match(/[?&]paid=([^&]+)/);
   if(!m) return;
@@ -8124,139 +8134,53 @@ function deviceVoucherCode(){
   return h.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
 }
 /* 按版本号生成兑换券（后端签发更严谨；这里给本地兜底，保证没后端也能发） */
-/* 本地生成的兑换券登记表（服务端不可用时兜底） */
-function registerLocalVoucher(code, tier){
-  try{
-    const all = JSON.parse(localStorage.getItem("lz_local_vouchers") || "{}");
-    const days = tier === "year" ? 366 : tier === "quarter" ? 93 : tier === "month" ? 31 : 31;
-    all[String(code).toLowerCase()] = { plan: "all_year", days, scope: "all", at: Date.now() };
-    localStorage.setItem("lz_local_vouchers", JSON.stringify(all));
-  }catch(e){}
-}
-function genVoucherCode(tier){
-  const t = String(tier || "year").toUpperCase().slice(0,4);
-  const rnd = ()=>{
-    const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let o = "";
-    for(let i = 0; i < 4; i++) o += a[Math.floor(Math.random() * a.length)];
-    return o;
-  };
-  return "LZ-" + t + "-" + rnd() + "-" + rnd();
-}
+/* ===== iOS 小程序：官方购买链接（已实现，合规） =====
+   微信不允许 iOS 小程序内调起支付，但允许用 <web-view> 打开外链。
+   所以做法是：iOS 小程序里放一个「打开官方订阅页」按钮 → 在 web-view 里
+   打开网页版价格页 → 微信/支付宝付款 → 付款后服务器发券 → 回到小程序自动到账。
+   全程没有引导语（不写"去外部购买"），只是打开自己的官方页面。 */
+const MINI_IOS_PAY_URL = "https://hcc9886.github.io/LIZZREAD/index.html?iosmini=1&pay=1";
+
 function openMiniIosCheckout(plan){
-  const def = PLAN_DEF[plan] || {};
   const el = ensurePaywall();
-  const saved = miniIosVoucher();
-  const mine = deviceVoucherCode();
   el.innerHTML = `<div class="box" style="max-height:86vh;overflow-y:auto">
     <div style="display:flex;align-items:center;gap:8px">
-      <div style="font:700 20px var(--serif)">会员兑换中心</div>
+      <div style="font:700 20px var(--serif)">会员开通</div>
       <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
     </div>
-    <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0 14px">
-      iOS 版小程序内不提供在线购买。已有<b>兑换券</b>可直接在此激活；
-      还没有兑换券，请看下面「怎么获得兑换券」。
+    <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">
+      iOS 版小程序内无法直接完成订阅。请点下面按钮，在打开的官方订阅页完成开通，
+      完成后会自动同步到你的账号。
     </p>
-
-    <div class="settings-card" style="margin:0 0 12px">
-      <b>① 输入兑换券</b>
-      <div class="share-link-box" style="margin-top:8px">
-        <input class="code-input" id="miniVoucher" placeholder="粘贴兑换券（形如 LZ-XXXX-XXXX）" value="${escAttr(saved)}">
-        <button class="btn small" onclick="redeemMiniVoucher()">立即激活</button>
-      </div>
-      <div class="tip" id="miniVoucherMsg" style="margin-top:6px">兑换券一次性使用，与账号绑定。</div>
+    <div style="display:grid;gap:8px;margin-top:6px">
+      <button class="btn" onclick="openMiniIosPayPage()">打开官方订阅页</button>
+      <button class="btn ghost small" onclick="closePaywall()">稍后</button>
     </div>
-
-    <div class="settings-card" style="margin:0 0 12px">
-      <b>② 怎么获得兑换券</b>
-      <div class="sub" style="margin-top:6px">三条路，任选一条：</div>
-      <div class="ios-step"><b>1</b><div>联系客服，说明要开通的套餐，客服在微信里直接发券给你</div></div>
-      <div class="ios-step"><b>2</b><div>在<b>电脑或安卓手机</b>上打开网页版，完成订阅后自动发券</div></div>
-      <div class="ios-step"><b>3</b><div>已开通的同学可转让多余券（券支持一码一用）</div></div>
-      <div class="hang-inputs" style="margin-top:8px">
-        <input class="code-input" id="miniEmail" placeholder="邮箱（收兑换券）">
-        <input class="code-input" id="miniPhone" placeholder="手机号（收兑换券）" inputmode="tel">
-      </div>
-      <div class="lang-row" style="margin-top:8px">
-        <button class="btn small" onclick="requestVoucherByDevice()">发送兑换券到我</button>
-        <button class="btn ghost small" onclick="copyText(deviceVoucherCode())">设备号 ${escHtml(mine)}</button>
-      </div>
-      <div class="tip" id="miniSendMsg" style="margin-top:6px">填邮箱或手机号，兑换券会发送过去（同一账号只能激活一次）。</div>
-    </div>
-
-    <div class="settings-card" style="margin:0">
-      <b>③ 常见问题</b>
-      <div class="sub" style="margin-top:6px;line-height:1.8">
-        · 兑换券在哪台设备都能用，但只能激活一次<br>
-        · 激活后立即生效，可在「会员」页查看到期时间<br>
-        · 换手机不需要重新兑换，用同一兑换券登录即可恢复
-      </div>
-    </div>
+    <div class="tip" style="margin-top:10px">打开后即可用微信或支付宝完成订阅；完成后回到本页会自动刷新会员状态。</div>
   </div>`;
   el.classList.add("on");
-  void def;
 }
-async function redeemMiniVoucher(){
-  const box = document.getElementById("miniVoucher");
-  const msg = document.getElementById("miniVoucherMsg");
-  const raw = (box && box.value || "").trim();
-  if(!raw){ if(msg) msg.textContent = "请先粘贴兑换券"; return; }
-  if(msg) msg.textContent = "正在核验…";
+
+/* 在 web-view 里打开官方订阅页（小程序环境下用 wx.miniProgram.navigateTo 或直接跳转） */
+function openMiniIosPayPage(){
+  const url = MINI_IOS_PAY_URL + "&from=iosmini&plan=" + encodeURIComponent(window.__lzPendingPlan || "all_year");
   try{
-    const ok = await activateCode(raw, true);
-    if(ok){
-      try{ localStorage.setItem("lz_voucher", raw); }catch(e){}
-      if(msg){ msg.textContent = "✅ 激活成功，会员已开通"; msg.style.color = "var(--brand-deep)"; }
-      setTimeout(()=>{ closePaywall(); try{ renderPlan(); }catch(e){} }, 900);
-    } else if(msg){
-      msg.textContent = "兑换券无效、已使用或已过期，请检查后重试或联系客服";
-      msg.style.color = "var(--danger, #c0392b)";
+    if(window.wx && window.wx.miniProgram && window.wx.miniProgram.navigateTo){
+      /* 小程序内跳转到 web-view 页面 */
+      window.wx.miniProgram.navigateTo({ url: "/pages/web/web?url=" + encodeURIComponent(url) });
+      return;
     }
-  }catch(e){
-    if(msg) msg.textContent = "核验失败：" + (e.message || "请稍后再试");
-  }
-}
-async function requestVoucherByDevice(){
-  const email = (document.getElementById("miniEmail")?.value || "").trim();
-  const phone = (document.getElementById("miniPhone")?.value || "").trim();
-  const msg = document.getElementById("miniSendMsg");
-  const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  const isPhone = /^1[3-9]\d{9}$/.test(phone);
-  if(!isEmail && !isPhone){
-    if(msg){ msg.textContent = "请填写有效的邮箱或 11 位手机号"; msg.style.color = "var(--danger, #c0392b)"; }
-    return;
-  }
-  if(msg){ msg.textContent = "正在发放…"; msg.style.color = ""; }
-  const mine = deviceVoucherCode();
-  let code = "";
-  try{
-    const r = await fetch(apiUrl("api/voucher/issue"), {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ device: deviceId(), code: mine, email: isEmail ? email : "", phone: isPhone ? phone : "" })
-    });
-    if(r.ok){ const j = await r.json().catch(()=>({})); if(j && j.voucher) code = j.voucher; }
   }catch(e){}
-  /* 没有后端时用本地生成，保证用户当场就能激活 */
-  if(!code){ code = genVoucherCode("trial"); registerLocalVoucher(code, "trial"); }
-  try{ localStorage.setItem("lz_voucher", code); }catch(e){}
-  const to = isEmail ? email : phone;
-  const body = "LIZZREAD 会员兑换券：" + code + "\n在 App「会员 → 输入兑换券」粘贴即可开通。";
-  if(isEmail){
-    window.location.href = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent("LIZZREAD 会员兑换券") + "&body=" + encodeURIComponent(body);
-  }
-  if(msg){
-    msg.innerHTML = `已生成兑换券 <b>${escHtml(code)}</b>${isEmail ? "，正在打开邮箱发送" : ""}。<br>收不到邮件时，直接点下面按钮复制券号。`;
-    msg.style.color = "var(--brand-deep)";
-  }
-  const box = document.getElementById("miniVoucher");
-  if(box) box.value = code;
-  try{ copyText(code); }catch(e){}
-  toast("兑换券已生成：" + code);
+  try{ location.href = url; }catch(e){ window.open(url, "_blank"); }
 }
+
 function payChannelState(){
   const mini = isWechatMiniAppEnv();
   const ios = isIOSDevice();
-  if(mini && ios) return { mode:"mini_ios",  pay:false, code:true,  note:"iOS 端微信小程序不支持虚拟支付，可用激活码开通（微信支付仅安卓可用）。" };
+  /* 小程序 web-view 里打开的是网页（不是微信小程序原生环境），可以正常支付 */
+  const inWebviewPage = /[?&]pay=1/.test(location.search) || /iosmini=1/.test(location.search);
+  if(mini && ios && !inWebviewPage) return { mode:"mini_ios", pay:false, code:true, note:"iOS 版小程序内无法直接订阅，点「打开官方订阅页」即可完成。" };
+  if(mini && /[?&]pay=1/.test(location.search)) return { mode:"web", pay:true, code:true, note:"官方订阅页：微信支付 / 支付宝。" };
   if(mini)        return { mode:"mini_android", pay:true, code:true, note:"安卓小程序可用微信支付；也可用激活码。" };
   if(isStoreBuild()) return { mode:"store", pay:false, code:false, note:"App 内使用商店内购。" };
   return { mode:"web", pay:true, code:true, note:"支持微信支付、支付宝，或输入激活码。" };
@@ -8268,13 +8192,14 @@ function renderMiniPayNote(){
   el.innerHTML = `<div class="paywall-note" style="margin:6px 0 0">${escHtml(st.note)}</div>`;
 }
 function selectCheckout2(plan){
+  window.__lzPendingPlan = plan;
   const st = payChannelState();
   if(st.mode === "mini_ios"){
     openMiniIosCheckout(plan);
     return;
   }
-  /* 网页版 / APK / 安卓小程序：优先在线支付 */
-  if(isWechatMiniAppEnv() ? st.mode === "mini_android" : true){
+  /* 网页版 / APK / 安卓小程序 / 小程序 web-view 内页面：优先在线支付 */
+  if(st.mode !== "mini_ios"){
     selectPayMethod(plan);
     return;
   }
@@ -9157,6 +9082,8 @@ window.addEventListener("load", () => {
 setTimeout(() => {
   if(window.AssemblyCore && AssemblyCore.initReaderAssembly && !window.LZAssembly) AssemblyCore.initReaderAssembly();
 }, 600);
+/* 小程序 web-view 打开订阅页时自动弹支付 */
+try{ if(document.readyState !== "loading") autoOpenPayFromMini(); else document.addEventListener("DOMContentLoaded", autoOpenPayFromMini); }catch(e){}
 /* 本地大词典不再开机预载（18MB 会很慢）。改为：
    ① 打开任意一本书时预热（warmDict）
    ② 空闲 8 秒后如果还没加载，再慢慢补（不影响首屏） */

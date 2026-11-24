@@ -14,6 +14,18 @@ Page({
     const lang = options.lang || wx.getStorageSync('lz_lang') || 'en';
     this.setData({ lang });
     this._opts = options;
+
+    // 外部指定 url（例如「打开官方订阅页」）：只允许打开已配置的站点域名
+    if(options.url){
+      const target = decodeURIComponent(options.url);
+      const base = (app.globalData.SITE || '').replace(/\/+$/, '');
+      if(target.indexOf(base) === 0){
+        this.setData({ url: target, isPay: /pay=1/.test(target) });
+        console.log('[LIZZREAD] 外部 url:', target);
+        return;
+      }
+      console.warn('[LIZZREAD] 拒绝打开非本站 url:', target);
+    }
     this.buildUrl(lang, options);
   },
 
