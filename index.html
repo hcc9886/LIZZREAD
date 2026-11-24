@@ -144,6 +144,67 @@ h2.sec{font:700 20px/1.4 var(--font);margin:18px 0 12px}
 .ios-step{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px dashed var(--border);font-size:13.5px;line-height:1.6}
 .ios-step:first-of-type{border-top:none}
 .ios-step b{flex:0 0 22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font:600 12px/22px var(--font);text-align:center}
+
+/* ---------- 首页新版样式：首屏只留「语言条 + 筛选摘要 + 搜索」 ---------- */
+body.on-library .lz-hide-on-library{display:none !important}
+.lib-topbar{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.lib-topbar .lang-chips{flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.lib-topbar .lang-chips::-webkit-scrollbar{display:none}
+.lib-topbar .chip{flex:0 0 auto;min-height:34px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;font-size:13.5px}
+.lib-more{position:relative;flex:0 0 auto;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.lib-more:hover{border-color:var(--brand);color:var(--brand-deep)}
+.lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
+.lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
+.lib-more-menu button:hover{background:var(--brand-soft);color:var(--brand-deep)}
+
+.filter-summary{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.fs-chip{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:500 13.5px var(--font);cursor:pointer;max-width:100%}
+.fs-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-chip.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-deep)}
+.fs-clear{border:none;background:none;color:var(--muted);font:500 12.5px var(--font);cursor:pointer;padding:6px 4px;min-height:34px}
+.fs-clear:hover{color:var(--brand-deep)}
+
+.search-row{display:flex;align-items:center;gap:6px;margin:0 0 6px;position:relative}
+.search-row .search{flex:1;width:100%;min-height:40px;font-size:14.5px}
+.icobtn{flex:0 0 auto;width:34px;height:34px;border-radius:8px;border:none;background:none;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.icobtn:hover{background:var(--surface2);color:var(--text)}
+.search-actions{display:flex;gap:8px;margin:0 0 10px}
+.search-actions .btn{min-height:32px;font-size:12.5px}
+
+.fd-head{display:flex;align-items:center;margin-bottom:4px}
+.fd-head h3{margin:0}
+.fd-head .icobtn{margin-left:auto}
+.fd-sec{margin-top:12px}
+.fd-h{font:600 12.5px var(--font);color:var(--muted);margin-bottom:8px}
+.fd-chips{display:flex;flex-wrap:wrap;gap:8px}
+.fd-chips .chip{min-height:34px;display:inline-flex;align-items:center;padding:0 14px;font-size:13.5px}
+.fd-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.fd-actions .btn{min-height:38px;padding:0 20px}
+
+/* 推荐：标题一行、按钮固定一行；横向滚动露出下一张 + 两侧渐隐 */
+.rec-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-width:0}
+.rec-title{font:600 15px var(--font);color:var(--brand-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rec-btn{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:500 12.5px var(--font);white-space:nowrap;cursor:pointer}
+.rec-btn:hover{border-color:var(--brand);color:var(--brand-deep)}
+.rec-btn + .rec-btn{margin-left:6px}
+.rec-btn-icon{padding:0;width:34px}
+.rec-scroll{display:flex;gap:10px;overflow-x:auto;padding:0 0 6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent 100%)}
+.rec-scroll::-webkit-scrollbar{display:none}
+/* 卡片宽度让第三张只露一半，暗示可滑动 */
+.rec-card{flex:0 0 calc((100% - 20px) / 2.45);max-width:150px;scroll-snap-align:start;cursor:pointer;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+@media (min-width:720px){ .rec-card{flex-basis:150px} .rec-scroll{-webkit-mask-image:none;mask-image:none} }
+.rec-fold b{font:600 13px var(--font);color:var(--brand-deep)}
+.rec-fold-tip{color:var(--muted);font-size:12px}
+
+/* ---------- 性能：书卡封面懒加载 + 异步解码 ---------- */
+.grid .cimg{content-visibility:auto;contain-intrinsic-size:200px}
+.grid .book{contain:layout style}
+
+/* ---------- 统一单色图标（替换杂乱 emoji） ---------- */
+.ico{display:inline-block;vertical-align:-2px;margin-right:4px;flex:0 0 auto}
+.btn .ico{opacity:.85}
 .mm-sec{border-top:1px solid var(--border);padding:8px 0 2px}
 .mm-sec:first-of-type{border-top:none}
 .mm-h{font:600 12px var(--font);color:var(--brand-deep);margin-bottom:4px}
@@ -435,7 +496,7 @@ body.no-zh .sent .zh{display:none}
 <header>
   <div class="bar">
     <div class="logo" onclick="go('library')">LIZZ<b>READ</b><small>线上图书馆</small></div>
-    <button class="lang-pill" id="langPill" onclick="openLangPanel()" title="切换学习语言 / 展示语言">
+    <button class="lang-pill lz-hide-on-library" id="langPill" onclick="openLangPanel()" title="切换学习语言 / 展示语言">
       <span id="langPillMain">🌐 英语</span><span id="langPillSub">中文</span>
     </button>
     <button class="nav-more" id="navMore" onclick="toggleNavMore()" aria-label="更多菜单">☰</button>
@@ -460,21 +521,37 @@ body.no-zh .sent .zh{display:none}
 <main>
   <!-- ============ 书城 ============ -->
   <section class="view on" id="view-library">
+    <!-- 一行：学习语言切换 + 更多（低频操作收进菜单） -->
+    <div class="lib-topbar">
+      <div class="lang-chips" id="langChips"></div>
+      <button class="lib-more" id="libMoreBtn" onclick="openLibMore(event)" title="更多操作" aria-label="更多">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <div class="lib-more-menu" id="libMoreMenu" style="display:none">
+        <button onclick="closeLibMore();document.getElementById('importFile').click()" class="lz-no-mini">📥 导入书籍</button>
+        <button onclick="closeLibMore();go('guide')" class="lz-no-mini">❓ 支持哪些格式</button>
+        <button onclick="closeLibMore();openUrlImport()" class="lz-no-mini">🔗 网址导入</button>
+        <button onclick="closeLibMore();downloadAll()">📶 离线下载常用书</button>
+        <button onclick="closeLibMore();startTour()">🎓 新手教程</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept=".txt,.md,.markdown,.html,.htm,.xhtml,.epub,.docx,.odt,.pdf,.fb2,.rtf,.srt,.vtt,.csv,.json,.zip,.mobi,.azw,.azw3,text/plain,application/epub+zip,application/pdf" multiple style="display:none" onchange="doImport(this)">
+
+    <!-- 一行：当前筛选摘要，点开抽屉再选 -->
+    <div class="filter-summary" id="filterSummary"></div>
+
+    <!-- 整行搜索框；按钮在输入后才出现 -->
+    <div class="search-row">
+      <input class="search" id="searchBox" placeholder="搜索书名 / 作者…" oninput="onSearchInput()">
+      <button class="icobtn" id="searchClear" onclick="clearSearch()" style="display:none" title="清除"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="search-actions" id="searchActions" style="display:none">
+      <button class="btn ghost small" onclick="runFullTextSearch()">🔎 全文搜索</button>
+      <button class="btn ghost small" onclick="clearFullTextSearch()">关闭结果</button>
+    </div>
+
     <div id="recBanner"></div>
     <div id="recGrid"></div>
-    <div class="filters lang-chips" id="langChips"></div>
-    <div class="filters" id="lvChips"></div>
-    <div class="filters"><div id="genreChips" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-    <div class="filters">
-      <button class="btn ghost small lz-no-mini" id="importBtnLabel" onclick="document.getElementById('importFile').click()">📥 导入书籍</button>
-      <input type="file" id="importFile" accept=".txt,.md,.markdown,.html,.htm,.xhtml,.epub,.docx,.odt,.pdf,.fb2,.rtf,.srt,.vtt,.csv,.json,.zip,.mobi,.azw,.azw3,text/plain,application/epub+zip,application/pdf" multiple style="display:none" onchange="doImport(this)">
-      <button class="btn ghost small lz-no-mini" onclick="go('guide')" title="支持 16 种格式，点击看导入教程">❓ 支持哪些格式</button>
-      <button class="btn ghost small lz-no-mini" onclick="openUrlImport()" title="从外部网站抓取正文（Gutenberg / 青空文库 / 维基文库 / 任意文章页）">🔗 网址导入</button>
-      <button class="btn ghost small" id="offlineBtn" onclick="downloadAll()">📶 离线下载常用书</button>
-      <input class="search" id="searchBox" placeholder="搜索书名 / 作者…">
-      <button class="btn ghost small" onclick="runFullTextSearch()">🔎 全文搜索</button>
-      <button class="btn ghost small" onclick="document.getElementById('ftResults').innerHTML='';document.getElementById('ftResults').style.display='none'">关闭结果</button>
-    </div>
     <div id="recSec"></div>
     <div id="ftResults" style="display:none;margin:12px 0"></div>
     <h2 class="sec" id="gridTitle">全部书目</h2>
@@ -1638,13 +1715,108 @@ function langSwitcherHtml(){
 function openRecBlock(lv){ window.__recOpen = Object.assign(window.__recOpen || {}, {[lv]: true}); renderRecs(); }
 function closeRecBlock(lv){ if(window.__recOpen) delete window.__recOpen[lv]; renderRecs(); }
 function collapseAllRecs(){ window.__recOpen = {}; renderRecs(); }
+/* ---------- 首页：筛选抽屉 / 更多菜单 / 搜索 ---------- */
+const LIB_OPEN = { filter:false };
+function openLibMore(e){
+  if(e) e.stopPropagation();
+  const m = document.getElementById("libMoreMenu");
+  if(!m) return;
+  m.style.display = (m.style.display === "none" ? "block" : "none");
+}
+function closeLibMore(){
+  const m = document.getElementById("libMoreMenu");
+  if(m) m.style.display = "none";
+}
+document.addEventListener("click", (e) => {
+  const m = document.getElementById("libMoreMenu");
+  if(m && m.style.display !== "none" && !m.contains(e.target) && !document.getElementById("libMoreBtn")?.contains(e.target)) closeLibMore();
+});
+
+/* 当前筛选摘要：English · B1 · 全部类型 */
+function libSummaryText(){
+  const L0 = LANG_INFO[activeLang()] || { native: activeLang() };
+  const lv = fLv === "all" ? L("library.allLv","全部难度") : fLv;
+  /* 类型在摘要里用中文名，避免出现 "· 类型" 这种半截文案 */
+  /* i18n 里的 allGenres 只是「类型」两字，摘要需要「全部类型」，按语言补前缀 */
+  const ALLG = { zh:"全部类型", en:"All genres", de:"Alle Gattungen", fr:"Tous genres",
+                 it:"Tutti i generi", es:"Todos los géneros", ja:"すべてのジャンル", ko:"모든 장르" };
+  let gen = ALLG[showLang()] || "All genres";
+  if(fGenre !== "all") gen = GENRES()[fGenre] || fGenre;
+  return [L0.native, lv, gen];
+}
+function renderFilterSummary(){
+  const el = document.getElementById("filterSummary");
+  if(!el) return;
+  const parts = libSummaryText();
+  const active = (fLv !== "all" || fGenre !== "all");
+  el.innerHTML = `<button class="fs-chip ${active?'on':''}" onclick="openFilterDrawer()">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+    <span>${escHtml(parts.join(" · "))}</span>
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 10l4 4 4-4"/></svg>
+  </button>` + (active
+    ? `<button class="fs-clear" onclick="resetLibFilter()">清除</button>` : "");
+}
+function openFilterDrawer(){
+  let el = document.getElementById("filterDrawer");
+  if(!el){
+    el = document.createElement("div");
+    el.className = "lang-sheet";
+    el.id = "filterDrawer";
+    document.body.appendChild(el);
+  }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) closeFilterDrawer(); };
+  renderFilterDrawer();
+}
+function renderFilterDrawer(){
+  const el = document.getElementById("filterDrawer");
+  if(!el) return;
+  el.innerHTML = `<div class="box">
+    <div class="fd-head">
+      <h3 style="margin:0">${L("library.filter","筛选")}</h3>
+      <button class="icobtn" onclick="closeFilterDrawer()" aria-label="关闭"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="fd-sec"><div class="fd-h">${L("library.difficulty","难度")}</div>
+      <div class="fd-chips" id="lvChips"></div></div>
+    <div class="fd-sec"><div class="fd-h">${L("library.genre","类型")}</div>
+      <div class="fd-chips" id="genreChips"></div></div>
+    <div class="fd-actions">
+      <button class="btn ghost small" onclick="resetLibFilter();closeFilterDrawer()">${L("library.reset","重置")}</button>
+      <button class="btn small" onclick="closeFilterDrawer()">${L("library.done","完成")}</button>
+    </div></div>`;
+  renderChips();
+}
+function closeFilterDrawer(){
+  const el = document.getElementById("filterDrawer");
+  if(el) el.style.display = "none";
+}
+function onSearchInput(){
+  const kw = (document.getElementById("searchBox").value || "").trim();
+  const clearBtn = document.getElementById("searchClear");
+  if(clearBtn) clearBtn.style.display = kw ? "inline-flex" : "none";
+  const acts = document.getElementById("searchActions");
+  if(acts) acts.style.display = kw ? "flex" : "none";
+  renderLibrary();
+}
+function clearSearch(){
+  const box = document.getElementById("searchBox");
+  if(box) box.value = "";
+  onSearchInput();
+  const ft = document.getElementById("ftResults");
+  if(ft){ ft.innerHTML = ""; ft.style.display = "none"; }
+}
+function clearFullTextSearch(){
+  const ft = document.getElementById("ftResults");
+  if(ft){ ft.innerHTML = ""; ft.style.display = "none"; }
+}
 function renderLangChips(){
   const el = document.getElementById("langChips");
   if(!el) return;
-  const info = LANG_INFO[activeLang()] || {};
-  el.innerHTML = `<span class="tip" style="margin:0;flex:0 0 auto">学习语言</span>` + langSwitcherHtml() +
-    `<span class="lang-badge" style="flex:0 0 auto;background:var(--brand-soft);color:var(--brand-deep)">${escHtml(info.lvLabel || "CEFR A1-C2")}</span>` +
-    `<button class="btn ghost small" style="flex:0 0 auto" onclick="openLangPanel()">⚙ 语言设置</button>`;
+  /* 只保留「语言 + 数量」，横向滚动；设置入口在「更多」菜单里 */
+  el.innerHTML = langSwitcherHtml() +
+    `<button class="chip chip-set" onclick="openLangPanel()" title="${escHtml(L("library.langSettings","语言设置"))}" aria-label="语言设置">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+    </button>`;
 }
 function updateLangPill(){
   const main = document.getElementById("langPillMain");
@@ -2039,6 +2211,7 @@ function go(name){
   if(name==="vocab") renderVocab();
   if(name==="sentcol") renderSentCol();
   if(name==="sreview") renderSReview();
+  document.body.classList.toggle("on-library", name === "library");
   if(name==="test") renderTestIntro();
   if(name==="account") renderAccount();
   if(name==="collections") renderCollections();
@@ -2197,7 +2370,7 @@ function renderCollections(){
 function bookCardMini(b){
   const cls = "g-"+(b.g||"lit");
   return `<div class="book ${cls}" onclick="openBook('${b.id}')">
-    <div class="cover g-${b.g||"lit"}"><img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})"><span class="lv">${escHtml(b.lv||"·")}</span></div>
+    <div class="cover g-${b.g||"lit"}"><img class="cimg" loading="lazy" decoding="async" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})"><span class="lv">${escHtml(b.lv||"·")}</span></div>
     <div class="meta">${escHtml(b.zh||b.g||"")}</div></div>`;
 }
 
@@ -2488,12 +2661,19 @@ function zhBilingualRow(s){
   return `<div class="sen-zh" style="color:var(--muted)">${escHtml(t)}</div>`;
 }
 function renderChips(){
-  document.getElementById("lvChips").innerHTML =
-    chip((LANG_INFO[activeLang()]||{}).label ? L("library.filter", "难度") : "全部难度","all",fLv,"setLv") +
-    TIERS().map(t=>chip(t,t,fLv,"setLv")).join("");
-  document.getElementById("genreChips").innerHTML =
-    chip(L("library.allGenres","全部类型"),"all",fGenre,"setGenre") +
-    Object.entries(GENRES()).map(([k,v])=>chip(v,k,fGenre,"setGenre")).join("");
+  /* 只在筛选抽屉打开时渲染（首屏不再铺满筛选标签） */
+  const lvEl = document.getElementById("lvChips");
+  const geEl = document.getElementById("genreChips");
+  if(lvEl){
+    lvEl.innerHTML =
+      chip((LANG_INFO[activeLang()]||{}).label ? L("library.allLv", "全部难度") : L("library.allLv", "全部难度"),"all",fLv,"setLv") +
+      TIERS().map(t=>chip(t,t,fLv,"setLv")).join("");
+  }
+  if(geEl){
+    geEl.innerHTML =
+      chip(L("library.allGenres","全部类型"),"all",fGenre,"setGenre") +
+      Object.entries(GENRES()).map(([k,v])=>chip(v,k,fGenre,"setGenre")).join("");
+  }
 }
 function setLv(v){ fLv=v; libLimit=60; renderLibrary(); }
 function setGenre(v){ fGenre=v; libLimit=60; renderLibrary(); }
@@ -2531,31 +2711,36 @@ function renderRecs(){
     if(!open){
       return `<div class="rec-fold" onclick="openRecBlock('${escHtml(lv)}')">
         <b>${escHtml(lv)}</b>
-        <span class="rec-fold-tip">${titles.length} 本推荐</span>
-        <span class="rec-fold-go">展开 ›</span></div>`;
+        <span class="rec-fold-tip">· ${titles.length} 本</span>
+        <span class="rec-fold-go">${L("library.expand","展开")} ›</span></div>`;
     }
     return `<div class="rec-block" style="margin:6px 0 14px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <b style="font:600 14px var(--font);color:var(--brand-deep)">${escHtml(info.label || info.lvLabel || "等级")} ${escHtml(lv)} · ${L("library.rec","这个等级读什么")}</b>
-        <button class="btn ghost small" style="margin-left:auto" onclick="openExam()">📜 升级考试</button>
-        <button class="btn ghost small" onclick="setLv('${escHtml(lv)}')">只看 ${escHtml(lv)}</button>
-        ${isCur ? "" : `<button class="btn ghost small" onclick="closeRecBlock('${escHtml(lv)}')">收起</button>`}
+      <div class="rec-head">
+        <b class="rec-title">${escHtml(lv)} ${L("library.recRead","推荐阅读")}</b>
+        <button class="rec-btn" onclick="setLv('${escHtml(lv)}')">${L("library.onlyLv","只看")} ${escHtml(lv)}</button>
+        ${isCur ? `<button class="rec-btn rec-btn-icon" onclick="openExam()" title="${L("library.upgrade","升级考试")}">📜</button>`
+                 : `<button class="rec-btn rec-btn-icon" onclick="closeRecBlock('${escHtml(lv)}')" title="${L("library.collapse","收起")}">⌃</button>`}
       </div>
-      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
-        ${books.map(b => `<div onclick="openBook('${b.id}')" style="flex:0 0 132px;cursor:pointer;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)">
+      <div class="rec-scroll">
+        ${books.map(b => `<div onclick="openBook('${b.id}')" class="rec-card">
           <div class="cover g-${escHtml(b.g || "lit")}" style="height:96px;position:relative;padding:0;aspect-ratio:auto">
-            <img src="${coverSrc(b)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
+            <img src="${coverSrc(b)}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
           </div>
           <div style="padding:6px 8px">
             <div style="font:600 12px/1.35 var(--font);max-height:34px;overflow:hidden">${escHtml(b.t)}</div>
-            <div class="dim" style="font-size:11px">${escHtml(b.en || "")}</div>
+            <div class="dim" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.en || "")}</div>
           </div></div>`).join("")}
       </div></div>`;
   }).join("");
 }
 function renderLibrary(){
   renderLangChips();
-  renderChips();
+  renderFilterSummary();
+  if(document.getElementById("filterDrawer") && document.getElementById("filterDrawer").style.display !== "none"){
+    renderFilterDrawer();
+  } else {
+    renderChips();
+  }
   const kw = (document.getElementById("searchBox").value || "").trim().toLowerCase();
   /* 导入书籍排在最前（无筛选时） */
   const showImp = fLv==="all" && (fGenre==="all"||fGenre==="imp") && !kw;
@@ -2616,10 +2801,10 @@ function bookCard(b, rec){
   if(isImp){
     b.g = b.g || "imp";
     const ib = {id:b.id, t:b.t, zh:b.zh||"", a:b.a||"本地导入", y:"", lv:b.lv||"·", g:"imp"};
-    cov = `<img class="cimg" loading="lazy" src="${coverSrc(ib)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:ib.gb||0,t:ib.t,zh:ib.zh||"",a:ib.a||"",g:ib.g||"lit",id:ib.id||""}))})">
+    cov = `<img class="cimg" loading="lazy" decoding="async" src="${coverSrc(ib)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:ib.gb||0,t:ib.t,zh:ib.zh||"",a:ib.a||"",g:ib.g||"lit",id:ib.id||""}))})">
        <span class="lv">导入</span>`;
   } else {
-    cov = `<img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
+    cov = `<img class="cimg" loading="lazy" decoding="async" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
        <span class="lv">${b.lv||"·"}</span>`;
   }
   const hasFull = typeof b.gb === "number";
@@ -2650,7 +2835,7 @@ async function openBook(id){
       <span class="back" onclick="go('library')">← 返回书城</span>
       <div class="detail-head">
         <div class="cover g-imp">
-          <img class="cimg" loading="lazy" src="${coverSrc({id:imp.id,t:imp.t,zh:"",a:"本地导入",y:"",lv:"·",g:"imp"})}" alt="${escHtml(imp.t)}" onerror="coverFallback(this, {id:'${imp.id}',t:'',g:'imp'})">
+          <img class="cimg" loading="lazy" decoding="async" src="${coverSrc({id:imp.id,t:imp.t,zh:"",a:"本地导入",y:"",lv:"·",g:"imp"})}" alt="${escHtml(imp.t)}" onerror="coverFallback(this, {id:'${imp.id}',t:'',g:'imp'})">
           <span class="lv">导入</span></div>
         <div class="detail-info">
           <h2>${escHtml(imp.t)}</h2>
@@ -2681,7 +2866,7 @@ async function openBook(id){
     <span class="back" onclick="go('library')">← 返回书城</span>
     <div class="detail-head">
       <div class="cover g-${b.g}">
-        <img class="cimg" loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
+        <img class="cimg" loading="lazy" decoding="async" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))} 书衣" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
         <span class="lv">${escHtml(b.lv)}</span></div>
       <div class="detail-info">
         <h2>${escHtml(b.t)}${b.zh && b.zh!==b.t ? " · "+escHtml(b.zh) : ""}</h2>
