@@ -30,6 +30,7 @@
 <script src="data/lang-recs.js?v=1"></script>
 <script src="data/lang-tests.js?v=1"></script>
 <script src="data/lang-test-options.js?v=1"></script>
+<script src="data/offline-tr.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
@@ -1425,6 +1426,17 @@ function setGlossLang(code){
 }
 function langCodes(){ return LANGS.map(x=>x.code); }
 /* UI 文案：学习语言界面（主）+ 展示语言（覆盖） */
+/* 小程序环境（用于支付分流） */
+function isWechatMiniAppEnv(){
+  try{ return isMiniProgram(); }catch(e){ return false; }
+}
+/* 是否 iOS 真机（含微信 WebView / 小程序） */
+function isIOSDevice(){
+  try{
+    if(navigator.userAgentData && navigator.userAgentData.platform) return /iOS/i.test(navigator.userAgentData.platform);
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }catch(e){ return false; }
+}
 /* 是否运行在微信小程序 web-view 里 */
 function isMiniProgram(){
   try{
@@ -4031,6 +4043,21 @@ function wordClick(e){
     return;
   }
   const d = dictEntry(low);
+  /* 本地词典没有 → 先从离线句库找一句含该词的译文，保证断网也有内容 */
+  if(!d && lc === "en"){
+    const hint = offlineWordHint(low, showLang());
+    if(hint){
+      try{
+        document.getElementById("shWord").textContent = sheetWord;
+        document.getElementById("shDef").innerHTML = `<span class="dim">（离线例句参考）</span><br>${escHtml(hint)}`;
+        const sheet = document.getElementById("sheet"), mask = document.getElementById("mask");
+        if(sheet) sheet.classList.add("on");
+        if(mask) mask.classList.add("on");
+      }catch(e){}
+      sheetWordKey = low;
+      return;
+    }
+  }
   const isProper = isLatinLang(lc) ? (/^[A-Z][a-z]+$/.test(sheetWord) && !d) : false;
   /* 日语/韩语：本地无词条时静默走机翻，不显示「专有名词未识别」 */
   if(d == null && (lc === "ja" || lc === "ko")){
@@ -4500,10 +4527,65 @@ async function fetchDictDetail(word, entry){
 const GT_LANG = { zh:"zh-CN", en:"en", de:"de", fr:"fr", it:"it", es:"es", ja:"ja", ko:"ko" };
 /* 指定目标语言机翻（不需要后端）：供「各国语言怎么说」使用 */
 const _mtToCache = {};
+/* 离线兜底：在离线句库里找含该词的句子，把带该词的中文片段提出来 */
+let _OFFTR_INDEX = null;
+function offlineWordHint(word, code){
+  if(code !== "zh") return "";
+  const tbl = window.LZ_OFFTR;
+  if(!tbl) return "";
+  const w = String(word || "").trim().toLowerCase();
+  if(w.length < 2) return "";
+  if(!_OFFTR_INDEX){
+    _OFFTR_INDEX = [];
+    for(const [k, v] of Object.entries(tbl)){
+      if(!v.zh) continue;
+      _OFFTR_INDEX.push([k, v.zh]);
+    }
+  }
+  /* 只扫前 4000 条，避免卡顿 */
+  let best = "";
+  for(let i = 0; i < _OFFTR_INDEX.length && i < 4000; i++){
+    const [src, zh] = _OFFTR_INDEX[i];
+    if(src.length < 70 && new RegExp("\\b" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(src)){
+      best = zh;
+      break;
+    }
+  }
+  return best;
+}
+/* 机翻不可用时，用离线句库里"同开头"的句子译文近似兜底 */
+function offlineSimilar(text, code){
+  if(code !== "zh" || !window.LZ_OFFTR) return "";
+  const src = String(text || "").trim();
+  if(src.length < 8) return "";
+  const head = src.split(/\s+/).slice(0, 3).join(" ").toLowerCase();
+  const tbl = window.LZ_OFFTR;
+  const exact = tbl[src];
+  if(exact && exact.zh) return exact.zh;
+  let best = "", bestLen = 1e9;
+  for(const [k, v] of Object.entries(tbl)){
+    if(!v.zh || k.length >= bestLen) continue;
+    if(k.toLowerCase().startsWith(head)){ best = v.zh; bestLen = k.length; }
+  }
+  return best;
+}
+/* 离线翻译包查询：优先命中本地已人工/已有译文，断网也能出结果 */
+function offlineTranslate(text, code){
+  if(code !== "zh") return "";           /* 目前只内置中文译文 */
+  const t = String(text || "").trim();
+  if(!t) return "";
+  const tbl = window.LZ_OFFTR;
+  if(!tbl) return "";
+  const hit = tbl[t];
+  if(hit && hit.zh) return hit.zh;
+  return "";
+}
 async function mtTo(text, code){
   const tgt = GT_LANG[code] || code;
   const key = tgt + "|" + text;
   if(_mtToCache[key]) return _mtToCache[key];
+  const local = offlineTranslate(text, code);
+  if(local){ _mtToCache[key] = local; return local; }
   const u1 = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=" + encodeURIComponent(tgt) + "&q=" + encodeURIComponent(text);
   try{
     const r = await fetch(u1, {cache:"no-store", signal: AbortSignal.timeout(8000)});
@@ -4555,9 +4637,32 @@ function _stripBadTrans(t){
 async function apiTranslateTexts(texts){
   /* 等后端探测结果（避免探测未完成就先发请求） */
   try{ if(window.__lzApiReady) await window.__lzApiReady; }catch(e){}
-  /* 静态托管（GitHub Pages 等）没有后端：直接跳过，避免每个词都发一个 404 */
-  if(hasLocalAPI === false && !window.__LZ_NATIVE) return {};
-  if(!window.__LZ_NATIVE && !hasLocalAPI) return {};   /* 探测中/未知也先不请求 */
+  /* 离线包优先：已内置的句子/短语直接返回，断网也能用 */
+  const offline = {};
+  const rest = [];
+  for(const t of texts){
+    const hit = offlineTranslate(t, showLang());
+    if(hit) offline[t] = hit; else rest.push(t);
+  }
+  /* 静态托管（GitHub Pages 等）没有后端：跳过 404，剩下用浏览器直连机翻补 */
+  if((hasLocalAPI === false || !hasLocalAPI) && !window.__LZ_NATIVE){
+    if(!rest.length) return offline;
+    try{
+      const pairs = await Promise.all(rest.slice(0, 30).map(async t => {
+        try{ const r = await mtTo(t, showLang()); return [t, r || ""]; }catch(e){ return [t, ""]; }
+      }));
+      pairs.forEach(([t, r]) => { if(r) offline[t] = r; });
+    }catch(e){}
+    /* 机翻全失败（断网）时，用句库里的近似译法兜底：同首词的最短句 */
+    if(!Object.keys(offline).length && window.LZ_OFFTR){
+      for(const t of rest){
+        const near = offlineSimilar(t, showLang());
+        if(near) offline[t] = near;
+      }
+    }
+    return offline;
+  }
+  if(Object.keys(offline).length && !rest.length) return offline;
   const payload = JSON.stringify({texts: texts.map(t=>_normText(t)).filter(Boolean).slice(0,40), from: activeLang(), to: showLang()});
   const urls = [apiUrl("api/translate")];
   /* 打包壳：Capacitor 把 public/api/* 的请求交给原生层发起（不经 WebView CORS） */
@@ -7181,7 +7286,7 @@ function renderGuide(){
     <div class="settings-card">
       <h3>常见问题</h3>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>点词/翻译没反应？</b>先看设置里「离线模式」是否打开；关闭它，或确认这本书的本章已缓存。翻译源是 Google/MyMemory，网络受限时会自动降级，已翻过的句子永远秒显。</div></div>
-      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。会员 ¥28/月起、全语言 ¥388/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
+      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。会员 ¥22/月起、全语言 ¥328/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>新书第一次打开很慢？</b>3300 本书默认按需下载完整全文（不删节）。常用 272 本已打包在本地秒开；其余第一次需联网，之后存入 IndexedDB。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>导入 PDF 提示失败？</b>扫描版 PDF 没有文字层，需先 OCR；普通文字版 PDF 可直接导入。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>怎么离线？</b>打开一本书后点「📶 离线本书」，或设置里「离线模式」。译文要离线显示，需先在线点「翻译本章」。</div></div>
@@ -7777,15 +7882,16 @@ function showPaywall(reason){
         <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
       </div>
       <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:8px 0 12px">
-        「${escHtml(reason)}」属于会员功能。会员解锁：<b>全部 7 门学习语言</b>、不限量整章翻译、整书预翻译、全部离线下载、学习报告导出。
+        「${escHtml(reason)}」属于会员功能。会员解锁：<b>全部 16 门学习语言</b>、不限量整章翻译、整书预翻译、全部离线下载、学习报告导出。
       </p>
       <div style="display:grid;gap:8px">
-        <button class="btn" onclick="selectCheckout('month')">月度会员 ¥12 / 月（内测价）</button>
-        <button class="btn ghost" onclick="selectCheckout('quarter')">季度会员 ¥30 / 季（约 ¥10/月）</button>
-        <button class="btn ghost" onclick="selectCheckout('year')">年度会员 ¥98 / 年（约 ¥8.2/月）</button>
+        <button class="btn" onclick="selectCheckout2('all_month')">全语言 ¥48 / 月</button>
+        <button class="btn ghost" onclick="selectCheckout2('all_quarter')">全语言 ¥108 / 季（¥36/月）</button>
+        <button class="btn ghost" onclick="selectCheckout2('all_year')">全语言 ¥328 / 年（¥27/月）</button>
+        <button class="btn ghost" onclick="selectCheckout2('lang')">单语言 ¥22 / 月</button>
       </div>
-      <div class="paywall-note">
-        内测阶段：真实支付通道接入中，当前可用内测码开通（大小写不敏感，一机一码一次）。
+      <div class="paywall-note" id="payChannelNote">
+        支持：微信支付 / 支付宝 / 激活码。
         <div class="share-link-box">
           <input class="code-input" id="paywallCode" placeholder="输入内测码（大小写不敏感，一机一码一次）">
           <button class="btn small" onclick="paywallActivate()">激活</button>
@@ -7847,7 +7953,7 @@ function showCheckoutSheet(plan){
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost small" onclick="closePaywall();go('plan')">查看全部权益 →</button>
-        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥128/季）</button>` : ""}
+        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥108/季）</button>` : ""}
       </div>
     </div>`;
   el.classList.add("on");
@@ -7897,6 +8003,51 @@ function isStoreBuild(){
   if(COMMERCE === "web") return false;
   if(COMMERCE === "store") return true;
   return window.__LZ_NATIVE === true;
+}
+/* 站点内的收款分流：
+   ① 微信小程序 + iOS  → 微信规则禁止虚拟支付，只展示「激活码」与说明
+   ② 微信小程序 + 安卓 → 微信支付（需后端下的 JSAPI/H5 单）
+   ③ 网页 / APK       → 支付宝 + 微信 + 激活码
+   ④ App 商店包        → 只走内购（原有逻辑） */
+function payChannelState(){
+  const mini = isWechatMiniAppEnv();
+  const ios = isIOSDevice();
+  if(mini && ios) return { mode:"mini_ios",  pay:false, code:true,  note:"iOS 端微信小程序不支持虚拟支付，可用激活码开通（微信支付仅安卓可用）。" };
+  if(mini)        return { mode:"mini_android", pay:true, code:true, note:"安卓小程序可用微信支付；也可用激活码。" };
+  if(isStoreBuild()) return { mode:"store", pay:false, code:false, note:"App 内使用商店内购。" };
+  return { mode:"web", pay:true, code:true, note:"支持微信支付、支付宝，或输入激活码。" };
+}
+function renderMiniPayNote(){
+  const el = document.getElementById("miniPayNote");
+  if(!el) return;
+  const st = payChannelState();
+  el.innerHTML = `<div class="paywall-note" style="margin:6px 0 0">${escHtml(st.note)}</div>`;
+}
+function selectCheckout2(plan){
+  const st = payChannelState();
+  if(st.mode === "mini_ios"){
+    /* iOS 小程序：不发起支付，直接引导激活码/去网页版 */
+    const el = ensurePaywall();
+    el.innerHTML = `<div class="box">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font:700 20px var(--serif)">开通会员</div>
+        <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">
+        受微信规则限制，<b>iOS 端小程序内不能直接购买</b>虚拟内容。<br><br>
+        三种开通方式：<br>
+        ① 用<b>激活码</b>在此直接开通（下面输入即可）<br>
+        ② 复制链接到 <b>Safari</b> 打开网页版，用微信/支付宝支付<br>
+        ③ 换 <b>安卓手机</b> 打开小程序，可用微信支付
+      </p>
+      <div class="lang-row">
+        <button class="btn small" onclick="copyText(location.origin+location.pathname)">复制网页版链接</button>
+        <button class="btn ghost small" onclick="closePaywall()">稍后</button>
+      </div></div>`;
+    el.classList.add("on");
+    return;
+  }
+  selectCheckout(plan);
 }
 function selectCheckout(plan){
   const def = PLAN_DEF[plan];
@@ -8101,6 +8252,7 @@ async function iapBuy(productId){
 }
 function escapedAttr(v){ return String(v||"").replace(/"/g, "&quot;"); }
 function renderPlan(){
+  setTimeout(()=>{ try{ renderMiniPayNote(); }catch(e){} }, 0);
   const body = document.getElementById("planBody");
   const st = proState();
   const current = st ? planLabel() : "免费版";
@@ -8141,7 +8293,7 @@ function renderPlan(){
       <div class="plan-card hot">
         <span class="tagline">按需订阅</span>
         <div class="plan-name">单语言会员</div>
-        <div class="plan-price">¥28<small>/月</small></div>
+        <div class="plan-price">¥22<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">选定 1 门语言（英语已免费）</li>
           <li class="ok">该语言不限量整章翻译</li>
@@ -8149,41 +8301,46 @@ function renderPlan(){
           <li class="ok">学习报告导出</li>
           <li class="ok">句子拼装完整记录</li>
         </div>
-        <button class="btn" onclick="selectCheckout('lang')">选语言开通 ¥28</button>
+        <button class="btn" onclick="selectCheckout2('lang')">选语言开通 ¥22</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 月度</div>
-        <div class="plan-price">¥58<small>/月</small></div>
+        <div class="plan-price">¥48<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 整书预翻译</li>
           <li class="ok">学期计划包</li>
         </div>
-        <button class="btn ghost" onclick="selectCheckout('all_month')">开通 ¥58</button>
+        <button class="btn ghost" onclick="selectCheckout2('all_month')">开通 ¥48</button>
       </div>
       <div class="plan-card hot">
         <span class="tagline">推荐 · 一个学期</span>
         <div class="plan-name">全语言 · 季度</div>
-        <div class="plan-price">¥128<small>/季</small></div>
+        <div class="plan-price">¥108<small>/季</small></div>
         <div class="plan-feat">
           <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 全部离线</li>
           <li class="ok">学期计划包（16 周书单打卡）</li>
           <li class="ok">班级/小组共用生词本（5 个名额）</li>
         </div>
-        <button class="btn" onclick="selectCheckout('all_quarter')">开通 ¥128</button>
+        <button class="btn" onclick="selectCheckout2('all_quarter')">开通 ¥108</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 年度</div>
-        <div class="plan-price">¥388<small>/年</small></div>
+        <div class="plan-price">¥328<small>/年</small></div>
         <div class="plan-feat">
           <li class="ok">季度会员全部权益</li>
-          <li class="ok">折合 ¥32/月</li>
+          <li class="ok">折合 ¥27/月</li>
           <li class="ok">一年内新功能免费</li>
           <li class="ok">班级共享 20 个名额</li>
         </div>
-        <button class="btn" onclick="selectCheckout('all_year')">开通 ¥388</button>
+        <button class="btn" onclick="selectCheckout2('all_year')">开通 ¥328</button>
       </div>
+    </div>
+    <div class="settings-card" id="miniPayCard">
+      <h3>💳 收款方式</h3>
+      <div id="miniPayNote"></div>
+      <div class="sub" style="margin-top:6px">网页版与安卓 APK：微信支付 / 支付宝 / 激活码；iOS：激活码或网页版支付。</div>
     </div>
     <div class="settings-card">
       <h3>🎓 学期计划包 <span class="tip" style="display:inline">${(LANG_INFO[activeLang()]||{}).native} · 已完成 ${doneW}/16 周</span></h3>
@@ -8226,7 +8383,7 @@ function renderPlan(){
         <button class="btn" onclick="planActivate()">立即激活</button>
       </div>
       <div class="paywall-note">
-        <b>价格</b>：单语言 ¥28/月；全语言 ¥58/月、¥128/季、¥388/年（含税）。<br>
+        <b>价格</b>：单语言 ¥22/月；全语言 ¥48/月、¥108/季、¥328/年（含税）。<br>
         <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
     </div>`}
@@ -8235,7 +8392,7 @@ function renderPlan(){
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="color:var(--muted);text-align:left">
-            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥28</th><th>全语言 ¥58/月</th><th>全语言 ¥128/季</th><th>全语言 ¥388/年</th></tr></thead>
+            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥22</th><th>全语言 ¥48/月</th><th>全语言 ¥108/季</th><th>全语言 ¥328/年</th></tr></thead>
           <tbody>
             ${[
               ["学习语言","英 + 1 自选","英 + 1 门","全部 8 门","全部 8 门","全部 8 门"],
