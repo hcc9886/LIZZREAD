@@ -671,6 +671,40 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* ===== 兑换券：发放 / 记录（iOS 小程序等无法在线支付的场景） ===== */
+  if(u.pathname.startsWith('/api/voucher/')){
+    const VFILE = path.join(ROOT, 'data', 'vouchers.json');
+    const readV = () => { try{ return JSON.parse(fs.readFileSync(VFILE, 'utf8')) || {}; }catch(e){ return {}; } };
+    const writeV = (o) => { try{ fs.writeFileSync(VFILE + '.part', JSON.stringify(o, null, 2)); fs.renameSync(VFILE + '.part', VFILE); }catch(e){} };
+    const gen = (tier) => {
+      const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const r = (n) => Array.from({length:n}, () => a[cryptoPick(a)]).join('');
+      return 'LZ-' + String(tier || 'trial').toUpperCase().slice(0,4) + '-' + r(4) + '-' + r(4);
+    };
+    const cryptoPick = (arr) => require('crypto').randomInt(arr.length);
+
+    if(u.pathname === '/api/voucher/issue' && req.method === 'POST'){
+      let body = {};
+      try{
+        const raw = await new Promise(res => { let t=''; req.on('data', c=>{t+=c; if(t.length>1e5) req.destroy();}); req.on('end',()=>res(t)); req.on('error',()=>res('')); });
+        body = JSON.parse(raw || '{}');
+      }catch(e){ body = {}; }
+      const to = String(body.email || body.phone || '').trim();
+      if(!to){ sendJSON(res, 400, {ok:false, message:'需要邮箱或手机号'}); return; }
+      const voucher = gen('trial');
+      const all = readV();
+      all[voucher] = { to, device: String(body.device || ''), at: Date.now(), used: false };
+      writeV(all);
+      sendJSON(res, 200, {ok:true, voucher, to});
+      return;
+    }
+
+    if(u.pathname === '/api/voucher/request' && req.method === 'POST'){
+      sendJSON(res, 200, {ok:true, message:'已记录申请，客服会尽快联系'});
+      return;
+    }
+  }
+
   /* ===== 支付：下单 / 查询 / 回调（支付宝 + 微信） ===== */
   if(u.pathname.startsWith('/api/pay/')){
     const pay = require('./server/pay.js');
