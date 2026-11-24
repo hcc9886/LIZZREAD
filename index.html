@@ -7288,7 +7288,7 @@ function renderGuide(){
     <div class="settings-card">
       <h3>常见问题</h3>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>点词/翻译没反应？</b>先看设置里「离线模式」是否打开；关闭它，或确认这本书的本章已缓存。翻译源是 Google/MyMemory，网络受限时会自动降级，已翻过的句子永远秒显。</div></div>
-      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。会员 ¥22/月起、全语言 ¥328/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
+      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。会员 ¥22/月起、全语言 ¥299/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>新书第一次打开很慢？</b>3300 本书默认按需下载完整全文（不删节）。常用 272 本已打包在本地秒开；其余第一次需联网，之后存入 IndexedDB。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>导入 PDF 提示失败？</b>扫描版 PDF 没有文字层，需先 OCR；普通文字版 PDF 可直接导入。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>怎么离线？</b>打开一本书后点「📶 离线本书」，或设置里「离线模式」。译文要离线显示，需先在线点「翻译本章」。</div></div>
@@ -7778,6 +7778,12 @@ async function activateCode(code, silent){
   if(!c){ if(!silent) toast("请输入激活码。"); return false; }
   let def = REDEEM_CODES[c];
   if(!def){
+    try{
+      const local = JSON.parse(localStorage.getItem("lz_local_vouchers") || "{}")[c];
+      if(local) def = { plan: local.plan, days: local.days, scope: local.scope };
+    }catch(e){}
+  }
+  if(!def){
     /* 本机生成的兑换券（无后端场景） */
     try{
       const local = JSON.parse(localStorage.getItem("lz_local_vouchers") || "{}")[c];
@@ -8141,24 +8147,129 @@ function deviceVoucherCode(){
    全程没有引导语（不写"去外部购买"），只是打开自己的官方页面。 */
 const MINI_IOS_PAY_URL = "https://hcc9886.github.io/LIZZREAD/index.html?iosmini=1&pay=1";
 
+/* iOS 小程序：三条路都保留
+   ① 打开官方订阅页（web-view 内可直接用微信/支付宝付款）
+   ② 输入兑换码（你/客服在微信里发的码）
+   ③ 填邮箱或手机号，把兑换码发到你手上 */
 function openMiniIosCheckout(plan){
+  window.__lzPendingPlan = plan;
+  const mine = deviceVoucherCode();
+  const saved = "";
   const el = ensurePaywall();
   el.innerHTML = `<div class="box" style="max-height:86vh;overflow-y:auto">
     <div style="display:flex;align-items:center;gap:8px">
       <div style="font:700 20px var(--serif)">会员开通</div>
       <button onclick="closePaywall()" style="margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
     </div>
-    <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:12px 0">
-      iOS 版小程序内无法直接完成订阅。请点下面按钮，在打开的官方订阅页完成开通，
-      完成后会自动同步到你的账号。
+    <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:10px 0 14px">
+      iOS 版小程序内不能直接调起支付。下面三种方式任选一种即可开通。
     </p>
-    <div style="display:grid;gap:8px;margin-top:6px">
-      <button class="btn" onclick="openMiniIosPayPage()">打开官方订阅页</button>
-      <button class="btn ghost small" onclick="closePaywall()">稍后</button>
+
+    <div class="settings-card" style="margin:0 0 12px">
+      <b>① 打开官方订阅页</b>
+      <div class="sub" style="margin-top:4px">在页面内可用微信或支付宝完成订阅，完成后自动到账。</div>
+      <button class="btn" style="margin-top:8px" onclick="openMiniIosPayPage()">打开官方订阅页</button>
     </div>
-    <div class="tip" style="margin-top:10px">打开后即可用微信或支付宝完成订阅；完成后回到本页会自动刷新会员状态。</div>
+
+    <div class="settings-card" style="margin:0 0 12px">
+      <b>② 输入兑换码</b>
+      <div class="share-link-box" style="margin-top:8px">
+        <input class="code-input" id="miniVoucher" placeholder="粘贴兑换码（形如 LZ-YEAR-XXXX-XXXX）" value="${escAttr(saved)}">
+        <button class="btn small" onclick="redeemMiniVoucher()">立即激活</button>
+      </div>
+      <div class="tip" id="miniVoucherMsg" style="margin-top:6px">兑换码一次性使用，激活后立即生效。</div>
+    </div>
+
+    <div class="settings-card" style="margin:0">
+      <b>③ 把兑换码发给我</b>
+      <div class="sub" style="margin-top:4px">填邮箱或手机号，兑换码会发送到你填写的方式。</div>
+      <div class="hang-inputs" style="margin-top:8px">
+        <input class="code-input" id="miniEmail" placeholder="邮箱" type="email">
+        <input class="code-input" id="miniPhone" placeholder="手机号" inputmode="tel">
+      </div>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn small" onclick="requestVoucherByDevice()">发送兑换码</button>
+        <button class="btn ghost small" onclick="copyText(deviceVoucherCode())">设备号 ${escHtml(mine)}</button>
+      </div>
+      <div class="tip" id="miniSendMsg" style="margin-top:6px">填邮箱或手机号，二选一即可。</div>
+    </div>
   </div>`;
   el.classList.add("on");
+}
+
+/* 兑换码生成（无后端时本地兜底，可在本机直接激活） */
+function genVoucherCode(tier){
+  const t = String(tier || "year").toUpperCase().slice(0, 4);
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const r = ()=>{ let o = ""; for(let i = 0; i < 4; i++) o += a[Math.floor(Math.random() * a.length)]; return o; };
+  return "LZ-" + t + "-" + r() + "-" + r();
+}
+function registerLocalVoucher(code, plan, days){
+  try{
+    const all = JSON.parse(localStorage.getItem("lz_local_vouchers") || "{}");
+    all[String(code).toLowerCase()] = { plan: plan || "all_year", days: days || 366, scope: "all", at: Date.now() };
+    localStorage.setItem("lz_local_vouchers", JSON.stringify(all));
+  }catch(e){}
+}
+async function redeemMiniVoucher(){
+  const box = document.getElementById("miniVoucher");
+  const msg = document.getElementById("miniVoucherMsg");
+  const raw = (box && box.value || "").trim();
+  if(!raw){ if(msg) msg.textContent = "请先粘贴兑换码"; return; }
+  if(msg) msg.textContent = "正在核验…";
+  try{
+    const ok = await activateCode(raw, true);
+    if(ok){
+      try{ localStorage.setItem("lz_voucher", raw); }catch(e){}
+      if(msg){ msg.textContent = "✅ 激活成功，会员已开通"; msg.style.color = "var(--brand-deep)"; }
+      setTimeout(()=>{ closePaywall(); try{ renderPlan(); }catch(e){} }, 900);
+    } else if(msg){
+      msg.textContent = "兑换码无效、已使用或已过期";
+      msg.style.color = "var(--danger, #c0392b)";
+    }
+  }catch(e){
+    if(msg) msg.textContent = "核验失败：" + (e.message || "请稍后再试");
+  }
+}
+async function requestVoucherByDevice(){
+  const email = (document.getElementById("miniEmail")?.value || "").trim();
+  const phone = (document.getElementById("miniPhone")?.value || "").trim();
+  const msg = document.getElementById("miniSendMsg");
+  const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  const isPhone = /^1[3-9]\d{9}$/.test(phone);
+  if(!isEmail && !isPhone){
+    if(msg){ msg.textContent = "请填有效邮箱或 11 位手机号"; msg.style.color = "var(--danger, #c0392b)"; }
+    return;
+  }
+  if(msg){ msg.textContent = "正在生成…"; msg.style.color = ""; }
+  let code = "";
+  try{
+    const r = await fetch(apiUrl("api/voucher/issue"), {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ device: deviceId(), code: deviceVoucherCode(), email: isEmail ? email : "", phone: isPhone ? phone : "" })
+    });
+    if(r.ok){ const j = await r.json().catch(()=>({})); if(j && j.voucher) code = j.voucher; }
+  }catch(e){}
+  if(!code){ code = genVoucherCode("year"); registerLocalVoucher(code, "all_year", 366); }
+  try{ localStorage.setItem("lz_voucher", code); }catch(e){}
+  const body = "LIZZREAD 会员兑换码：" + code;
+  if(isEmail){
+    window.location.href = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent("LIZZREAD 会员兑换码") + "&body=" + encodeURIComponent(body);
+  }
+  if(msg){
+    msg.innerHTML = `兑换码 <b>${escHtml(code)}</b> 已生成${isEmail ? "，正在打开邮箱" : ""}。可直接复制粘贴到上方「② 输入兑换码」。`;
+    msg.style.color = "var(--brand-deep)";
+  }
+  const box = document.getElementById("miniVoucher");
+  if(box) box.value = code;
+  try{ copyText(code); }catch(e){}
+  toast("兑换码：" + code);
+}
+function deviceVoucherCode(){
+  const d = deviceId();
+  let h = 0;
+  for(let i = 0; i < d.length; i++){ h = (h * 31 + d.charCodeAt(i)) >>> 0; }
+  return h.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
 }
 
 /* 在 web-view 里打开官方订阅页（小程序环境下用 wx.miniProgram.navigateTo 或直接跳转） */
@@ -8514,14 +8625,14 @@ function renderPlan(){
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 年度</div>
-        <div class="plan-price">¥328<small>/年</small></div>
+        <div class="plan-price">¥299<small>/年</small></div>
         <div class="plan-feat">
           <li class="ok">季度会员全部权益</li>
-          <li class="ok">折合 ¥27/月</li>
+          <li class="ok">折合 ¥25/月</li>
           <li class="ok">一年内新功能免费</li>
           <li class="ok">班级共享 20 个名额</li>
         </div>
-        <button class="btn" onclick="selectCheckout2('all_year')">开通 ¥328</button>
+        <button class="btn" onclick="selectCheckout2('all_year')">开通 ¥299</button>
       </div>
     </div>
     <div class="settings-card" id="miniPayCard">
@@ -8570,7 +8681,7 @@ function renderPlan(){
         <button class="btn" onclick="planActivate()">立即激活</button>
       </div>
       <div class="paywall-note">
-        <b>价格</b>：单语言 ¥22/月；全语言 ¥48/月、¥108/季、¥328/年（含税）。<br>
+        <b>价格</b>：单语言 ¥22/月；全语言 ¥48/月、¥108/季、¥299/年（含税）。<br>
         <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
     </div>`}
@@ -8579,7 +8690,7 @@ function renderPlan(){
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="color:var(--muted);text-align:left">
-            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥22</th><th>全语言 ¥48/月</th><th>全语言 ¥108/季</th><th>全语言 ¥328/年</th></tr></thead>
+            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥22</th><th>全语言 ¥48/月</th><th>全语言 ¥108/季</th><th>全语言 ¥299/年</th></tr></thead>
           <tbody>
             ${[
               ["学习语言","英 + 1 自选","英 + 1 门","全部 8 门","全部 8 门","全部 8 门"],

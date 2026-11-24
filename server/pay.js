@@ -21,7 +21,7 @@ const PLANS = {
   lang:        { name: '单语言会员 · 月', fen: 2200,  days: 31,  scope: 'one' },
   all_month:   { name: '全语言 · 月',     fen: 4800,  days: 31,  scope: 'all' },
   all_quarter: { name: '全语言 · 季',     fen: 10800, days: 93,  scope: 'all' },
-  all_year:    { name: '全语言 · 年',     fen: 32800, days: 366, scope: 'all' }
+  all_year:    { name: '全语言 · 年',     fen: 29900, days: 366, scope: 'all' }
 };
 
 /* ---------- 订单存储 ---------- */
