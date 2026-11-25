@@ -196,6 +196,28 @@ html.dv-mini .lz-update-bar{bottom:auto;top:12px}
 .fin-stats{display:flex;justify-content:center;gap:32px;margin:22px 0 6px}
 .fin-stats b{display:block;font-size:26px;font-family:var(--serif)}
 .fin-stats span{font-size:12px;color:var(--muted)}
+/* 行间释义：词下方一行小字 */
+.igl{display:inline-block;font-size:.62em;line-height:1.1;color:var(--muted);margin:0 1px 0 0;vertical-align:-.28em;border-bottom:1px dotted var(--border);white-space:nowrap}
+/* 用户可选的字体与格式变量 */
+.reader .sent .en, .reader .sent .zh{font-family:var(--read-font, Georgia, serif)}
+.reader .sent .en{font-size:var(--read-size,17px);line-height:var(--read-lh,1.75);text-align:var(--read-align,left);text-indent:var(--read-indent,0)}
+.reader .sent{margin-bottom:var(--read-pgap,12px)}
+@media (min-width:720px){ .reader{padding-left:calc(var(--read-margin,16px) + 8px);padding-right:calc(var(--read-margin,16px) + 8px)} }
+.fd-val{float:right;color:var(--brand-deep);font-weight:600}
+/* 报纸版式 */
+html.rl-paper .reader{max-width:1080px;margin:0 auto;column-count:2;column-gap:32px;column-rule:1px solid var(--border)}
+html.rl-paper .reader .sent{break-inside:avoid}
+html.rl-paper .rd-head h2{font-family:var(--read-font,Georgia);border-bottom:3px double var(--border);padding-bottom:8px}
+html.rl-paper .sent:first-of-type .en::first-letter{font-size:2.6em;float:left;line-height:.9;padding-right:6px;font-weight:700}
+@media (max-width:820px){ html.rl-paper .reader{column-count:1} }
+/* 电子书版式 */
+html.rl-ebook .reader{max-width:680px;margin:0 auto;padding:28px 26px}
+html.rl-ebook .sent{margin-bottom:calc(var(--read-pgap,12px) + 6px)}
+html.rl-ebook .rd-head h2{text-align:center;margin:18px 0 26px;font-weight:400}
+/* 论文版式 */
+html.rl-doc .reader{max-width:900px;margin:0 auto}
+html.rl-doc .sent .en{font-size:calc(var(--read-size,17px) - 3px);line-height:1.55;text-align:justify}
+html.rl-doc .sent .zh{font-size:calc(var(--read-size,17px) - 4px)}
 /* 阅读排版 */
 .rd-layout{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
 .rd-layout .chip{min-height:30px;font-size:12.5px;padding:0 12px}
@@ -213,6 +235,18 @@ html.rl-wide .reader{max-width:860px;margin:0 auto}
 .gr-row>b{flex:0 0 42px;color:var(--brand-deep)}
 .gr-block{margin-top:8px;padding:10px;background:var(--brand-soft);border-radius:10px;font-size:13px;line-height:1.7}
 .gr-block>b{display:block;color:var(--brand-deep);margin-bottom:2px}
+/* 单词打怪闯关 */
+.wq-hud{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:var(--surface2);font-size:13.5px}
+.wq-stage{position:relative;margin-top:14px;padding:22px 16px;border-radius:16px;text-align:center;background:linear-gradient(180deg,#101d18,#16291f);color:#e8f5ec;overflow:hidden}
+.wq-monster{font-size:52px;transition:transform .15s}
+.wq-monster.hit{transform:scale(1.25) rotate(-8deg)}
+.wq-prompt{font-size:22px;margin:10px 0 14px;min-height:36px}
+.wq-zh{font-weight:600;letter-spacing:.5px}
+.wq-input{width:100%;max-width:420px;margin:0 auto;display:block;min-height:46px;border-radius:12px;border:2px solid #2fbf72;background:#0b1512;color:#fff;font:600 17px var(--font);text-align:center;padding:0 14px}
+.wq-input:disabled{opacity:.45}
+.wq-wrong{display:grid;gap:6px}
+.wq-wrong-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px}
+.wq-wrong-row .dim{flex:1;min-width:0;color:var(--muted)}
 /* 看视频学 */
 .video-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden}
 .lz-video{width:100%;max-height:62vh;display:block;background:#000}
@@ -621,6 +655,7 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
       <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
       <button id="nav-video" onclick="go('video')">🎬 看视频</button>
+      <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
       <button onclick="go('sentcol')">⭐ 金句</button>
@@ -726,6 +761,34 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 单词打怪闯关 ============ -->
+  <section class="view" id="view-wordquest">
+    <h2 class="sec">⚔️ 单词打怪闯关</h2>
+    <div class="sub">挑一组词，边打字边打怪。打对推进、打错扣血，闯关记录进错词本。</div>
+    <div class="lang-row" style="margin:10px 0">
+      <button class="chip on" id="wqSrcHigh" onclick="wqSetSrc('high')">高频词随机 100</button>
+      <button class="chip" id="wqSrcMine" onclick="wqSetSrc('mine')">我的错词本</button>
+      <button class="chip" id="wqSrcVocab" onclick="wqSetSrc('vocab')">我的生词本</button>
+    </div>
+    <div class="wq-hud">
+      <span>❤️ <b id="wqHp">3</b></span>
+      <span>🔥 连击 <b id="wqCombo">0</b></span>
+      <span>👾 第 <b id="wqRound">0</b> 波</span>
+      <span>✅ 正确 <b id="wqRight">0</b></span>
+      <button class="btn ghost small" style="margin-left:auto" onclick="wqStart()">开始 / 重开</button>
+    </div>
+    <div id="wqStage" class="wq-stage">
+      <div class="wq-monster">👾</div>
+      <div class="wq-prompt" id="wqPrompt">点「开始」消灭第一只怪</div>
+      <input class="wq-input" id="wqInput" placeholder="在这里输入中文释义对应的英文单词…" onkeydown="if(event.key==='Enter')wqSubmit()" disabled>
+      <div class="tip" id="wqTip" style="margin-top:8px">打字模式：看到中文，打出英文单词。错了扣血，连击加分。</div>
+    </div>
+    <div class="settings-card" style="margin-top:14px">
+      <h3>我的错词本 <span class="tip" style="display:inline" id="wqWrongCount"></span></h3>
+      <div id="wqWrongList" class="wq-wrong"></div>
+    </div>
   </section>
 
   <!-- ============ 看视频学（本地视频 + SRT/VTT 字幕） ============ -->
@@ -2526,8 +2589,83 @@ const READ_LAYOUTS = {
   original: { name:"原书排版", desc:"保留章节标题、分隔线与对白缩进，最接近纸质书" },
   simple:   { name:"简洁模式", desc:"去掉标题与分隔线，只留正文与译文" },
   compact:  { name:"紧凑双栏", desc:"段落压缩、字号偏小，适合长文速读" },
-  wide:     { name:"宽屏大字", desc:"电脑上单栏宽排版，字号更大" }
+  wide:     { name:"宽屏大字", desc:"电脑上单栏宽排版，字号更大" },
+  paper:    { name:"报纸版式", desc:"多栏 + 首字下沉 + 分隔线，像在读一张英文报纸" },
+  ebook:    { name:"电子书版式", desc:"单栏大留白、章节扉页，接近 Kindle" },
+  doc:      { name:"论文版式", desc:"窄栏、小字号、密行距，适合学术文献与长报告" }
 };
+/* ---- 字体与格式（全部用户可选，按语言保存） ---- */
+const FONT_CHOICES = [
+  { k:"serif",   name:"衬线（默认）", css:'Georgia, "Times New Roman", "Songti SC", "SimSun", serif' },
+  { k:"serifcn", name:"宋体",        css:'"Songti SC", "SimSun", "STSong", serif' },
+  { k:"sans",    name:"无衬线",      css:'-apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif' },
+  { k:"kai",     name:"楷体",        css:'"Kaiti SC", "STKaiti", "KaiTi", "楷体", serif' },
+  { k:"hei",     name:"黑体",        css:'"Heiti SC", "SimHei", "黑体", "Microsoft YaHei", sans-serif' },
+  { k:"round",   name:"圆体",        css:'"Yuanti SC", "Hiragino Sans GB", "PingFang SC", sans-serif' },
+  { k:"mono",    name:"等宽",        css:'ui-monospace, "SF Mono", Menlo, Consolas, monospace' }
+];
+const FORMAT_OPTS = {
+  fontSize:  { name:"字号(px)",     type:"range", min:12, max:30, step:1, def:17 },
+  lineHeight:{ name:"行距",         type:"range", min:1.3, max:2.4, step:0.05, def:1.75 },
+  paraGap:   { name:"段距(px)",     type:"range", min:2, max:32, step:2, def:12 },
+  margin:    { name:"页边距",       type:"range", min:0, max:60, step:4, def:16 },
+  align:     { name:"对齐",         type:"select", options:[["left","左对齐"],["justify","两端对齐"],["center","居中"]], def:"left" },
+  indent:    { name:"首行缩进",     type:"select", options:[["0","不缩进"],["2","2 字符"]], def:"0" }
+};
+function fmtState(){
+  try{ return JSON.parse(localStorage.getItem(pk("format"))) || {}; }catch(e){ return {}; }
+}
+function fmtGet(k){ const st = fmtState(); return st[k] != null ? st[k] : (FORMAT_OPTS[k] ? FORMAT_OPTS[k].def : ""); }
+function fmtSet(k, v){
+  const st = fmtState(); st[k] = v;
+  try{ localStorage.setItem(pk("format"), JSON.stringify(st)); }catch(e){}
+  applyFormat();
+}
+function applyFormat(){
+  const st = fmtState();
+  const root = document.documentElement;
+  const font = FONT_CHOICES.find(f => f.k === (st.font || "serif")) || FONT_CHOICES[0];
+  const r = root.style;
+  r.setProperty("--read-font", font.css);
+  r.setProperty("--read-size", (st.fontSize || 17) + "px");
+  r.setProperty("--read-lh", String(st.lineHeight || 1.75));
+  r.setProperty("--read-pgap", (st.paraGap || 12) + "px");
+  r.setProperty("--read-margin", (st.margin || 16) + "px");
+  r.setProperty("--read-align", st.align || "left");
+  r.setProperty("--read-indent", (st.indent || "0") === "2" ? "2em" : "0");
+}
+function renderFormatPanel(){
+  const host = document.getElementById("formatPanel");
+  if(!host) return;
+  const st = fmtState();
+  host.innerHTML = `
+    <div class="fd-sec"><div class="fd-h">正文字体</div>
+      <div class="fd-chips">${FONT_CHOICES.map(f =>
+        `<button class="chip ${(st.font||"serif")===f.k?'on':''}" onclick="fmtSet('font','${f.k}');renderFormatPanel()">${escHtml(f.name)}</button>`).join("")}</div>
+    </div>
+    ${Object.entries(FORMAT_OPTS).map(([k, o]) => `
+      <div class="fd-sec"><div class="fd-h">${escHtml(o.name)}<span class="fd-val" id="fv-${k}">${fmtGet(k)}</span></div>
+        ${o.type === "range"
+          ? `<input type="range" min="${o.min}" max="${o.max}" step="${o.step}" value="${fmtGet(k)}" style="width:100%"
+               oninput="fmtSet('${k}', this.value);document.getElementById('fv-${k}').textContent=this.value">`
+          : `<div class="fd-chips">${o.options.map(([v, n]) =>
+              `<button class="chip ${String(fmtGet(k))===String(v)?'on':''}" onclick="fmtSet('${k}','${v}');renderFormatPanel()">${escHtml(n)}</button>`).join("")}</div>`}
+      </div>`).join("")}
+    <div class="fd-actions"><button class="btn ghost small" onclick="resetFormat()">恢复默认</button>
+      <button class="btn small" onclick="closeFormatPanel()">完成</button></div>`;
+}
+function resetFormat(){ try{ localStorage.removeItem(pk("format")); }catch(e){} applyFormat(); renderFormatPanel(); toast("已恢复默认排版"); }
+function openFormatPanel(){
+  let el = document.getElementById("formatDrawer");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "formatDrawer"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box"><div class="fd-head"><h3 style="margin:0">字体与格式</h3>
+    <button class="icobtn" onclick="closeFormatPanel()">✕</button></div>
+    <div id="formatPanel"></div></div>`;
+  renderFormatPanel();
+}
+function closeFormatPanel(){ const el = document.getElementById("formatDrawer"); if(el) el.style.display = "none"; try{ if(curBook) openReader(curBook.id); }catch(e){} }
 function readLayout(){ try{ return localStorage.getItem(pk("read_layout")) || "original"; }catch(e){ return "original"; } }
 function setReadLayout(v){
   try{ localStorage.setItem(pk("read_layout"), v); }catch(e){}
@@ -2617,8 +2755,158 @@ function readerToolExtras(){
     <span class="tip" style="margin:0">排版</span>
     ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
+    <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
+    <button class="btn ghost small" onclick="toggleInlineGloss()">${inlineGlossOn()?'📖 行间释义：开':'📖 行间释义：关'}</button>
     <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
   </div>`;
+}
+
+/* ================= 单词打怪闯关 ================= */
+const WQ = { hp:3, combo:0, right:0, round:0, queue:[], cur:null, src:"high", running:false };
+function wqSetSrc(src){
+  WQ.src = src;
+  ["High","Mine","Vocab"].forEach(k => {
+    const el = document.getElementById("wqSrc" + k);
+    if(el) el.classList.toggle("on", (k === "High" && src === "high") || (k === "Mine" && src === "mine") || (k === "Vocab" && src === "vocab"));
+  });
+}
+function wqWrongBook(){
+  try{ return JSON.parse(localStorage.getItem(pk("wq_wrong")) || "[]"); }catch(e){ return []; }
+}
+function wqSaveWrong(list){ try{ localStorage.setItem(pk("wq_wrong"), JSON.stringify(list.slice(0, 300))); }catch(e){} }
+function wqAddWrong(word, zh){
+  const list = wqWrongBook();
+  const hit = list.find(x => x.w === word);
+  if(hit){ hit.n = (hit.n || 1) + 1; hit.at = Date.now(); }
+  else list.unshift({ w: word, zh: zh || "", n: 1, at: Date.now() });
+  wqSaveWrong(list);
+  renderWqWrong();
+}
+function renderWqWrong(){
+  const host = document.getElementById("wqWrongList");
+  const cnt = document.getElementById("wqWrongCount");
+  const list = wqWrongBook();
+  if(cnt) cnt.textContent = list.length + " 个";
+  if(!host) return;
+  host.innerHTML = list.length ? list.slice(0, 40).map(x => `
+    <div class="wq-wrong-row">
+      <b>${escHtml(x.w)}</b>
+      <span class="dim">${escHtml(x.zh || "")}</span>
+      <span class="tip" style="margin:0">错 ${x.n} 次</span>
+      <button class="btn ghost small" onclick="wqPracticeOne('${escAttr(x.w)}')">练</button>
+    </div>`).join("") : `<div class="sub">还没有错词，闯关失败或答错会记在这里。</div>`;
+}
+function wqPracticeOne(w){
+  const d = dictEntry(w);
+  WQ.queue = [{ w, zh: d ? String(d[1]).split(/[,，;；]/)[0] : w }];
+  WQ.hp = 3; WQ.combo = 0; WQ.right = 0; WQ.round = 0; WQ.running = true;
+  wqNext();
+}
+function wqPickQueue(){
+  let pool = [];
+  if(WQ.src === "mine"){
+    pool = wqWrongBook().map(x => ({ w: x.w, zh: x.zh }));
+  } else if(WQ.src === "vocab"){
+    pool = (store.vocab || []).slice(0, 100).map(v => {
+      const d = dictEntry(String(v.w || "").toLowerCase());
+      return { w: v.w, zh: d ? String(d[1]).split(/[,，;；]/)[0] : (v.zh || "") };
+    });
+  } else {
+    /* 高频词：从词库按词长 4–8 随机抽 100 个 */
+    const G = window.LIZ_DICT || {};
+    const keys = Object.keys(G).filter(k => /^[a-z]{4,8}$/.test(k));
+    for(let i = 0; i < 100 && keys.length; i++){
+      const k = keys.splice(Math.floor(Math.random() * keys.length), 1)[0];
+      const e = G[k] || [];
+      const zh = String(e[1] || "").split(/[,，;；]/)[0];
+      if(zh && !/[a-zA-Z]/.test(zh)) pool.push({ w: k, zh });
+    }
+  }
+  pool = pool.filter(x => x.w && x.zh && /[\u4e00-\u9fff]/.test(x.zh));
+  return pool.sort(() => Math.random() - 0.5).slice(0, 100);
+}
+function wqStart(){
+  WQ.queue = wqPickQueue();
+  if(!WQ.queue.length){ toast("这一组没有可练的词，换个来源试试"); return; }
+  WQ.hp = 3; WQ.combo = 0; WQ.right = 0; WQ.round = 0; WQ.running = true;
+  wqHud(); wqNext();
+  toast("开始！共 " + WQ.queue.length + " 个词");
+}
+function wqHud(){
+  const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
+  set("wqHp", "❤️".repeat(Math.max(0, WQ.hp)) || "0");
+  set("wqCombo", WQ.combo);
+  set("wqRound", WQ.round);
+  set("wqRight", WQ.right);
+}
+function wqNext(){
+  if(WQ.hp <= 0){
+    WQ.running = false;
+    const p = document.getElementById("wqPrompt");
+    if(p) p.innerHTML = `💀 <b>闯关结束</b> · 正确 ${WQ.right} 个 · 连击最高 ${WQ.combo}<br><span class="tip">错词已存进错词本</span>`;
+    const inp = document.getElementById("wqInput"); if(inp) inp.disabled = true;
+    return;
+  }
+  if(!WQ.queue.length){
+    WQ.running = false;
+    const p = document.getElementById("wqPrompt");
+    if(p) p.innerHTML = `🎉 <b>全部通关！</b>· 正确 ${WQ.right} 个`;
+    return;
+  }
+  WQ.cur = WQ.queue.shift();
+  WQ.round++;
+  const p = document.getElementById("wqPrompt");
+  if(p) p.innerHTML = `<span class="wq-zh">${escHtml(WQ.cur.zh)}</span>`;
+  const inp = document.getElementById("wqInput");
+  if(inp){ inp.disabled = false; inp.value = ""; inp.focus(); }
+  wqHud();
+}
+function wqSubmit(){
+  const inp = document.getElementById("wqInput");
+  if(!inp || !WQ.cur) return;
+  const got = inp.value.trim().toLowerCase();
+  if(!got) return;
+  const want = WQ.cur.w.toLowerCase();
+  const monster = document.querySelector(".wq-monster");
+  if(got === want){
+    WQ.right++; WQ.combo++;
+    if(monster){ monster.textContent = "💥"; monster.classList.add("hit"); setTimeout(()=>{ monster.textContent = "👾"; monster.classList.remove("hit"); }, 260); }
+    toast("✅ 打中！" + want + " +" + WQ.combo);
+  } else {
+    WQ.combo = 0; WQ.hp--;
+    wqAddWrong(want, WQ.cur.zh);
+    if(monster){ monster.textContent = "🛡️"; setTimeout(()=>{ monster.textContent = "👾"; }, 260); }
+    toast("❌ 是 " + want + "，扣一格血");
+  }
+  wqHud();
+  setTimeout(wqNext, 320);
+}
+
+/* ================= 行间释义（Kindle Word Wise 风格） ================= */
+function inlineGlossOn(){ try{ return getPref("inline_gloss") === "1"; }catch(e){ return false; } }
+function toggleInlineGloss(){
+  setPref("inline_gloss", inlineGlossOn() ? "0" : "1");
+  if(curBook){ const y = window.scrollY; openReader(curBook.id); setTimeout(()=>window.scrollTo(0, y), 30); }
+  toast(inlineGlossOn() ? "行间释义：开（生词下方显示简短中文）" : "行间释义：关");
+}
+/* 给英文句子生成带行间释义的 HTML：只标注「不在默认词表里的词」 */
+function wordSpansGloss(s, i){
+  const TOK = TOKEN_RE();
+  const on = inlineGlossOn();
+  return (s.en || "").replace(TOK, m => {
+    const low = m.toLowerCase();
+    let html = `<span class="w" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
+    if(!on) return html;
+    /* 只给长词 + 本地词典能查到的词加注，避免满屏小字 */
+    if(low.length >= 6 && /^[a-zA-Z'’-]+$/.test(m)){
+      const d = (typeof dictEntry === "function") ? dictEntry(low) : null;
+      const zh = d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 8) : "";
+      if(zh && zh.length <= 8 && !/[a-zA-Z]/.test(zh)){
+        html += `<span class="igl" onclick="event.stopPropagation()">${escHtml(zh)}</span>`;
+      }
+    }
+    return html;
+  });
 }
 
 /* ================= 看视频学：本地视频 + 字幕 ================= */
@@ -2923,7 +3211,8 @@ function applyDeviceClass(){
   ["dv-desktop","dv-tablet","dv-phone","dv-mini"].forEach(c => root.classList.remove(c));
   root.classList.add(deviceClass());
 }
-window.addEventListener("resize", ()=>{ try{ applyDeviceClass(); }catch(e){} });
+window.addEventListener("resize", ()=>{ try{ applyDeviceClass(); }catch(e){}
+try{ applyFormat(); }catch(e){} });
 try{ applyDeviceClass(); }catch(e){}
 
 
@@ -3338,6 +3627,7 @@ function go(name){
   if(name==="vocabbooks") renderVocabBooks();
   if(name==="changelog") renderChangelog();
   if(name==="video") renderSubList();
+  if(name==="wordquest"){ renderWqWrong(); wqHud(); }
   if(name==="browser"){ const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0"; }
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
@@ -4727,7 +5017,7 @@ function openReader(id){
     return words.some(w => { const f = ws[stemOf(w.toLowerCase())]; return f && (f.st === 0 || f.st === 1); });
   };
   const TOK = TOKEN_RE();
-  const wordSpans = (s,i)=> (s.en||"").replace(TOK, m=>{
+  const wordSpans = (s,i)=> inlineGlossOn() ? wordSpansGloss(s, i) : (s.en||"").replace(TOK, m=>{
     const low = m.toLowerCase();
     const mk = bm.w[i+":"+low];
     const fs = ws[stemOf(low)];
