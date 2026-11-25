@@ -160,6 +160,14 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
 .fd-level-hint{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.6}
+/* 内置浏览器 */
+.br-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.br-url{flex:1;min-height:40px;font-size:14px}
+.br-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.br-toggle{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);min-height:32px}
+.br-frame-wrap{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+.br-frame{width:100%;height:min(68vh,620px);border:none;display:block;background:#fff}
+.br-blocked{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;background:var(--surface)}
 /* 拼装：模式条 + 打字区 */
 .asm-mode-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
 .asm-mode-bar .chip{min-height:30px;font-size:12.5px;padding:0 12px}
@@ -543,6 +551,7 @@ body.no-zh .sent .zh{display:none}
       <button onclick="go('collections')">📚 书单</button>
       <button id="nav-press" onclick="go('press')">📰 外刊</button>
       <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
+      <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
       <button onclick="go('sentcol')">⭐ 金句</button>
@@ -648,6 +657,34 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 内置浏览器 ============ -->
+  <section class="view" id="view-browser">
+    <div class="br-bar">
+      <button class="icobtn" onclick="brBack()" title="返回">←</button>
+      <input class="search br-url" id="brUrl" placeholder="输入网址或搜索内容…" onkeydown="if(event.key==='Enter')brGo()">
+      <button class="btn small" onclick="brGo()">打开</button>
+    </div>
+    <div class="br-row">
+      <button class="chip" onclick="brSearch('google')">Google</button>
+      <button class="chip" onclick="brSearch('baidu')">百度</button>
+      <button class="chip" onclick="brSearch('bing')">Bing</button>
+      <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
+      <label class="br-toggle"><input type="checkbox" id="brAutoTr" onchange="brApplyPageTr()"> 整页翻译</label>
+    </div>
+    <div class="br-frame-wrap">
+      <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
+      <div id="brBlocked" class="br-blocked" style="display:none">
+        <b>这个站点不允许被内嵌</b>
+        <div class="sub">很多新闻站（BBC、Guardian、Economist 等）设置了 X-Frame-Options，浏览器会拒绝在站内打开。</div>
+        <div class="lang-row" style="justify-content:center;margin-top:10px">
+          <button class="btn small" onclick="brOpenNewTab()">在新标签打开</button>
+          <button class="btn ghost small" onclick="go('press')">换成可站内阅读的外刊</button>
+        </div>
+      </div>
+    </div>
+    <div class="tip" style="margin-top:8px">提示：Google/Bing 等搜索引擎同样禁止内嵌。站内搜索建议用「百度」或用「外刊」页里已验证可读的源。</div>
   </section>
 
   <!-- ============ 考试词书 ============ -->
@@ -2233,6 +2270,77 @@ function renderRichWordCard(word, low){
   `;
 }
 
+/* ================= 内置浏览器 ================= */
+const BR_SEARCH = {
+  google: "https://www.google.com/search?q=",
+  baidu:  "https://www.baidu.com/s?wd=",
+  bing:   "https://www.bing.com/search?q="
+};
+function brNormalize(input){
+  const t = String(input || "").trim();
+  if(!t) return "";
+  if(/^https?:\/\//i.test(t)) return t;
+  if(/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(t)) return "https://" + t;
+  return "";
+}
+function brLoad(url){
+  const frame = document.getElementById("brFrame");
+  const blocked = document.getElementById("brBlocked");
+  const bar = document.getElementById("brUrl");
+  if(!frame) return;
+  if(bar) bar.value = url;
+  try{ frame.src = url; }catch(e){}
+  if(blocked) blocked.style.display = "none";
+  /* 大多数站点会拒绝内嵌：8 秒内没有任何 load 事件就提示 */
+  clearTimeout(window.__brTimer);
+  window.__brTimer = setTimeout(()=>{
+    try{
+      /* 同源时能读到 document；跨域会抛错，说明确实被拦 */
+      const d = frame.contentDocument;
+      if(!d || !d.body || d.body.innerHTML === "") throw new Error("empty");
+    }catch(e){
+      if(blocked) blocked.style.display = "flex";
+    }
+  }, 6000);
+}
+function brGo(){
+  const raw = (document.getElementById("brUrl")?.value || "").trim();
+  const url = brNormalize(raw);
+  if(url){ brLoad(url); return; }
+  if(!raw){ toast("请输入网址或搜索内容"); return; }
+  brSearch(window.__brEngine || "baidu", raw);
+}
+function brSearch(engine, q){
+  const query = q != null ? q : (document.getElementById("brUrl")?.value || "").trim();
+  if(!query){ toast("请输入搜索内容"); return; }
+  window.__brEngine = engine;
+  brLoad(BR_SEARCH[engine] + encodeURIComponent(query));
+}
+function brBack(){ try{ document.getElementById("brFrame").contentWindow.history.back(); }catch(e){ history.back(); } }
+function brOpenNewTab(){
+  const u = document.getElementById("brUrl")?.value || "";
+  if(u) window.open(u, "_blank", "noopener");
+}
+function brApplyWordTrans(){
+  const on = document.getElementById("brWordTr")?.checked;
+  toast(on ? "点词翻译：开（站内页面生效）" : "点词翻译：关");
+  try{ localStorage.setItem("lz_br_wordtr", on ? "1" : "0"); }catch(e){}
+}
+function brApplyPageTr(){
+  const on = document.getElementById("brAutoTr")?.checked;
+  const frame = document.getElementById("brFrame");
+  if(!on || !frame) return;
+  try{
+    const doc = frame.contentDocument;
+    if(!doc) throw new Error("cross-origin");
+    const html = doc.documentElement;
+    html.setAttribute("data-lz-translate", "1");
+    toast("已请求整页翻译（仅同源页面可用）");
+  }catch(e){
+    toast("跨域页面无法整页翻译，请改用站内阅读器打开");
+  }
+}
+
 /* ================= 反馈 / Bug 报告 ================= */
 let _fbType = "bug";
 function setFbType(t){
@@ -2750,6 +2858,7 @@ function go(name){
   if(name==="collections") renderCollections();
   if(name==="press") renderPress();
   if(name==="vocabbooks") renderVocabBooks();
+  if(name==="browser"){ const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0"; }
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
   if(name==="review") renderReview();
