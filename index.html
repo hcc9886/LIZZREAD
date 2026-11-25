@@ -31,8 +31,8 @@
 <script src="data/lang-tests.js?v=1"></script>
 <script src="data/lang-test-options.js?v=1"></script>
 <script src="data/offline-tr.js?v=1" defer></script>
-<script src="data/vocab-books.js?v=1" defer></script>
-<script src="data/vocab-books-ext.js?v=1" defer></script>
+<script src="data/vocab-books.js?v=2" defer></script>
+<script src="data/vocab-books-ext.js?v=2" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
@@ -284,6 +284,10 @@ html.rl-wide .reader{max-width:860px;margin:0 auto}
 .cov-bar>i{display:block;height:100%;background:var(--brand);border-radius:6px}
 .lp-en{font:16px/1.7 var(--serif);margin:10px 0 8px;padding:10px;background:var(--surface2);border-radius:10px}
 .lp-zh{font-size:14px;line-height:1.8}
+/* 打怪特效 */
+.wq-stage.flash{box-shadow:0 0 0 3px #2fbf72 inset}
+.wq-combo-pop{position:absolute;left:50%;top:16px;transform:translateX(-50%);font:700 22px var(--font);color:#7BE495;animation:wqPop .8s ease-out forwards;pointer-events:none}
+@keyframes wqPop{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}30%{opacity:1;transform:translate(-50%,0) scale(1.15)}100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
 /* 单词打怪闯关 */
 .wq-hud{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:var(--surface2);font-size:13.5px}
 .wq-stage{position:relative;margin-top:14px;padding:22px 16px;border-radius:16px;text-align:center;background:linear-gradient(180deg,#101d18,#16291f);color:#e8f5ec;overflow:hidden}
@@ -310,6 +314,7 @@ html.rl-wide .reader{max-width:860px;margin:0 auto}
 .sub-zh{grid-column:2;color:var(--muted);font-size:12.5px}
 .vw{cursor:pointer;font-weight:600}
 .vw:hover{color:var(--brand-deep);text-decoration:underline}
+.br-ok-list{border-top:1px dashed var(--border);margin-top:14px;padding-top:6px;width:100%}
 /* 内置浏览器 */
 .br-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .br-url{flex:1;min-height:40px;font-size:14px}
@@ -820,6 +825,8 @@ body.no-zh .sent .zh{display:none}
       <button class="chip on" id="wqSrcHigh" onclick="wqSetSrc('high')">高频词随机 100</button>
       <button class="chip" id="wqSrcMine" onclick="wqSetSrc('mine')">我的错词本</button>
       <button class="chip" id="wqSrcVocab" onclick="wqSetSrc('vocab')">我的生词本</button>
+      <button class="chip" id="wqSrcBook" onclick="wqSetSrc('book')">当前这本书</button>
+      <button class="chip" id="wqSrcCET" onclick="wqSetSrc('cet6')">六级词</button>
     </div>
     <div class="wq-hud">
       <span>❤️ <b id="wqHp">3</b></span>
@@ -832,6 +839,10 @@ body.no-zh .sent .zh{display:none}
       <div class="wq-monster">👾</div>
       <div class="wq-prompt" id="wqPrompt">点「开始」消灭第一只怪</div>
       <input class="wq-input" id="wqInput" placeholder="在这里输入中文释义对应的英文单词…" onkeydown="if(event.key==='Enter')wqSubmit()" disabled>
+      <div class="lang-row" style="justify-content:center;margin-top:10px">
+        <button class="btn ghost small" onclick="wqHint()">💡 提示首字母</button>
+        <button class="btn ghost small" onclick="wqExample()">📖 看例句</button>
+      </div>
       <div class="tip" id="wqTip" style="margin-top:8px">打字模式：看到中文，打出英文单词。错了扣血，连击加分。</div>
     </div>
     <div class="settings-card" style="margin-top:14px">
@@ -845,12 +856,13 @@ body.no-zh .sent .zh{display:none}
     <h2 class="sec">🎬 看视频学</h2>
     <div class="sub">导入自己的视频和字幕（SRT / VTT），画面下方逐句中英对照，点句子跳转、点词查义，全部在本机处理，不上传。</div>
     <div class="lang-row" style="margin:10px 0">
-      <button class="btn small" onclick="document.getElementById('vidFile').click()">选择视频</button>
-      <input type="file" id="vidFile" accept="video/*" style="display:none" onchange="loadVideoFile(this)">
+      <button class="btn small" onclick="document.getElementById('vidFile').click()">选择视频/音频</button>
+      <input type="file" id="vidFile" accept="video/*,audio/*" multiple style="display:none" onchange="loadVideoFile(this)">
       <button class="btn ghost small" onclick="document.getElementById('subFile').click()">导入字幕 SRT/VTT</button>
       <input type="file" id="subFile" accept=".srt,.vtt,text/plain" style="display:none" onchange="loadSubtitleFile(this)">
-      <button class="btn ghost small" onclick="toggleSubTitle()">显示/隐藏字幕</button>
+      <button class="btn ghost small" onclick="loadDemoSubs()">载入示例字幕试试</button>
     </div>
+    <div class="tip" id="vidTip">① 先「选择视频/音频」（可多选：视频 + 同名字幕会自动配对）② 再「导入字幕」③ 字幕列表出现后即可逐句点、逐句听。</div>
     <div class="video-wrap">
       <video id="lzVideo" class="lz-video" controls playsinline></video>
       <div id="subOverlay" class="sub-overlay"></div>
@@ -912,10 +924,19 @@ body.no-zh .sent .zh{display:none}
       <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
       <div id="brBlocked" class="br-blocked" style="display:none">
         <b>这个站点不允许被内嵌</b>
-        <div class="sub">很多新闻站（BBC、Guardian、Economist 等）设置了 X-Frame-Options，浏览器会拒绝在站内打开。</div>
-        <div class="lang-row" style="justify-content:center;margin-top:10px">
+        <div class="sub" id="brBlockedWhy">很多新闻站（BBC、Guardian、Economist、Google、Bing）设置了 X-Frame-Options，浏览器会拒绝在站内打开。这是浏览器的安全限制，任何工具都绕不过。</div>
+        <div class="lang-row" style="justify-content:center;margin-top:10px;flex-wrap:wrap">
           <button class="btn small" onclick="brOpenNewTab()">在新标签打开</button>
-          <button class="btn ghost small" onclick="go('press')">换成可站内阅读的外刊</button>
+          <button class="btn ghost small" onclick="brReadability()">提取正文并精读</button>
+        </div>
+        <div class="br-ok-list">
+          <div class="tip" style="margin:10px 0 6px">这些站点可以站内打开：</div>
+          <div class="lang-row" style="justify-content:center;flex-wrap:wrap">
+            <button class="btn ghost small" onclick="brLoad('https://zh.wikipedia.org/wiki/%E7%8C%AB')">维基百科</button>
+            <button class="btn ghost small" onclick="brLoad('https://zh.wikisource.org/wiki/Wikisource:%E9%A6%96%E9%A1%B5')">维基文库</button>
+            <button class="btn ghost small" onclick="brLoad('https://www.gutenberg.org/')">Gutenberg</button>
+            <button class="btn ghost small" onclick="brLoad('https://www.aozora.gr.jp/')">青空文库</button>
+          </div>
         </div>
       </div>
     </div>
@@ -932,7 +953,7 @@ body.no-zh .sent .zh{display:none}
   <!-- ============ 外刊 / 新闻阅读 ============ -->
   <section class="view" id="view-press">
     <h2 class="sec">📰 外刊与新闻</h2>
-    <div class="sub">精选外刊与新闻源，点标题在站内阅读器里打开（点词、翻译、朗读全部可用）。</div>
+    <div class="sub">外刊网站禁止被别的网页内嵌，所以这里不假装能"打开"。每一条都有三条真能用的路：<b>抓取正文精读</b>（自动提取正文进阅读器）、<b>粘贴</b>（自己复制正文）、<b>官网</b>（新标签打开）。</div>
     <div class="press-tabs" id="pressTabs"></div>
     <div class="press-list" id="pressList"></div>
   </section>
@@ -2983,10 +3004,11 @@ function longPressTranslate(si){
 const WQ = { hp:3, combo:0, right:0, round:0, queue:[], cur:null, src:"high", running:false };
 function wqSetSrc(src){
   WQ.src = src;
-  ["High","Mine","Vocab"].forEach(k => {
-    const el = document.getElementById("wqSrc" + k);
-    if(el) el.classList.toggle("on", (k === "High" && src === "high") || (k === "Mine" && src === "mine") || (k === "Vocab" && src === "vocab"));
-  });
+  const map = { high:"High", mine:"Mine", vocab:"Vocab", book:"Book", cet6:"CET" };
+  for(const [k, id] of Object.entries(map)){
+    const el = document.getElementById("wqSrc" + id);
+    if(el) el.classList.toggle("on", k === src);
+  }
 }
 function wqWrongBook(){
   try{ return JSON.parse(localStorage.getItem(pk("wq_wrong")) || "[]"); }catch(e){ return []; }
@@ -3024,6 +3046,32 @@ function wqPickQueue(){
   let pool = [];
   if(WQ.src === "mine"){
     pool = wqWrongBook().map(x => ({ w: x.w, zh: x.zh }));
+  } else if(WQ.src === "book"){
+    /* 当前这本书里的词 */
+    if(curBook){
+      const sents = getSents(curBook.id) || [];
+      const seen = new Set();
+      for(const st of sents.slice(0, 300)){
+        for(const w of String(st.en || "").match(/[A-Za-z'’-]{4,}/g) || []){
+          const low = w.toLowerCase();
+          if(seen.has(low)) continue;
+          seen.add(low);
+          const d = dictEntry(low);
+          const zh = d ? String(d[1]).split(/[,，;；]/)[0] : "";
+          if(zh && !/[a-zA-Z]/.test(zh)) pool.push({ w: low, zh });
+        }
+      }
+    }
+    if(!pool.length) toast("先在阅读器里打开一本书，再来练这本书的词");
+  } else if(["cet6","cet4","ielts","toefl","gmat","toeic","kaoyan","zhuan4","zhuan8"].includes(WQ.src)){
+    /* 直接查英文词典，不依赖当前学习语言（dictEntry 在学中文/其他语言时会返回 null） */
+    const G = window.LIZ_DICT || {};
+    const list = VOCAB_BOOKS()[WQ.src] || [];
+    for(const w of list){
+      const e = G[w];
+      const zh = e ? String(e[1] || "").split(/[,，;；]/)[0] : "";
+      if(zh && /[\u4e00-\u9fff]/.test(zh) && !/[a-zA-Z]{2,}/.test(zh)) pool.push({ w, zh });
+    }
   } else if(WQ.src === "vocab"){
     pool = (store.vocab || []).slice(0, 100).map(v => {
       const d = dictEntry(String(v.w || "").toLowerCase());
@@ -3079,6 +3127,22 @@ function wqNext(){
   if(inp){ inp.disabled = false; inp.value = ""; inp.focus(); }
   wqHud();
 }
+function wqHint(){
+  if(!WQ.cur) return;
+  const tip = document.getElementById("wqTip");
+  const w = WQ.cur.w;
+  if(tip) tip.innerHTML = `首字母：<b>${escHtml(w[0])}</b>… 共 ${w.length} 个字母`;
+}
+function wqExample(){
+  if(!WQ.cur) return;
+  const tip = document.getElementById("wqTip");
+  const ex = (typeof findExamples === "function") ? findExamples(WQ.cur.w, 1) : [];
+  if(ex.length && ex[0].en){
+    if(tip) tip.innerHTML = `<div style="margin-bottom:2px">${escHtml(ex[0].en)}</div><div class="dim">${escHtml(ex[0].zh || "")}</div>`;
+  } else if(tip){
+    tip.textContent = "这本词典里没有收录例句，换个词试试";
+  }
+}
 function wqSubmit(){
   const inp = document.getElementById("wqInput");
   if(!inp || !WQ.cur) return;
@@ -3089,7 +3153,16 @@ function wqSubmit(){
   if(got === want){
     WQ.right++; WQ.combo++;
     if(monster){ monster.textContent = "💥"; monster.classList.add("hit"); setTimeout(()=>{ monster.textContent = "👾"; monster.classList.remove("hit"); }, 260); }
-    toast("✅ 打中！" + want + " +" + WQ.combo);
+    toast("✅ 打中！" + want + " +" + WQ.combo + (WQ.combo >= 5 ? " 🔥连击加成" : ""));
+    const st = document.getElementById("wqStage");
+    if(st){ st.classList.add("flash"); setTimeout(()=>st.classList.remove("flash"), 300); }
+    if(WQ.combo >= 3){
+      const hit = document.createElement("div");
+      hit.className = "wq-combo-pop";
+      hit.textContent = "🔥 ×" + WQ.combo;
+      const stage = document.getElementById("wqStage");
+      if(stage){ stage.appendChild(hit); setTimeout(()=>hit.remove(), 800); }
+    }
   } else {
     WQ.combo = 0; WQ.hp--;
     wqAddWrong(want, WQ.cur.zh);
@@ -3336,12 +3409,46 @@ function parseSubtitles(text){
   return out.sort((a, b) => a.start - b.start);
 }
 function loadVideoFile(input){
-  const f = input.files && input.files[0];
-  if(!f) return;
+  const files = [...(input.files || [])];
+  if(!files.length) return;
+  const media = files.find(f => /^video\//.test(f.type) || /^audio\//.test(f.type) || /\.(mp4|webm|mov|m4v|mkv|mp3|m4a|wav|ogg)$/i.test(f.name));
+  const sub = files.find(f => /\.(srt|vtt|txt)$/i.test(f.name));
   const v = document.getElementById("lzVideo");
-  try{ v.src = URL.createObjectURL(f); }catch(e){}
-  toast("已载入视频：" + f.name);
-  v.playbackRate = 1;
+  if(media){
+    try{ v.src = URL.createObjectURL(media); }catch(e){}
+    v.playbackRate = 1;
+    const tip = document.getElementById("vidTip");
+    if(tip) tip.textContent = "已载入：" + media.name + (sub ? "（同时配到字幕）" : "，请再导入字幕（SRT/VTT）");
+    toast("已载入：" + media.name);
+  } else if(sub && !media){
+    loadSubtitleFile({ files:[sub] });
+    return;
+  }
+  if(sub) loadSubtitleFile({ files:[sub] });
+  input.value = "";
+}
+/* 示例字幕：让人第一次进来就能看到效果 */
+function loadDemoSubs(){
+  const demo = `1
+00:00:00,500 --> 00:00:04,000
+The espresso machine hissed like an angry harridan.
+
+2
+00:00:04,200 --> 00:00:08,000
+Emma wiped a cup with a cloth and felt tired.
+
+3
+00:00:08,200 --> 00:00:12,000
+A customer told an anecdote about a white van near the house.
+
+4
+00:00:12,200 --> 00:00:16,000
+The man spoke in a low voice and his eyes moved to the window.`;
+  _videoSubs = parseSubtitles(demo);
+  renderSubList();
+  const tip = document.getElementById("vidTip");
+  if(tip) tip.textContent = "已载入示例字幕 " + _videoSubs.length + " 句（没有视频时也能练听写与点词）";
+  toast("示例字幕已载入");
 }
 function loadSubtitleFile(input){
   const f = input.files && input.files[0];
@@ -3468,6 +3575,42 @@ function brSearch(engine, q){
   window.__brEngine = engine;
   brLoad(BR_SEARCH[engine] + encodeURIComponent(query));
 }
+/* 提取当前网址的正文并精读：跨域读不到 DOM 时，退化为「粘贴正文」 */
+async function brReadability(){
+  const raw = (document.getElementById("brUrl")?.value || "").trim();
+  const url = brNormalize(raw) || raw;
+  try{
+    const frame = document.getElementById("brFrame");
+    const doc = frame && frame.contentDocument;
+    if(doc && doc.body && doc.body.innerText && doc.body.innerText.length > 300){
+      const text = htmlToText(doc.documentElement.innerHTML);
+      if(text && text.length > 200){ await importTextAsBook(text, (doc.title || "网页精读").slice(0, 30)); return; }
+    }
+  }catch(e){}
+  /* 跨域：先尝试用公开的文本提取代理 */
+  if(url){
+    toast("正在提取正文…");
+    for(const prox of [
+      "https://r.jina.ai/" + url,
+      "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)
+    ]){
+      try{
+        const r = await fetch(prox, {signal: AbortSignal.timeout(30000)});
+        if(!r.ok) continue;
+        let t = await r.text();
+        const cut = t.indexOf("Markdown Content:");
+        if(cut >= 0) t = t.slice(cut + 17);
+        t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
+        if(t && t.length > 400 && !/^\s*<(!DOCTYPE|html)/i.test(t)){
+          await importTextAsBook(t, (t.split("\n")[0] || "网页精读").slice(0, 30));
+          return;
+        }
+      }catch(e){}
+    }
+  }
+  /* 都不行 → 让用户粘贴 */
+  pressPasteImport(url || "网页精读");
+}
 function brBack(){ try{ document.getElementById("brFrame").contentWindow.history.back(); }catch(e){ history.back(); } }
 function brOpenNewTab(){
   const u = document.getElementById("brUrl")?.value || "";
@@ -3590,10 +3733,36 @@ function renderPress(){
         <div class="press-name">${escHtml(x.name)}</div>
         <div class="press-desc">${escHtml(x.desc)}</div>
       </div>
-      <button class="btn ghost small" onclick="pressPasteImport('${escapedAttr(x.name)}')">粘贴正文精读</button>
-      <button class="btn ghost small" onclick="openPress('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">打开官网</button>
+      <button class="btn small" onclick="pressFetchRead('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">抓取正文精读</button>
+      <button class="btn ghost small" onclick="pressPasteImport('${escapedAttr(x.name)}')">粘贴</button>
+      <button class="btn ghost small" onclick="window.open('${escapedAttr(x.url)}','_blank','noopener')">官网</button>
     </div>`).join("");
 }
+/* 外刊：自动抓正文 → 导入阅读器 */
+async function pressFetchRead(url, name){
+  toast("正在抓取正文…");
+  const proxies = [
+    "https://r.jina.ai/" + url,
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)
+  ];
+  for(const prox of proxies){
+    try{
+      const r = await fetch(prox, {signal: AbortSignal.timeout(35000)});
+      if(!r.ok) continue;
+      let t = await r.text();
+      const cut = t.indexOf("Markdown Content:");
+      if(cut >= 0) t = t.slice(cut + 17);
+      t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
+      if(!t || t.length < 300 || /^\s*<(!DOCTYPE|html)/i.test(t)) continue;
+      const title = (t.split("\n").find(l => l.trim().length > 8) || name || "外刊精读").slice(0, 30);
+      await importTextAsBook(t, title);
+      return;
+    }catch(e){}
+  }
+  toast("自动抓取失败（该站限制），请用「粘贴」把正文复制进来");
+  pressPasteImport(name);
+}
+
 /* 外刊精读：粘贴正文 → 进阅读器逐句点词 + 核心词表 */
 function pressPasteImport(name){
   let el = document.getElementById("pasteSheet");
@@ -4098,7 +4267,12 @@ function go(name){
   if(name==="changelog") renderChangelog();
   if(name==="video") renderSubList();
   if(name==="wordquest"){ renderWqWrong(); wqHud(); }
-  if(name==="browser"){ const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0"; }
+  if(name==="browser"){
+    const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
+    /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
+    const bar = document.getElementById("brUrl");
+    if(bar && !bar.value && !window.__brLoaded){ window.__brLoaded = true; setTimeout(()=>brLoad("https://zh.wikipedia.org/wiki/%E7%8C%AB"), 120); }
+  }
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
   if(name==="review") renderReview();
@@ -8677,7 +8851,7 @@ async function asmUsePack(bookId, sentence){
     asmTextUnlocked = false;
     const chunks = (s.chunks && s.chunks.length ? s.chunks : AC.splitIntoChunks(s.text));
     /* 分块模式：意群 / 单词 / 混合（默认混合，打得更乱，更接近真实组句） */
-    const mode = (window.__asmMode || "mixed");
+    const mode = (window.__asmMode || "word");
     const pieces = mode === "chunk" ? chunks
       : mode === "word" ? String(s.text).split(/\s+/).filter(Boolean)
       : buildMixedChunks(s.text, chunks);
@@ -8871,8 +9045,7 @@ function asmRenderStage(){
     </div>
     <div class="asm-mode-bar">
       <span style="font-size:12.5px;color:var(--muted)">分块难度</span>
-      ${[["chunk","意群"],["mixed","混合"],["word","单词"] ].map(([k,label])=>
-        `<button class="chip ${(asmState.mode||"mixed")===k?"on":""}" onclick="asmSetMode('${k}')">${label}</button>`).join("")}
+      <button class="chip on">单词</button>
       <span style="margin-left:auto">${asmAnswerHtml()}</span>
     </div>
     <div class="asm-mode-bar">
@@ -8964,7 +9137,7 @@ function asmRelayout(){
   if(!asmState) return;
   const AC = window.AssemblyCore;
   const s = asmState.sentence;
-  const mode = asmState.mode || "mixed";
+  const mode = asmState.mode || "word";
   const pieces = mode === "chunk" ? asmState.chunks
     : mode === "word" ? String(s.text).split(/\s+/).filter(Boolean)
     : buildMixedChunks(s.text, asmState.chunks);
