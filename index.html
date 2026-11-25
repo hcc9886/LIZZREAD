@@ -834,9 +834,9 @@ body.no-zh .sent .zh{display:none}
       <button class="btn small" onclick="brGo()">打开</button>
     </div>
     <div class="br-row">
-      <button class="chip" onclick="brSearch('google')">Google</button>
-      <button class="chip" onclick="brSearch('baidu')">百度</button>
-      <button class="chip" onclick="brSearch('bing')">Bing</button>
+      <button class="chip" onclick="brSearch('google')" id="brG">Google</button>
+      <button class="chip" onclick="brSearch('baidu')" id="brB">百度</button>
+      <button class="chip" onclick="brSearch('bing')" id="brN">Bing</button>
       <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
       <label class="br-toggle"><input type="checkbox" id="brAutoTr" onchange="brApplyPageTr()"> 整页翻译</label>
     </div>
@@ -2757,6 +2757,8 @@ function readerToolExtras(){
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
     <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
     <button class="btn ghost small" onclick="toggleInlineGloss()">${inlineGlossOn()?'📖 行间释义：开':'📖 行间释义：关'}</button>
+    <button class="btn ghost small" onclick="webSearch(prompt('搜索什么？')||'')">🔍 网页搜索</button>
+    <button class="btn ghost small" onclick="webSearch(sheetWord||'')">🔍 搜索</button>
     <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
   </div>`;
 }
@@ -3055,7 +3057,20 @@ function brGo(){
   const url = brNormalize(raw);
   if(url){ brLoad(url); return; }
   if(!raw){ toast("请输入网址或搜索内容"); return; }
-  brSearch(window.__brEngine || "baidu", raw);
+  /* 纯关键词（含中文，如「猫」）直接走搜索引擎；默认 Google，可切百度/Bing */
+  brSearch(window.__brEngine || "google", raw);
+}
+/* 从阅读器/外刊/任意位置一键搜索：调用同一个浏览器页 */
+function webSearch(q, engine){
+  const query = String(q || "").trim();
+  if(!query) return;
+  window.__brEngine = engine || window.__brEngine || "google";
+  go('browser');
+  setTimeout(()=>{
+    const inp = document.getElementById('brUrl');
+    if(inp) inp.value = query;
+    brSearch(window.__brEngine, query);
+  }, 250);
 }
 function brSearch(engine, q){
   const query = q != null ? q : (document.getElementById("brUrl")?.value || "").trim();
@@ -3190,11 +3205,24 @@ function renderPress(){
 }
 /* 站内打开外刊：优先走浏览器模式内嵌，失败则提示 */
 function openPress(url, name){
-  if(typeof openInAppBrowser === "function"){
-    openInAppBrowser(url, name);
-  } else {
-    window.open(url, "_blank", "noopener");
-  }
+  /* 大多数外刊设了 X-Frame-Options，无法内嵌。先给出两个可用入口，不假装能打开 */
+  let el = document.getElementById("pressSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "pressSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font:600 17px var(--serif)">${escHtml(name || "外刊")}</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('pressSheet').style.display='none'">✕</button>
+    </div>
+    <p class="sub" style="margin:8px 0 12px">这类新闻网站禁止被别的网页内嵌（X-Frame-Options），站内无法直接显示。两条可用路线：</p>
+    <div style="display:grid;gap:8px">
+      <button class="btn" onclick="document.getElementById('pressSheet').style.display='none';window.open('${escAttr(url)}','_blank','noopener')">在新标签打开官网</button>
+      <button class="btn ghost" onclick="document.getElementById('pressSheet').style.display='none';go('browser');setTimeout(()=>{document.getElementById('brUrl').value='${escAttr(url)}';brLoad('${escAttr(url)}')},300)">在站内浏览器试试</button>
+      <button class="btn ghost" onclick="document.getElementById('pressSheet').style.display='none';go('import')">复制文章正文导入阅读器（推荐）</button>
+    </div>
+    <div class="tip" style="margin-top:10px">最优做法：把文章正文复制下来，用「网址导入 / 粘贴文本」进阅读器，点词、翻译、朗读全部可用。</div>
+  </div>`;
 }
 /* ================= 多端版式适配 ================= */
 function deviceClass(){
@@ -4752,7 +4780,25 @@ async function loadLanguageText(b, onProgress){
     for(let attempt = 0; attempt < 3; attempt++){
       try{
         if(attempt) await new Promise(r => setTimeout(r, 800 * attempt));
-        if(!hasLocalAPI) throw new Error("离线壳没有青空文库代理，请联网后在网页版阅读");
+        /* 有后端走后端代理；没有后端直接用公开文本镜像（青空文库作品全部公有领域） */
+        if(!hasLocalAPI){
+          const mirror = [
+            "https://r.jina.ai/https://www.aozora.gr.jp/cards/" + b.az.replace(/^\/+/, ""),
+            "https://r.jina.ai/http://www.aozora.gr.jp/cards/" + b.az.replace(/^\/+/, "")
+          ];
+          for(const murl of mirror){
+            try{
+              const mr = await fetch(murl, {signal: AbortSignal.timeout(60000)});
+              if(!mr.ok) continue;
+              let t = await mr.text();
+              const cut = t.indexOf("Markdown Content:");
+              if(cut >= 0) t = t.slice(cut + 17);
+              t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
+              if(t && t.length > 400 && !/^\s*<(!DOCTYPE|html)/i.test(t)) return t;
+            }catch(e0){ lastErr = e0; }
+          }
+          throw new Error("青空文库暂时取不到（网络受限）");
+        }
         const r = await fetch(apiUrl("api/az/") + splitAzPath(b.az), {signal: AbortSignal.timeout(180000)});
         if(r.ok){
           const t = await r.text();
@@ -5667,7 +5713,14 @@ async function fillMultiGloss(word){
   const render = (g) => {
     const cur = document.getElementById("shGlossBox");
     if(!cur || sheetWord !== word) return;
-    const rows = Object.entries(g || {}).filter(([c, v]) => v && v.toLowerCase() !== String(word).toLowerCase())
+    const BAD = /select\s+two|distinct\s+languages|invalid|quota|warning|error|too\s+many|not\s+supported/i;
+    const rows = Object.entries(g || {}).filter(([c, v]) => {
+      if(!v) return false;
+      if(v.toLowerCase() === String(word).toLowerCase()) return false;
+      if(BAD.test(v)) return false;                 /* 机翻接口的报错不要显示成"译文" */
+      if(/^[A-Z\s]{20,}$/.test(v)) return false;   /* 全大写长串通常是提示语 */
+      return true;
+    })
       .map(([c, v]) => `<div style="display:flex;gap:8px;align-items:baseline;padding:2px 0">
         <span class="tag" style="flex:0 0 auto">${escHtml((SHOW_LANGS.find(x => x.code === c) || {}).name || c)}</span>
         <span style="font:14px/1.6 var(--font)">${escHtml(v)}</span></div>`).join("");
@@ -8172,9 +8225,13 @@ function practiceSentence(bookId, si){
 }
 function asmAnswerHtml(){
   if(!asmState) return "";
-  const chunks = asmState.chunks || [];
+  const chunks = asmState.pool || asmState.chunks || [];
+  const answered = !!asmState.lastResult;
   if(!asmState.showAnswer){
-    return `<button class="btn ghost small" onclick="asmToggleAnswer()">👀 查看答案</button>`;
+    /* 没提交过答案就不给看，避免「答案随时能看到」 */
+    return answered
+      ? `<button class="btn ghost small" onclick="asmToggleAnswer()">👀 查看答案</button>`
+      : `<button class="btn ghost small" onclick="toast('先提交一次答案再查看')" style="opacity:.55">👀 查看答案（先做一次）</button>`;
   }
   return `<button class="btn ghost small" onclick="asmToggleAnswer()">🙈 收起答案</button>
     <div style="margin-top:6px;color:var(--brand-deep);font-weight:600">${chunks.map((c,i)=>`<span style="display:inline-block;margin:2px 6px 2px 0">${i+1}. ${escHtml(c)}</span>`).join("")}</div>
