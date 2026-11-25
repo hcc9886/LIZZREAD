@@ -160,6 +160,34 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
 .fd-level-hint{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.6}
+/* 更新记录 / 更新条 */
+.cl-release{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--surface)}
+.cl-release.is-new{border-color:var(--brand);background:var(--brand-soft)}
+.cl-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cl-head b{font:600 15px var(--font)}
+.cl-head span{color:var(--muted);font-size:12px}
+.cl-badge{background:var(--brand);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px}
+.cl-list{margin:0;padding-left:18px;font-size:13px;line-height:1.8}
+.lz-update-bar{position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--brand);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:13.5px}
+.lz-update-bar .btn{background:#fff;color:var(--brand-deep);border:none}
+.lz-update-x{margin-left:auto;background:none;border:none;color:#fff;font-size:16px;cursor:pointer}
+/* 多端版式 */
+html.dv-desktop .reader{max-width:1100px;margin:0 auto;padding:16px 28px}
+html.dv-desktop .grid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px}
+html.dv-desktop .book .cover{height:230px}
+html.dv-desktop .lib-topbar{padding:0}
+html.dv-desktop #mainNav{display:flex}
+html.dv-desktop .nav-more{display:none}
+
+html.dv-tablet .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+html.dv-tablet .reader{padding:12px 20px}
+
+html.dv-phone .reader{padding:10px 14px}
+html.dv-phone .sent .en{font-size:16.5px;line-height:1.75}
+
+html.dv-mini .reader{padding:8px 12px}
+html.dv-mini .rd-layout{flex-wrap:nowrap;overflow-x:auto}
+html.dv-mini .lz-update-bar{bottom:auto;top:12px}
 /* 阅读进度 / 读毕 */
 .rd-progress{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;border-radius:10px;background:var(--brand-soft);color:var(--brand-deep);font-size:12.5px;margin-bottom:10px}
 .fin-label{font-size:12px;letter-spacing:6px;color:var(--muted)}
@@ -577,6 +605,7 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-press" onclick="go('press')">📰 外刊</button>
       <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
       <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
+      <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
       <button onclick="go('sentcol')">⭐ 金句</button>
@@ -682,6 +711,17 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 更新记录 ============ -->
+  <section class="view" id="view-changelog">
+    <h2 class="sec">🆕 更新记录</h2>
+    <div class="sub">当前版本 v${currentVersion()}。每次更新都会记在这里，点「立即更新」可强制拉取最新版。</div>
+    <div class="lang-row" style="margin:10px 0 14px">
+      <button class="btn small" onclick="applyUpdateNow()">立即更新</button>
+      <button class="btn ghost small" onclick="checkAppUpdate(true)">检查更新</button>
+    </div>
+    <div id="changelogBody"></div>
   </section>
 
   <!-- ============ 内置浏览器 ============ -->
@@ -2295,6 +2335,77 @@ function renderRichWordCard(word, low){
   `;
 }
 
+/* ================= 更新记录 + 立即更新 ================= */
+const CHANGELOG = [
+  { ver:"2.1.0", date:"2026-11-25", items:[
+    "早鸟价上线：单语言 ¥15/月、全语言 ¥29/月 / ¥88 季 / ¥199 年、永久 ¥298（限 100 名）",
+    "点词卡大幅增强：音标、按词性分组的多义项、助记、例句（中英对照）、词组",
+    "新增「考试词书」：四六级 / 雅思 / 托福，标记已学与要学，阅读时自动着色（颜色可改）",
+    "句子拼装重做：意群 / 混合 / 单词三种难度，打乱更彻底，新增打字模式与首字母提示",
+    "新增站内浏览器：Google / 百度 / Bing、输入网址、点词翻译与整页翻译开关",
+    "新增外刊与新闻阅读：12 个源，分新闻 / 外刊 / 科技 / 文学",
+    "阅读器新增四种排版：原书排版 / 简洁 / 紧凑双栏 / 宽屏大字",
+    "新增长难句精讲：主干、时态、语气、从句结构逐条讲解",
+    "新增阅读进度条与「读完」纪念页",
+    "各语言等级按本国标准显示：CEFR / HSK / JLPT / TOPIK / 拉丁 T1–T4",
+    "新增反馈与 Bug 报告页，可附设备与页面信息",
+    "阅读加载失败不再跳外站，可一键换书或报告问题"
+  ]},
+  { ver:"2.0.0", date:"2026-11-23", items:[
+    "16 门语言书库、609 本内置全文、19,551 张本地封面",
+    "离线翻译包 15,856 条，断网也能翻译",
+    "会员叠加（单语言 + 全语言互不覆盖）",
+    "支付宝 / 微信支付接入（后端已就绪）",
+    "iOS 小程序三通道：官方订阅页 / 兑换码 / 邮箱手机号发券"
+  ]}
+];
+function currentVersion(){
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.1.0"); }catch(e){ return "2.1.0"; }
+}
+function renderChangelog(){
+  const host = document.getElementById("changelogBody");
+  if(!host) return;
+  const seen = localStorage.getItem("lz_seen_version") || "";
+  host.innerHTML = CHANGELOG.map((rel, i) => `
+    <div class="cl-release ${i === 0 && seen !== rel.ver ? "is-new" : ""}">
+      <div class="cl-head"><b>v${escHtml(rel.ver)}</b><span>${escHtml(rel.date)}</span>
+        ${i === 0 && seen !== rel.ver ? `<span class="cl-badge">新</span>` : ""}</div>
+      <ul class="cl-list">${rel.items.map(x => `<li>${escHtml(x)}</li>`).join("")}</ul>
+    </div>`).join("");
+  if(seen !== CHANGELOG[0].ver){ localStorage.setItem("lz_seen_version", CHANGELOG[0].ver); }
+}
+/* 打开时检查新版本：有则底部条提示 */
+async function checkNewVersionBadge(){
+  const v = await fetchVersionInfo();
+  const seen = localStorage.getItem("lz_seen_version") || "";
+  const newest = (v && v.latest) || (CHANGELOG[0] && CHANGELOG[0].ver);
+  if(newest && seen && seen !== newest) showUpdateBar(newest);
+}
+function showUpdateBar(ver){
+  if(document.getElementById("lzUpdateBar")) return;
+  const bar = document.createElement("div");
+  bar.id = "lzUpdateBar";
+  bar.className = "lz-update-bar";
+  bar.innerHTML = `<span>🎉 有新版本 v${escHtml(ver)}</span>
+    <button class="btn small" onclick="applyUpdateNow()">立即更新</button>
+    <button class="lz-update-x" onclick="this.parentNode.remove()">✕</button>`;
+  document.body.appendChild(bar);
+}
+async function applyUpdateNow(){
+  try{
+    if("serviceWorker" in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){ try{ await r.unregister(); }catch(e){} }
+    }
+    if(window.caches){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  }catch(e){}
+  try{ localStorage.setItem("lz_seen_version", (CHANGELOG[0] || {}).ver || ""); }catch(e){}
+  location.reload(true);
+}
+
 /* ================= 阅读进度 / 读毕统计 ================= */
 function rdStats(){
   try{ return JSON.parse(localStorage.getItem(pk("rdstats")) || "{}"); }catch(e){ return {}; }
@@ -2650,6 +2761,25 @@ function openPress(url, name){
     window.open(url, "_blank", "noopener");
   }
 }
+/* ================= 多端版式适配 ================= */
+function deviceClass(){
+  try{
+    if(isMiniProgram()) return "dv-mini";
+    const w = window.innerWidth;
+    if(w >= 1100) return "dv-desktop";
+    if(w >= 720) return "dv-tablet";
+    return "dv-phone";
+  }catch(e){ return "dv-phone"; }
+}
+function applyDeviceClass(){
+  const root = document.documentElement;
+  ["dv-desktop","dv-tablet","dv-phone","dv-mini"].forEach(c => root.classList.remove(c));
+  root.classList.add(deviceClass());
+}
+window.addEventListener("resize", ()=>{ try{ applyDeviceClass(); }catch(e){} });
+try{ applyDeviceClass(); }catch(e){}
+
+
 function renderLangChips(){
   const el = document.getElementById("langChips");
   if(!el) return;
@@ -3059,6 +3189,7 @@ function go(name){
   if(name==="collections") renderCollections();
   if(name==="press") renderPress();
   if(name==="vocabbooks") renderVocabBooks();
+  if(name==="changelog") renderChangelog();
   if(name==="browser"){ const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0"; }
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
@@ -10177,6 +10308,8 @@ window.addEventListener("load", () => {
 setTimeout(() => {
   if(window.AssemblyCore && AssemblyCore.initReaderAssembly && !window.LZAssembly) AssemblyCore.initReaderAssembly();
 }, 600);
+/* 打开时检查新版本 */
+try{ setTimeout(()=>{ try{ checkNewVersionBadge(); }catch(e){} }, 6000); }catch(e){}
 /* 启动时把词书标记应用到阅读器 */
 try{ setTimeout(()=>{ try{ applyVbHighlight(); }catch(e){} }, 1500); }catch(e){}
 /* 小程序 web-view 打开订阅页时自动弹支付 */
