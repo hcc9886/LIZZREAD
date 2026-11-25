@@ -159,6 +159,7 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more:hover{border-color:var(--brand);color:var(--brand-deep)}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
+.fd-level-hint{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.6}
 /* 拼装：模式条 + 打字区 */
 .asm-mode-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
 .asm-mode-bar .chip{min-height:30px;font-size:12.5px;padding:0 12px}
@@ -1797,6 +1798,43 @@ let BOOKS_LANG = [];          /* 当前学习语言的书库（英文=BOOKS，�
 let BOOKS_EN = null;          /* 英文原始书库（导入合并过） */
 let _langBooted = false;
 /* 全站书籍总数（各语言相加） */
+/* 各语言等级的本地标准（用于书卡、推荐、测试结果） */
+const LEVEL_SYSTEM = {
+  en: { name:"CEFR A1–C2", levels:["A1","A2","B1","B2","C1","C2"] },
+  de: { name:"CEFR A1–C2 · 歌德学院", levels:["A1","A2","B1","B2","C1","C2"] },
+  fr: { name:"CEFR A1–C2 · DELF/DALF", levels:["A1","A2","B1","B2","C1","C2"] },
+  it: { name:"CEFR A1–C2 · CILS/CELI", levels:["A1","A2","B1","B2","C1","C2"] },
+  es: { name:"CEFR A1–C2 · DELE", levels:["A1","A2","B1","B2","C1","C2"] },
+  nl: { name:"CEFR A1–C2 · NT2", levels:["A1","A2","B1","B2","C1","C2"] },
+  pt: { name:"CEFR A1–C2 · CAPLE", levels:["A1","A2","B1","B2","C1","C2"] },
+  sv: { name:"CEFR A1–C2 · Swedex", levels:["A1","A2","B1","B2","C1","C2"] },
+  fi: { name:"CEFR A1–C2 · YKI", levels:["A1","A2","B1","B2","C1","C2"] },
+  el: { name:"CEFR A1–C2 · 希腊语考试", levels:["A1","A2","B1","B2","C1","C2"] },
+  hu: { name:"CEFR A1–C2 · ECL", levels:["A1","A2","B1","B2","C1","C2"] },
+  eo: { name:"CEFR A1–C2 · KER", levels:["A1","A2","B1","B2","C1","C2"] },
+  la: { name:"拉丁语分级 T1–T4（国内通行）", levels:["T1","T2","T3","T4"] },
+  zh: { name:"HSK 1–6 新标准（1–9 级）", levels:["HSK1","HSK2","HSK3","HSK4","HSK5","HSK6"] },
+  ja: { name:"JLPT N5–N1", levels:["N5","N4","N3","N2","N1"] },
+  ko: { name:"TOPIK 1–6 级", levels:["1","2","3","4","5","6"] }
+};
+function levelSystem(){
+  return LEVEL_SYSTEM[activeLang()] || { name:"CEFR", levels: TIERS_EN };
+}
+/* 等级人话解释 */
+const LEVEL_DESC = {
+  "A1":"入门：能看懂极短句与常见标识", "A2":"基础：能读懂简单短文与日常通知",
+  "B1":"进阶：能读懂一般文章，可能需查词", "B2":"中高：能读懂报刊与专业介绍",
+  "C1":"高级：能读懂长篇复杂文本与文学", "C2":"精通：能读懂几乎任何书面语",
+  "T1":"拉丁入门：最常用词与短句", "T2":"拉丁中级：易懂的散文", "T3":"拉丁进阶：古典散文与诗", "T4":"拉丁高阶：原典精读",
+  "HSK1":"HSK1：150 词，问候与自我介绍", "HSK2":"HSK2：300 词，日常对话",
+  "HSK3":"HSK3：600 词，生活场景短文", "HSK4":"HSK4：1200 词，一般文章",
+  "HSK5":"HSK5：2500 词，报刊与讲座", "HSK6":"HSK6：5000 词，文学与学术",
+  "N5":"N5：假名与基础表达", "N4":"N4：日常会话短文", "N3":"N3：一般新闻与说明",
+  "N2":"N2：报刊与小说", "N1":"N1：社论与文学",
+  "1":"TOPIK 1：基础问候", "2":"TOPIK 2：日常交流", "3":"TOPIK 3：熟悉话题",
+  "4":"TOPIK 4：一般文章", "5":"TOPIK 5：专业与社论", "6":"TOPIK 6：学术与文学"
+};
+function levelExplain(lv){ return LEVEL_DESC[lv] || ""; }
 function LANS_TOTAL(){
   try{
     /* 英语书库的实际条数不在 manifest 里，取 BOOKS 的真实长度，避免重复计数 */
@@ -1836,7 +1874,7 @@ document.addEventListener("click", (e) => {
 /* 当前筛选摘要：English · B1 · 全部类型 */
 function libSummaryText(){
   const L0 = LANG_INFO[activeLang()] || { native: activeLang() };
-  const lv = fLv === "all" ? L("library.allLv","全部难度") : fLv;
+  const lv = fLv === "all" ? ("全部" + (levelSystem().name.split(/[\s·]/)[0] || "难度")) : fLv;
   /* 类型在摘要里用中文名，避免出现 "· 类型" 这种半截文案 */
   /* i18n 里的 allGenres 只是「类型」两字，摘要需要「全部类型」，按语言补前缀 */
   const ALLG = { zh:"全部类型", en:"All genres", de:"Alle Gattungen", fr:"Tous genres",
@@ -1877,8 +1915,9 @@ function renderFilterDrawer(){
       <h3 style="margin:0">${L("library.filter","筛选")}</h3>
       <button class="icobtn" onclick="closeFilterDrawer()" aria-label="关闭"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <div class="fd-sec"><div class="fd-h">${L("library.difficulty","难度")}</div>
-      <div class="fd-chips" id="lvChips"></div></div>
+    <div class="fd-sec"><div class="fd-h">${escHtml(levelSystem().name)}</div>
+      <div class="fd-chips" id="lvChips"></div>
+      <div class="fd-level-hint" id="lvHint">${escHtml(levelExplain(fLv) || (fLv === "all" ? "点任意等级查看该等级能读什么" : ""))}</div></div>
     <div class="fd-sec"><div class="fd-h">${L("library.genre","类型")}</div>
       <div class="fd-chips" id="genreChips"></div></div>
     <div class="fd-actions">
@@ -3172,7 +3211,11 @@ function renderChips(){
       Object.entries(GENRES()).map(([k,v])=>chip(v,k,fGenre,"setGenre")).join("");
   }
 }
-function setLv(v){ fLv=v; libLimit=60; renderLibrary(); }
+function setLv(v){
+  fLv=v; libLimit=60; renderLibrary();
+  const hint = document.getElementById("lvHint");
+  if(hint) hint.textContent = levelExplain(v) || "";
+}
 function setGenre(v){ fGenre=v; libLimit=60; renderLibrary(); }
 function moreBooks(){ libLimit += 80; renderLibrary(); }
 function resetLibFilter(){
