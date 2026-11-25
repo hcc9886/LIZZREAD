@@ -32,6 +32,7 @@
 <script src="data/lang-test-options.js?v=1"></script>
 <script src="data/offline-tr.js?v=1" defer></script>
 <script src="data/vocab-books.js?v=1" defer></script>
+<script src="data/vocab-books-ext.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
@@ -183,11 +184,22 @@ html.dv-tablet .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 html.dv-tablet .reader{padding:12px 20px}
 
 html.dv-phone .reader{padding:10px 14px}
-html.dv-phone .sent .en{font-size:16.5px;line-height:1.75}
+html.dv-phone .sent .en{font-size:16.5px;line-height:1.8}
+html.dv-phone .btn, html.dv-phone .chip{min-height:38px}
+html.dv-phone .rd-tools{gap:6px}
+html.dv-phone .rd-tools .btn{font-size:12.5px;padding:0 10px}
+html.dv-phone .nav-more{display:inline-flex;align-items:center;justify-content:center;min-width:44px}
+html.dv-phone #mainNav{display:none}
+html.dv-phone .reader{padding:10px 14px 96px}
+html.dv-phone .page-nav{position:sticky;bottom:64px;background:var(--bg);padding:8px 0}
+html.dv-phone .grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+html.dv-phone .book .cover{height:150px}
+html.dv-phone .press-item{padding:10px 12px}
 
 html.dv-mini .reader{padding:8px 12px}
 html.dv-mini .rd-layout{flex-wrap:nowrap;overflow-x:auto}
 html.dv-mini .lz-update-bar{bottom:auto;top:12px}
+html.dv-phone .view, html.dv-mini .view{padding-bottom:env(safe-area-inset-bottom, 0)}
 /* 阅读进度 / 读毕 */
 .rd-progress{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;border-radius:10px;background:var(--brand-soft);color:var(--brand-deep);font-size:12.5px;margin-bottom:10px}
 .fin-label{font-size:12px;letter-spacing:6px;color:var(--muted)}
@@ -235,6 +247,43 @@ html.rl-wide .reader{max-width:860px;margin:0 auto}
 .gr-row>b{flex:0 0 42px;color:var(--brand-deep)}
 .gr-block{margin-top:8px;padding:10px;background:var(--brand-soft);border-radius:10px;font-size:13px;line-height:1.7}
 .gr-block>b{display:block;color:var(--brand-deep);margin-bottom:2px}
+/* 原格式阅读（导入书） */
+.rawfmt .en{white-space:pre-wrap;text-indent:2em}
+.rawfmt .en .w{white-space:normal}
+/* 翻页书籍模式 */
+.page-mode{max-width:760px;margin:0 auto}
+.page-mode .sent{margin-bottom:10px}
+.page-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 8px;flex-wrap:wrap}
+.page-num{font:600 13px var(--font);color:var(--brand-deep)}
+/* 逐句听写 */
+.dict-box{margin-top:12px}
+.dict-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.dict-result{margin-top:10px;font-size:14px;line-height:1.8}
+.dict-score{font-weight:600;color:var(--brand-deep);margin-bottom:6px}
+.dict-ans{font:15px/1.9 var(--serif)}
+.dict-ok{color:#0E9F6E}
+.dict-bad{color:#E86F87;text-decoration:underline wavy}
+/* 中英夹杂 */
+.mix-in{color:var(--brand-deep);font-weight:600}
+.mix-blank{display:inline-block;min-width:52px;border-bottom:2px solid var(--brand);text-align:center;cursor:pointer}
+.mix-blank .mix-ans{display:none}
+.mix-blank.open .mix-ans{display:inline}
+.mix-blank.open .mix-hint{display:none}
+.mix-hint{color:var(--muted);font-size:.8em}
+.mix-story{font:15px/1.9 var(--serif);margin-top:10px;padding:12px;background:var(--surface2);border-radius:10px;max-height:44vh;overflow-y:auto}
+/* 语法高亮 */
+.gt-subj{background:rgba(255,171,64,.28);border-radius:3px;padding:0 1px}
+.gt-verb{background:rgba(239,83,80,.26);border-radius:3px;padding:0 1px}
+.gt-obj{background:rgba(38,166,154,.24);border-radius:3px;padding:0 1px}
+.gt-clause{background:rgba(126,87,194,.24);border-radius:3px;padding:0 1px}
+/* 词汇覆盖率 + 长按翻译 */
+.cov-box{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);margin:10px 0}
+.cov-head{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.cov-pct{font:600 16px var(--serif);color:var(--brand-deep)}
+.cov-bar{height:6px;border-radius:6px;background:var(--surface2);overflow:hidden;margin-top:6px}
+.cov-bar>i{display:block;height:100%;background:var(--brand);border-radius:6px}
+.lp-en{font:16px/1.7 var(--serif);margin:10px 0 8px;padding:10px;background:var(--surface2);border-radius:10px}
+.lp-zh{font-size:14px;line-height:1.8}
 /* 单词打怪闯关 */
 .wq-hud{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:var(--surface2);font-size:13.5px}
 .wq-stage{position:relative;margin-top:14px;padding:22px 16px;border-radius:16px;text-align:center;background:linear-gradient(180deg,#101d18,#16291f);color:#e8f5ec;overflow:hidden}
@@ -812,7 +861,26 @@ body.no-zh .sent .zh{display:none}
       <button class="chip on" onclick="setSubMode('both')">原文 + 中文</button>
       <label class="br-toggle"><input type="checkbox" id="vidWordClick" checked> 点词翻译</label>
     </div>
+    <div class="lang-row" style="margin-top:10px">
+      <button class="chip ${dictMode?'':'on'}" onclick="setVideoTab('sub')">字幕对照</button>
+      <button class="chip ${dictMode?'on':''}" onclick="setVideoTab('dict')">逐句听写</button>
+    </div>
     <div id="subList" class="sub-list"></div>
+    <div id="dictBox" class="dict-box" style="display:none">
+      <div class="dict-row">
+        <button class="btn ghost small" onclick="dictReplay()">▶ 重播这句</button>
+        <button class="btn ghost small" onclick="dictPrev()">← 上一句</button>
+        <button class="btn ghost small" onclick="dictNext()">下一句 →</button>
+        <span class="tip" style="margin:0" id="dictPos">—</span>
+      </div>
+      <textarea id="dictInput" class="asm-type-input" placeholder="听写这一句，输入你听到的内容…"></textarea>
+      <div class="lang-row" style="margin-top:10px">
+        <button class="btn small" onclick="dictCheck()">✅ 对比检查</button>
+        <button class="btn ghost small" onclick="dictShowAnswer()">看答案</button>
+        <button class="btn ghost small" onclick="dictNext()">下一句</button>
+      </div>
+      <div id="dictResult" class="dict-result"></div>
+    </div>
   </section>
 
   <!-- ============ 更新记录 ============ -->
@@ -2155,13 +2223,18 @@ function clearFullTextSearch(){
 }
 /* ================= 考试词书：已学 / 要学 标记 =================
    支持 CET4/CET6/IELTS/TOEFL，颜色可自定义；标记后阅读器里同样的词自动着色。 */
-const VOCAB_BOOKS = () => (window.LZ_VOCAB_BOOKS || {});
+const VOCAB_BOOKS = () => Object.assign({}, window.LZ_VOCAB_BOOKS || {}, window.LZ_VOCAB_BOOKS_EXT || {});
 const VB_META = {
   cet4:  { name:"四级 CET-4",  color:"#2F80ED" },
   cet6:  { name:"六级 CET-6",  color:"#9B51E0" },
   ielts: { name:"雅思 IELTS",  color:"#F2994A" },
   toefl: { name:"托福 TOEFL",  color:"#EB5757" }
-};
+,
+  gmat:   { name:"GMAT",        color:"#00B8A9" },
+  toeic:  { name:"托业 TOEIC",  color:"#6FCF97" },
+  kaoyan: { name:"考研英语",     color:"#BB6BD9" },
+  zhuan4: { name:"专四 TEM-4",  color:"#56CCF2" },
+  zhuan8: { name:"专八 TEM-8",  color:"#2D9CDB" }};
 function vbState(){ try{ return JSON.parse(localStorage.getItem(pk("vb_state")) || "{}"); }catch(e){ return {}; } }
 function vbSave(o){ try{ localStorage.setItem(pk("vb_state"), JSON.stringify(o)); }catch(e){} }
 function vbColors(){ try{ return Object.assign({}, Object.fromEntries(Object.entries(VB_META).map(([k,v])=>[k,v.color])), JSON.parse(localStorage.getItem("lz_vb_colors") || "{}")); }catch(e){ return {}; } }
@@ -2226,7 +2299,7 @@ function renderVocabBooks(){
       <b>我的进度</b>
       <div class="sub">已掌握 <b>${known}</b> 词 · 待学习 <b>${learn}</b> 词</div>
     </div>
-    ${Object.entries(VB_META).map(([bk, meta]) => {
+    ${Object.entries(VB_META).filter(([bk]) => (books[bk] || []).length).map(([bk, meta]) => {
       const total = (books[bk] || []).length;
       return `<div class="settings-card">
         <div style="display:flex;align-items:center;gap:10px">
@@ -2249,6 +2322,9 @@ function renderVocabBooks(){
         <button class="btn ghost small" onclick="vbAddManual('learn')">标为要学</button>
       </div>
       <div class="tip">标记后回到阅读器，同样的词会用不同颜色标出（已学=下划线，要学=橙色底）。</div>
+      <div class="lang-row" style="margin-top:10px">
+        <button class="btn small" onclick="generateStoryFromVocab()">📝 用生词写小故事</button>
+      </div>
     </div>`;
 }
 function vbBulk(book, status){
@@ -2519,7 +2595,10 @@ function rdMarkRead(id, chapterIdx, totalChapters, words){
   const b = st[id] || (st[id] = { chapters:{}, start: Date.now(), last: 0, words:0 });
   if(chapterIdx != null) b.chapters[chapterIdx] = Date.now();
   b.last = Date.now();
-  if(words) b.words = Math.max(b.words || 0, words);
+  if(words) b.words = (b.words || 0) + words;
+  const day = new Date().toISOString().slice(0, 10);
+  b.perDay = b.perDay || {};
+  b.perDay[day] = (b.perDay[day] || 0) + 60;   /* 每打开一章记 1 分钟起步 */
   rdStatsSave(st);
   const done = Object.keys(b.chapters).length;
   if(totalChapters && done >= totalChapters && !b.finishedAt){
@@ -2575,6 +2654,56 @@ function openBookFinished(id){
   showBookFinished(id);
 }
 /* 全局阅读统计页（在报告里展示） */
+/* 阅读时长与速度：每 20 秒记录一次累计时长；WPM 用本次会话词数/分钟估算 */
+let _rdTick = null, _rdSession = { start: 0, words: 0 };
+function rdTickStart(){
+  if(_rdTick) return;
+  _rdSession = { start: Date.now(), words: 0 };
+  _rdTick = setInterval(()=>{
+    try{
+      const on = document.getElementById("view-reader") && document.getElementById("view-reader").classList.contains("on");
+      if(!on || !curBook) return;
+      const st = rdStats();
+      const b = st[curBook.id] || (st[curBook.id] = { chapters:{}, start: Date.now(), seconds:0, words:0 });
+      b.seconds = (b.seconds || 0) + 20;
+      st[curBook.id] = b;
+      rdStatsSave(st);
+    }catch(e){}
+  }, 20000);
+}
+function rdWpm(id){
+  const st = rdStats();
+  const b = st[id];
+  if(!b || !b.seconds || !b.words) return 0;
+  return Math.round(b.words / (b.seconds / 60));
+}
+/* 近 14 天阅读时长柱状图（SVG，零依赖） */
+function rdChartSvg(){
+  const st = rdStats();
+  const days = [];
+  const now = new Date();
+  for(let i = 13; i >= 0; i--){
+    const d = new Date(now.getTime() - i * 86400000);
+    days.push({ key: d.toISOString().slice(0, 10), label: (d.getMonth()+1) + "/" + d.getDate(), v: 0 });
+  }
+  for(const id of Object.keys(st)){
+    const b = st[id];
+    const per = b.perDay || {};
+    for(const k of Object.keys(per)){
+      const hit = days.find(x => x.key === k);
+      if(hit) hit.v += per[k];
+    }
+  }
+  const max = Math.max(1, ...days.map(d => d.v));
+  const W = 300, H = 72, bw = W / days.length;
+  const bars = days.map((d, i) => {
+    const h = Math.round(d.v / max * (H - 14));
+    return `<rect x="${(i*bw+2).toFixed(1)}" y="${H-12-h}" width="${(bw-4).toFixed(1)}" height="${Math.max(1,h)}" rx="2" fill="var(--brand)" opacity="${d.v?0.9:0.25}"></rect>`;
+  }).join("");
+  const total = days.reduce((a, d) => a + d.v, 0);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">${bars}</svg>
+    <div class="tip" style="margin:4px 0 0">近 14 天共 ${Math.round(total/60)} 分钟 · 最高一天 ${Math.round(max/60)} 分钟</div>`;
+}
 function rdStatsSummary(){
   const st = rdStats();
   const ids = Object.keys(st);
@@ -2757,10 +2886,97 @@ function readerToolExtras(){
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
     <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
     <button class="btn ghost small" onclick="toggleInlineGloss()">${inlineGlossOn()?'📖 行间释义：开':'📖 行间释义：关'}</button>
+    ${isFull && (fullCache[id] && fullCache[id].imported) ? `<button class="btn ghost small" onclick="toggleRawFormat()">${rawFormatOn()?'📄 原格式：开':'📄 原格式：关'}</button>` : ""}
+    <button class="btn ghost small" onclick="setMixMode(mixMode()==='off'?'gloss':(mixMode()==='gloss'?'fill':'off'))">${mixMode()==='off'?'🔀 中英夹杂':(mixMode()==='gloss'?'🔀 渐进注释':'🔀 生词填空')}</button>
+    <button class="btn ghost small" onclick="toggleGrammarTag()">${grammarTagOn()?'🎨 语法高亮：开':'🎨 语法高亮：关'}</button>
     <button class="btn ghost small" onclick="webSearch(prompt('搜索什么？')||'')">🔍 网页搜索</button>
     <button class="btn ghost small" onclick="webSearch(sheetWord||'')">🔍 搜索</button>
     <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
   </div>`;
+}
+
+/* ================= 词汇覆盖率（可读性评估） ================= */
+function vocabCoverage(sents, lang){
+  const G = window.LIZ_DICT || {};
+  let total = 0, known = 0;
+  const uniq = new Set();
+  const limit = Math.min(sents.length, 120);   /* 抽样前 120 句，够快够准 */
+  for(let i = 0; i < limit; i++){
+    const words = String(sents[i] && sents[i].en || "").match(/[A-Za-z'’-]{2,}/g) || [];
+    for(const w of words){
+      total++;
+      const low = w.toLowerCase();
+      uniq.add(low);
+      if(G[low] || (typeof _baseForms === "function" && _baseForms(low).some(b => G[b]))) known++;
+    }
+  }
+  if(!total) return null;
+  const pct = Math.round(known / total * 100);
+  const level = pct >= 97 ? "A2 入门友好" : pct >= 93 ? "B1 轻松" : pct >= 87 ? "B2 稍有挑战"
+    : pct >= 78 ? "C1 较难" : "C2 挑战很大";
+  return { pct, uniq: uniq.size, level, sampled: limit };
+}
+function renderCoverage(hostId, sents){
+  const host = document.getElementById(hostId);
+  if(!host) return;
+  const c = vocabCoverage(sents);
+  if(!c){ host.innerHTML = ""; return; }
+  host.innerHTML = `<div class="cov-box">
+    <div class="cov-head"><b>词汇覆盖率</b><span class="cov-pct">${c.pct}%</span></div>
+    <div class="cov-bar"><i style="width:${c.pct}%"></i></div>
+    <div class="tip" style="margin:6px 0 0">约 ${c.level} · 抽样 ${c.sampled} 句 · 不重复词 ${c.uniq} 个</div>
+  </div>`;
+}
+
+/* ================= 长按整句翻译 ================= */
+function bindLongPressTranslate(){
+  const root = document.getElementById("view-reader");
+  if(!root || root.__lpBound) return;
+  root.__lpBound = true;
+  let timer = null, moved = false;
+  const start = e => {
+    moved = false;
+    const sent = e.target.closest && e.target.closest(".sent .en");
+    if(!sent) return;
+    timer = setTimeout(()=>{
+      if(moved) return;
+      const si = Number(sent.closest(".sent").dataset.si);
+      longPressTranslate(si);
+    }, 520);
+  };
+  const cancel = ()=>{ clearTimeout(timer); };
+  root.addEventListener("pointerdown", start);
+  root.addEventListener("pointermove", ()=>{ moved = true; });
+  root.addEventListener("pointerup", cancel);
+  root.addEventListener("pointercancel", cancel);
+  root.addEventListener("pointerleave", cancel);
+}
+function longPressTranslate(si){
+  if(!curBook) return;
+  const list = getSents(curBook.id);
+  const sents = Array.isArray(list) ? list.slice(si, si + 3) : [];
+  const text = sents.map(s => s.en).filter(Boolean).join(" ");
+  if(!text) return;
+  let el = document.getElementById("lpSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "lpSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font:600 16px var(--serif)">整句翻译</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('lpSheet').style.display='none'">✕</button>
+    </div>
+    <div class="lp-en">${escHtml(text)}</div>
+    <div id="lpZh" class="lp-zh">翻译中…</div>
+    <div class="lang-row" style="margin-top:10px">
+      <button class="btn small" onclick="speakText(document.querySelector('#lpSheet .lp-en').textContent)">🔊 朗读</button>
+      <button class="btn ghost small" onclick="document.getElementById('lpSheet').style.display='none'">关闭</button>
+    </div>
+  </div>`;
+  const zh = offlineTranslate(text, "zh");
+  if(zh){ document.getElementById("lpZh").textContent = zh; return; }
+  mtFetch(text).then(t => { const e = document.getElementById("lpZh"); if(e) e.textContent = t || "（翻译暂不可用）"; })
+    .catch(()=>{ const e = document.getElementById("lpZh"); if(e) e.textContent = "（翻译暂不可用，可联网后重试）"; });
 }
 
 /* ================= 单词打怪闯关 ================= */
@@ -2892,6 +3108,122 @@ function toggleInlineGloss(){
   toast(inlineGlossOn() ? "行间释义：开（生词下方显示简短中文）" : "行间释义：关");
 }
 /* 给英文句子生成带行间释义的 HTML：只标注「不在默认词表里的词」 */
+/* ================= 中英夹杂阅读（渐进式 + 填空式 + 生词故事） ================= */
+function mixMode(){ try{ return localStorage.getItem(pk("mix_mode")) || "off"; }catch(e){ return "off"; } }
+function setMixMode(m){
+  try{ localStorage.setItem(pk("mix_mode"), m); }catch(e){}
+  if(curBook){ const y = window.scrollY; openReader(curBook.id); setTimeout(()=>window.scrollTo(0, y), 30); }
+  toast(m === "off" ? "中英夹杂：关" : m === "gloss" ? "中英夹杂：渐进注释" : "中英夹杂：生词填空");
+}
+/* 词是否"超出我的水平"：不在已掌握集合、且不在默认高频 2000 词内 */
+function isBeyondLevel(low){
+  const st = vbStatus(low);
+  if(st === "known") return false;
+  const wstates = wordStates()[stemOf(low)];
+  if(wstates && wstates.st === 2) return false;         /* 已掌握不高亮 */
+  return low.length >= 5;                               /* 短词基本是高频词，不打扰 */
+}
+function mixGlossHtml(word){
+  const low = String(word).toLowerCase();
+  if(!isBeyondLevel(low)) return "";
+  if(mixMode() === "fill"){
+    const st = vbStatus(low);
+    if(st !== "learn") return "";                       /* 填空只挖"要学"的词 */
+    const d = dictEntry(low);
+    const hint = d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 10) : "";
+    return `<span class="mix-blank" title="点开看答案" onclick="event.stopPropagation();this.classList.toggle('open')">
+      <span class="mix-ans">${escHtml(word)}</span><span class="mix-hint">${escHtml(hint || "____")}</span></span>`;
+  }
+  const d = dictEntry(low);
+  const zh = d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 8) : "";
+  if(!zh || /[a-zA-Z]/.test(zh)) return "";
+  return `<span class="mix-in">${escHtml(word)}（${escHtml(zh)}）</span>`;
+}
+/* 按生词生成一篇小故事（模板拼装，零成本，可离线） */
+/* 按词性粗略分桶，让句子读起来像话 */
+function _storyBuckets(words){
+  const n = [], v = [], a = [], other = [];
+  for(const w of words){
+    const e = _getDictEntry(w);
+    const pos = e ? String(e[0] || "").toLowerCase() : "";
+    if(/\bn\b|n\./.test(pos)) n.push(w);
+    else if(/\bv\b|v\./.test(pos)) v.push(w);
+    else if(/\badj\b|adj\./.test(pos)) a.push(w);
+    else other.push(w);
+  }
+  return { n:[...n, ...other], v, a };
+}
+const MIX_TEMPLATES = [
+  b => `One quiet morning, a ${b.n[0] || "traveler"} found something ${b.a[0] || "strange"} beside the old ${b.n[1] || "door"}. Nobody could ${b.v[0] || "explain"} it.`,
+  b => `The ${b.n[0] || "letter"} said nothing, yet it felt ${b.a[0] || "urgent"}. He had to ${b.v[0] || "decide"} before sunset.`,
+  b => `In a small ${b.n[0] || "town"}, everyone whispered about the ${b.n[1] || "stranger"} who never ${b.v[0] || "spoke"}.`,
+  b => `She ${b.v[0] || "looked"} at the sky and felt ${b.a[0] || "calm"}. Tomorrow would ${b.v[1] || "change"} everything.`,
+  b => `They began to ${b.v[0] || "walk"} through the ${b.n[0] || "forest"}, hoping the ${b.n[1] || "map"} was ${b.a[0] || "right"}.`
+];
+function generateStoryFromVocab(){
+  const list = (store.vocab || []).map(v => String(v.w || "").toLowerCase()).filter(Boolean);
+  const words = [...new Set(list)].slice(0, 12);
+  if(words.length < 3){ toast("生词本里至少要有 3 个词"); return; }
+  const b = _storyBuckets(words);
+  const paras = MIX_TEMPLATES.slice(0, 3).map(f => f(b));
+  const text = paras.join(" ") + " " + words.map(w => `Then came the word "${w}".`).join(" ");
+  let el = document.getElementById("mixSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "mixSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px"><div style="font:600 16px var(--serif)">📝 用你的生词写的小故事</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('mixSheet').style.display='none'">✕</button>
+    </div>
+    <div class="mix-story" id="mixStoryText">${text.split(" ").map(w => {
+      const low = w.replace(/[^a-zA-Z']/g, "").toLowerCase();
+      const d = words.includes(low) ? dictEntry(low) : null;
+      const zh = d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 8) : "";
+      return zh && !/[a-zA-Z]/.test(zh) ? `<b class="mix-in" title="${escHtml(zh)}">${escHtml(w)}</b>` : escHtml(w);
+    }).join(" ")}</div>
+    <div class="lang-row" style="margin-top:10px">
+      <button class="btn small" onclick="document.getElementById('mixSheet').style.display='none';importTextAsBook(document.getElementById('mixStoryText').innerText,'生词故事')">导入阅读器精读</button>
+      <button class="btn ghost small" onclick="generateStoryFromVocab()">换一个</button>
+    </div>
+  </div>`;
+}
+
+/* 任意文本 → 导入成书（供生词故事/粘贴用） */
+async function importTextAsBook(text, title){
+  const sents = splitIntoSentences(text);
+  if(!sents.length) return;
+  const chapters = [{ t:title || "导入", start:0, end:sents.length }];
+  try{
+    const id = await saveImportedBook({ title: title || "导入文本", format:"TXT", source:"paste", text }, title, sents, chapters);
+    openBook(id);
+  }catch(e){ toast("导入失败：" + (e.message || e)); }
+}
+
+/* ================= 语法高亮（主谓宾 + 从句标记） ================= */
+function grammarTagOn(){ try{ return getPref("grammar_tag") === "1"; }catch(e){ return false; } }
+function toggleGrammarTag(){
+  setPref("grammar_tag", grammarTagOn() ? "0" : "1");
+  if(curBook){ const y = window.scrollY; openReader(curBook.id); setTimeout(()=>window.scrollTo(0, y), 30); }
+  toast(grammarTagOn() ? "语法高亮：开" : "语法高亮：关");
+}
+const _SUBJ_HEAD = /^(he|she|it|they|we|you|i|this|that|these|those|there|the|a|an)$/i;
+const _VERB_LIKE = /(ed|ing|s|es|ly)?$/i;
+/* 逐词加标签：第一个名词组=主语，第一个实义动词=谓语，其后的名词组=宾语，关系词=从句 */
+function grammarSpans(s){
+  const TOK = TOKEN_RE();
+  let stage = 0;              /* 0 找主语 1 找谓语 2 找宾语 */
+  let inClause = false;
+  return (s.en || "").replace(TOK, m => {
+    const low = m.toLowerCase();
+    let cls = "";
+    if(/^(who|whom|whose|which|that|where|when|why|how)$/.test(low) && stage >= 1){ cls = "gt-clause"; inClause = true; }
+    else if(/^(because|although|though|since|while|if|unless|as|until|before|after)$/.test(low)){ cls = "gt-clause"; inClause = true; }
+    else if(stage === 0 && /^[A-Za-z]/.test(m) && !_SUBJ_HEAD.test(m) && m.length > 1){ cls = "gt-subj"; stage = 1; }
+    else if(stage === 1 && /^[A-Za-z]/.test(m) && (/(ed|ing|s|d)$/.test(low) || /^(is|are|was|were|has|have|had|will|would|can|could|must|should)$/.test(low))){ cls = "gt-verb"; stage = 2; }
+    else if(stage === 2 && /^[A-Za-z]/.test(m) && m.length > 2 && !/(ed|ing|s)$/.test(low)){ cls = "gt-obj"; stage = 3; }
+    return `<span class="w ${cls}" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
+  });
+}
 function wordSpansGloss(s, i){
   const TOK = TOKEN_RE();
   const on = inlineGlossOn();
@@ -2909,6 +3241,64 @@ function wordSpansGloss(s, i){
     }
     return html;
   });
+}
+
+/* ================= 逐句听写 ================= */
+let dictMode = false;
+let dictIdx = 0;
+function setVideoTab(t){
+  dictMode = (t === "dict");
+  document.querySelectorAll("#view-video .chip").forEach(c => c.classList.remove("on"));
+  const chips = [...document.querySelectorAll("#view-video .chip")];
+  if(dictMode){ chips[chips.length-1] && chips[chips.length-1].classList.add("on"); }
+  else { chips[chips.length-2] && chips[chips.length-2].classList.add("on"); }
+  const list = document.getElementById("subList");
+  const box = document.getElementById("dictBox");
+  if(list) list.style.display = dictMode ? "none" : "";
+  if(box) box.style.display = dictMode ? "block" : "none";
+  if(dictMode) dictRender();
+}
+function dictRender(){
+  const s = _videoSubs[dictIdx];
+  const pos = document.getElementById("dictPos");
+  const res = document.getElementById("dictResult");
+  if(res) res.innerHTML = "";
+  if(pos) pos.textContent = s ? (dictIdx + 1) + " / " + _videoSubs.length : "没有字幕，请先导入 SRT/VTT";
+  const inp = document.getElementById("dictInput");
+  if(inp) inp.value = "";
+  if(inp) inp.disabled = !s;
+  if(s) dictReplay();
+}
+function dictReplay(){
+  const v = document.getElementById("lzVideo");
+  const s = _videoSubs[dictIdx];
+  if(v && s){ v.currentTime = s.start; v.play(); setTimeout(()=>{ try{ v.pause(); }catch(e){} }, Math.max(1200, (s.end - s.start) * 1000)); }
+}
+function dictNext(){ if(dictIdx < _videoSubs.length - 1){ dictIdx++; dictRender(); } }
+function dictPrev(){ if(dictIdx > 0){ dictIdx--; dictRender(); } }
+function _norm(t){ return String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim(); }
+function dictCheck(){
+  const s = _videoSubs[dictIdx];
+  const res = document.getElementById("dictResult");
+  const inp = document.getElementById("dictInput");
+  if(!s || !inp) return;
+  const a = _norm(inp.value).split(" ").filter(Boolean);
+  const b = _norm(s.text).split(" ").filter(Boolean);
+  if(!a.length){ if(res) res.textContent = "先输入你听到的内容"; return; }
+  let ok = 0;
+  const mark = b.map((w, i) => {
+    const same = a[i] === w;
+    if(same) ok++;
+    return `<span class="${same ? "dict-ok" : "dict-bad"}">${escHtml(w)}</span>`;
+  });
+  const pct = Math.round(ok / b.length * 100);
+  if(res) res.innerHTML = `<div class="dict-score">${pct >= 90 ? "🎉" : pct >= 60 ? "👍" : "💪"} 匹配 ${pct}%（${ok}/${b.length} 词）</div>
+    <div class="dict-ans">${mark.join(" ")}</div>`;
+}
+function dictShowAnswer(){
+  const s = _videoSubs[dictIdx];
+  const res = document.getElementById("dictResult");
+  if(res && s) res.innerHTML = `<div class="dict-ans">${escHtml(s.text)}</div>`;
 }
 
 /* ================= 看视频学：本地视频 + 字幕 ================= */
@@ -3200,9 +3590,60 @@ function renderPress(){
         <div class="press-name">${escHtml(x.name)}</div>
         <div class="press-desc">${escHtml(x.desc)}</div>
       </div>
-      <button class="btn ghost small" onclick="openPress('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">站内打开</button>
+      <button class="btn ghost small" onclick="pressPasteImport('${escapedAttr(x.name)}')">粘贴正文精读</button>
+      <button class="btn ghost small" onclick="openPress('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">打开官网</button>
     </div>`).join("");
 }
+/* 外刊精读：粘贴正文 → 进阅读器逐句点词 + 核心词表 */
+function pressPasteImport(name){
+  let el = document.getElementById("pasteSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "pasteSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font:600 17px var(--serif)">📋 粘贴正文精读 · ${escHtml(name || "外刊")}</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('pasteSheet').style.display='none'">✕</button>
+    </div>
+    <p class="sub" style="margin:8px 0 10px">把文章正文复制进来（Ctrl/⌘+C 后粘贴），会自动切句、统计核心词，点词、朗读、拼装全部可用。</p>
+    <textarea id="pressPasteText" class="asm-type-input" style="min-height:220px" placeholder="在此粘贴英文正文…"></textarea>
+    <div class="lang-row" style="margin-top:10px">
+      <button class="btn small" onclick="pressDoImport()">导入并精读</button>
+      <button class="btn ghost small" onclick="document.getElementById('pasteSheet').style.display='none'">取消</button>
+    </div>
+  </div>`;
+  setTimeout(()=>{ const t = document.getElementById("pressPasteText"); if(t) t.focus(); }, 80);
+}
+async function pressDoImport(){
+  const ta = document.getElementById("pressPasteText");
+  const text = (ta && ta.value || "").trim();
+  if(text.length < 120){ toast("正文太短，至少粘贴 120 个字符"); return; }
+  const title = text.split(/[.!?。]/)[0].slice(0, 40) || "外刊精读";
+  const sents = splitIntoSentences(text);
+  const chapters = [{ t:title, start:0, end:sents.length }];
+  const sh = document.getElementById("pasteSheet"); if(sh) sh.style.display = "none";
+  /* 走统一导入落地：写 IndexedDB + meta，之后能从书架打开 */
+  let id;
+  try{ id = await saveImportedBook({ title, format:"TXT", source:"press", text }, title, sents, chapters); }
+  catch(e){ toast("导入失败：" + (e.message || e)); return; }
+  openBook(id);
+  toast("已导入，共 " + sents.length + " 句");
+}
+
+/* 简易切句（外刊正文用） */
+function splitIntoSentences(text){
+  const clean = String(text || "").replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim();
+  const out = [];
+  for(const para of clean.split(/\n+/)){
+    const parts = para.match(/[^.!?]+[.!?]+["”']?|[^.!?]+$/g) || [para];
+    for(const p of parts){
+      const t = p.trim();
+      if(t.length > 12) out.push({ en:t, zh:null });
+    }
+  }
+  return out.length ? out : [{ en:clean, zh:null }];
+}
+
 /* 站内打开外刊：优先走浏览器模式内嵌，失败则提示 */
 function openPress(url, name){
   /* 大多数外刊设了 X-Frame-Options，无法内嵌。先给出两个可用入口，不假装能打开 */
@@ -3240,7 +3681,8 @@ function applyDeviceClass(){
   root.classList.add(deviceClass());
 }
 window.addEventListener("resize", ()=>{ try{ applyDeviceClass(); }catch(e){}
-try{ applyFormat(); }catch(e){} });
+try{ applyFormat(); }catch(e){}
+try{ setTimeout(()=>{ try{ rdTickStart(); }catch(e){} }, 3000); }catch(e){} });
 try{ applyDeviceClass(); }catch(e){}
 
 
@@ -4328,6 +4770,7 @@ async function openBook(id){
           ${prog.chap!==undefined?`<span class="tag">上次读到第 ${prog.chap+1} 章</span>`:""}
         </div>
         <p style="margin-bottom:14px">${escHtml(b.d || "公版经典全文，可在站内阅读、点词与翻译。")}</p>
+        <div id="covSlot"></div>
         ${(b.demo && b.demo.length) ? `<div style="background:var(--surface2);border-left:3px solid var(--brand);border-radius:10px;padding:10px 14px;margin-bottom:14px">
           <div class="tip" style="margin:0 0 4px">书中句子示例</div>
           ${b.demo.slice(0, 3).map(x => `<div style="font:15px/1.7 var(--serif)">${escHtml(x)}</div>`).join("")}
@@ -4349,6 +4792,8 @@ async function openBook(id){
       : (hasGuide ? "该书仍在版权保护期，站内提供原创精读导读（分章英文概要 + 中文讲解 + 名句），同样支持点词查义与朗读。"
                   : "该书暂无可用全文。")}</p>`;
   go("book");
+  /* 详情页渲染完成后再算覆盖率，避免插槽还没出现就写 */
+  requestAnimationFrame(()=>{ try{ renderCoverage("covSlot", getSents(id) || []); }catch(e){} });
   /* 用户在看详情页时后台预取全文，点「开始阅读」通常已经就绪 */
   if(hasFull && !(fullCache[id] && fullCache[id].sents)) setTimeout(()=>prefetchBookData(b), 80);
 }
@@ -5063,7 +5508,12 @@ function openReader(id){
     return words.some(w => { const f = ws[stemOf(w.toLowerCase())]; return f && (f.st === 0 || f.st === 1); });
   };
   const TOK = TOKEN_RE();
-  const wordSpans = (s,i)=> inlineGlossOn() ? wordSpansGloss(s, i) : (s.en||"").replace(TOK, m=>{
+  const wordSpans = (s,i)=> mixMode() !== "off" ? (s.en||"").replace(TOK, m => {
+      const g = mixGlossHtml(m);
+      return g || `<span class="w" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
+    })
+    : grammarTagOn() ? grammarSpans(s)
+    : inlineGlossOn() ? wordSpansGloss(s, i) : (s.en||"").replace(TOK, m=>{
     const low = m.toLowerCase();
     const mk = bm.w[i+":"+low];
     const fs = ws[stemOf(low)];
@@ -5077,7 +5527,9 @@ function openReader(id){
       <span id="mtout-${key}">${escHtml(shown.join(""))}</span>`;
   };
   let html = readerToolExtras() + (window.__rdProgressBar ? window.__rdProgressBar() : "");
-  if(store.mode === "para"){
+  if(store.mode === "page"){
+    html += renderPageMode(sents, rng, wordSpans, zhBlock);
+  } else if(store.mode === "para"){
     for(let p=rng[0]; p<rng[1]; p+=3){
       const end = Math.min(p+3, rng[1]);
       const grp = sents.slice(p, end);
@@ -5097,7 +5549,7 @@ function openReader(id){
       const i = rng[0]+k;
       const en = wordSpans(s,i);
       const sm = bm.s[i] ? (" sm"+bm.s[i]) : "";
-      return `<div class="sent${sm}" data-si="${i}">
+      return `<div class="sent${sm}${rawFormatOn() ? " rawfmt" : ""}" data-si="${i}">
         <div class="en" onclick="wordClick(event)">${en}</div>
         <div class="zh">${zhBlock("i"+i, [s])}</div>
         <div class="tools">
@@ -5158,7 +5610,7 @@ function openReader(id){
         <span class="tip" id="mtQuota" style="display:inline;margin:0">${isPro()?"会员 · 不限量":"免费版今日剩 "+freeQuotaLeft()+" 句"}</span>`}
         <span class="tip" id="mtChapStat" style="display:inline;margin:0">${translated}/${total} 句已有译文</span>
         <button class="btn ghost small" id="zhToggle" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
-        <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"整段排版":"逐句对照"}</button>
+        <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"整段排版":store.mode==="page"?"翻页书":"逐句对照"}</button>
         <button class="btn ghost small" onclick="toggleDecompose()">${decomposeOn?"🧩 拆解当前句：开":"🧩 拆解当前句：关"}</button>
         <button class="btn ghost small" id="listenBtn" onclick="listenToggle()">🎧 听书</button>
         <button class="btn ghost small" onclick="downloadBook('${id}')">📶 离线本书</button>
@@ -5200,6 +5652,7 @@ function openReader(id){
       </div>` : ""}
     </div>`;
   go("reader");
+  setTimeout(()=>{ try{ bindLongPressTranslate(); }catch(e){} }, 0);
   if(isFull){
     try{
       rdMarkRead(id, fullMode.chap, fullCache[id].chapters.length, sents.slice(rng[0], rng[1]).reduce((a,s)=>a + String(s.en||"").split(/\s+/).length, 0));
@@ -5437,9 +5890,72 @@ function autoPrefetchChapter(){
 }
 /* 逐句 / 整段 排版切换 *//* 逐句 / 整段 排版切换 */
 function toggleMode(){
-  store.mode = store.mode === "para" ? "sent" : "para";
+  /* sent → para → page → sent 三档循环：逐句 / 整段 / 翻页书 */
+  store.mode = store.mode === "para" ? "page" : store.mode === "page" ? "sent" : "para";
   openReader(curBook.id);
 }
+/* 导入书「保留原格式」：保留空行分段、缩进、破折号等 */
+function rawFormatOn(){ try{ return getPref("raw_format") === "1"; }catch(e){ return false; } }
+function toggleRawFormat(){
+  setPref("raw_format", rawFormatOn() ? "0" : "1");
+  if(curBook){ const y = window.scrollY; openReader(curBook.id); setTimeout(()=>window.scrollTo(0, y), 30); }
+  toast(rawFormatOn() ? "原格式：开（保留分段与缩进）" : "原格式：关");
+}
+
+/* ================= 翻页书籍模式（一页一页翻） ================= */
+function pageSize(){
+  const h = window.innerHeight || 800;
+  /* 按屏幕高度估算每页句数，手机约 22 句、电脑约 40 句 */
+  return Math.max(8, Math.min(48, Math.floor(h / 34)));
+}
+function renderPageMode(sents, rng, wordSpans, zhBlock){
+  const id = curBook.id;
+  const per = pageSize();
+  const total = Math.max(1, Math.ceil((rng[1] - rng[0]) / per));
+  const page = Math.max(0, Math.min(total - 1, (store.pageIdx || 0)));
+  const a = rng[0] + page * per, b = Math.min(rng[1], a + per);
+  const body = sents.slice(a, b).map((s, k) => {
+    const i = a + k;
+    return `<div class="sent" data-si="${i}"><div class="en" onclick="wordClick(event)">${wordSpans(s, i)}</div>
+      ${store.showzh !== false ? `<div class="zh">${zhBlock("i"+i, [s])}</div>` : ""}</div>`;
+  }).join("");
+  return `<div class="page-mode">
+    ${body}
+    <div class="page-nav">
+      <button class="btn ghost small" onclick="gotoPage(${page-1})" ${page===0?"disabled":""}>← 上一页</button>
+      <span class="page-num">第 ${page+1} / ${total} 页</span>
+      <button class="btn ghost small" onclick="gotoPage(${page+1})" ${page>=total-1?"disabled":""}>下一页 →</button>
+      <button class="btn ghost small" onclick="gotoPage(0)">回第一页</button>
+    </div>
+    <div class="tip" style="text-align:center">← → 键或滑动翻页；点词、行间释义、语法高亮都可用</div>
+  </div>`;
+}
+function gotoPage(n){
+  if(!curBook) return;
+  const sents = getSents(curBook.id);
+  const rng = (fullMode && fullCache[curBook.id]) ? [fullCache[curBook.id].chapters[fullMode.chap].start, fullCache[curBook.id].chapters[fullMode.chap].end] : [0, sents.length];
+  const per = pageSize();
+  const total = Math.max(1, Math.ceil((rng[1] - rng[0]) / per));
+  store.pageIdx = Math.max(0, Math.min(total - 1, n));
+  const y = 0;
+  openReader(curBook.id, true);
+  window.scrollTo(0, y);
+}
+/* 键盘 / 滑动翻页 */
+document.addEventListener("keydown", e => {
+  if(!document.getElementById("view-reader") || !document.getElementById("view-reader").classList.contains("on")) return;
+  if(store.mode !== "page") return;
+  if(e.key === "ArrowRight" || e.key === "PageDown" || e.key === " "){ e.preventDefault(); gotoPage((store.pageIdx || 0) + 1); }
+  if(e.key === "ArrowLeft" || e.key === "PageUp"){ e.preventDefault(); gotoPage((store.pageIdx || 0) - 1); }
+});
+let _swipeX = null;
+document.addEventListener("touchstart", e => { if(store.mode === "page" && e.touches[0]) _swipeX = e.touches[0].clientX; }, {passive:true});
+document.addEventListener("touchend", e => {
+  if(store.mode !== "page" || _swipeX == null) return;
+  const dx = (e.changedTouches[0] || {}).clientX - _swipeX;
+  if(Math.abs(dx) > 70) gotoPage((store.pageIdx || 0) + (dx < 0 ? 1 : -1));
+  _swipeX = null;
+}, {passive:true});
 /* 双语对照开关：不重绘，保持阅读位置 */
 function toggleZh(){
   store.showzh = !store.showzh;
@@ -8169,7 +8685,7 @@ async function asmUsePack(bookId, sentence){
     asmState = { sentence:s, chunks, pool:pieces, mode, userChunks:new Array(pieces.length).fill(null),
       shuffled: shuffleHard(pieces), selected:null, custom:false, bookId, startedAt: Date.now(),
       ctx:{ prev: idx>0 && arr[idx-1] ? arr[idx-1].text : "", next: idx>=0 && arr[idx+1] ? arr[idx+1].text : "", chapter:"" },
-      showAnswer:false, revealUsed:false, hideText:true };
+      showAnswer:false, revealUsed:false, hideText:true, inputMode:"tap", typedText:"" };
     asmRenderStage();
   }catch(e){
     if(stage) stage.innerHTML = `<div class="empty">句子包加载失败：${e.message}<br><br><button class="btn ghost small" onclick="asmNewRandom()">重试</button></div>`;
@@ -8355,9 +8871,16 @@ function asmRenderStage(){
     </div>
     <div class="asm-mode-bar">
       <span style="font-size:12.5px;color:var(--muted)">分块难度</span>
-      ${[["chunk","意群"],["mixed","混合"],["word","单词 "] ].map(([k,label])=>
+      ${[["chunk","意群"],["mixed","混合"],["word","单词"] ].map(([k,label])=>
         `<button class="chip ${(asmState.mode||"mixed")===k?"on":""}" onclick="asmSetMode('${k}')">${label}</button>`).join("")}
       <span style="margin-left:auto">${asmAnswerHtml()}</span>
+    </div>
+    <div class="asm-mode-bar">
+      <span style="font-size:12.5px;color:var(--muted)">作答方式</span>
+      <button class="chip ${(asmState.inputMode||"tap")==="tap"?"on":""}" onclick="asmSetInput('tap')">点选 / 拖拽</button>
+      <button class="chip ${(asmState.inputMode||"tap")==="type"?"on":""}" onclick="asmSetInput('type')">键盘输入</button>
+      <button class="btn ghost small" style="margin-left:auto" onclick="asmReset()">↺ 重置</button>
+      <button class="btn ghost small" onclick="asmHint()">💡 提示一块</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 6px">
       <span style="font-size:13px;color:var(--muted)">① 按正确顺序点击下方块放入槽位（点击已放好的槽位可取回）</span>
@@ -8371,6 +8894,17 @@ function asmRenderStage(){
           ${v?`<span style="margin-left:auto;font-size:12px;color:var(--muted)">✕ 取回</span>`:""}</div>`;
       }).join("")}
     </div>
+    ${(asmState.inputMode||"tap")==="type" ? `
+    <div style="margin:10px 0 6px;font-size:13px;color:var(--muted)">② 键盘输入整句（不用管标点大小写）</div>
+    <textarea id="asmTypeInput" class="asm-type-input" placeholder="按顺序输入整句…">${escHtml(asmState.typedText||"")}</textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn" onclick="asmSubmitTyped()">✅ 提交答案</button>
+      <button class="btn ghost" onclick="asmTypeHint()">💡 首字母提示</button>
+      <button class="btn ghost" onclick="asmReset()">↺ 重置</button>
+      <button class="btn ghost" onclick="asmNewRandom()">🎲 下一句</button>
+    </div>
+    <div class="tip" id="asmTypeTip" style="margin-top:8px"></div>
+    ` : `
     <div style="font-size:13px;color:var(--muted);margin:10px 0 6px">② 意群块（${remaining.length} 块待放）</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:var(--surface2);border-radius:10px;min-height:54px">
       ${remaining.length?remaining.map((c,i)=>`<button class="asm-block" data-c="${escAttr(c)}" onclick="asmPut(this.dataset.c)">${escHtml(c)}</button>`).join(""):`<span class="tip">全部放好了 ✨ 点提交查看结果</span>`}
@@ -8381,15 +8915,7 @@ function asmRenderStage(){
       <button class="btn ghost" onclick="asmHint()">💡 提示一块</button>
       <button class="btn ghost" onclick="asmNewRandom()">🎲 下一句</button>
     </div>
-    <div class="asm-type-wrap">
-      <div style="font-size:13px;color:var(--muted);margin:14px 0 6px">② 也可以直接打字（按顺序输入整句，不用加标点）</div>
-      <textarea id="asmTypeInput" class="asm-type-input" placeholder="在这里输入整句…"></textarea>
-      <div class="lang-row" style="margin-top:8px">
-        <button class="btn small" onclick="asmSubmitTyped()">提交打字答案</button>
-        <button class="btn ghost small" onclick="asmTypeHint()">给点提示（首字母）</button>
-      </div>
-      <div class="tip" id="asmTypeTip" style="margin-top:6px"></div>
-    </div>
+    `}
     <div id="asmResult" style="margin-top:12px;font-size:14px;line-height:1.7"></div>
     <div class="tip" style="margin-top:10px">提示：可以先看中文意思自己拼，核对时再点「查看答案」；看过答案本次不计分。</div>`;
   /* 没有译文时自动翻译当前句（不阻塞拼装） */
@@ -8422,6 +8948,12 @@ function shuffleHard(list){
   return arr;
 }
 /* 原句在用户没点「看原句」前绝不渲染 */
+function asmSetInput(m){
+  if(!asmState) return;
+  asmState.inputMode = m;
+  asmRenderStage();
+  if(m === "type") setTimeout(()=>{ const t = document.getElementById("asmTypeInput"); if(t) t.focus(); }, 60);
+}
 function asmSetMode(m){
   window.__asmMode = m;
   if(asmState) asmState.mode = m;
@@ -10363,8 +10895,12 @@ function renderReport(){
     const box = document.createElement("div");
     box.id = "rdStatsBox";
     box.className = "settings-card";
+    const totalMin = Math.round(Object.values(rdStats()).reduce((a, b) => a + (b.seconds || 0), 0) / 60);
+    const wpm = curBook ? rdWpm(curBook.id) : 0;
     box.innerHTML = `<h3>📖 阅读进度</h3>
       <div class="sub">读过 <b>${sum.books}</b> 本 · 读完 <b>${sum.finished}</b> 本 · 累计 <b>${sum.chapters}</b> 章</div>
+      <div class="sub" style="margin-top:6px">累计阅读 <b>${totalMin}</b> 分钟${wpm ? ` · 速度约 <b>${wpm}</b> 词/分钟` : ""}</div>
+      <div style="margin-top:10px">${rdChartSvg()}</div>
       <div class="tip" style="margin-top:6px">仅统计本机账号，数据不上传。</div>`;
     host.appendChild(box);
   }catch(e){} }, 0);
