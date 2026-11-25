@@ -263,6 +263,40 @@ html.rl-wide .reader{max-width:860px;margin:0 auto}
 .dict-ans{font:15px/1.9 var(--serif)}
 .dict-ok{color:#0E9F6E}
 .dict-bad{color:#E86F87;text-decoration:underline wavy}
+/* 朗读高亮 + 朗读条 */
+.sent.reading{background:var(--brand-soft);border-radius:10px;box-shadow:0 0 0 2px var(--brand) inset;transition:background .2s}
+.speak-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9000;display:none;align-items:center;gap:12px;padding:9px 16px;border-radius:24px;background:var(--brand-deep);color:#fff;font-size:13.5px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+.speak-bar .btn{background:#fff;color:var(--brand-deep);border:none}
+/* 三栏笔记 */
+.notes-grid{display:grid;gap:12px}
+.note-card{border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
+.note-grid{display:grid;grid-template-columns:1.2fr .8fr 1.2fr;gap:0}
+@media (max-width:820px){ .note-grid{grid-template-columns:1fr} }
+.note-col{padding:10px 12px;border-right:1px solid var(--border)}
+.note-col:last-child{border-right:none}
+.note-col-h{font-size:12px;color:var(--muted);margin-bottom:6px}
+.note-text{font:14px/1.7 var(--read-font, Georgia, serif);min-height:60px;outline:none}
+.note-word{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 6px;border-radius:6px;cursor:pointer}
+.note-word:hover{background:var(--brand-soft)}
+.note-word i{font-style:normal;color:var(--muted);font-size:12px}
+.note-empty,.empty-notes{color:var(--muted);font-size:13px;padding:8px 4px}
+.note-foot{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);background:var(--surface2)}
+/* 同根词族 */
+.rw-fam-root{font-size:12px;color:var(--muted);margin-bottom:6px}
+.rw-fam{display:flex;flex-wrap:wrap;gap:6px}
+.rw-fam-w{display:inline-flex;align-items:baseline;gap:4px;padding:3px 8px;border-radius:8px;background:var(--brand-soft);color:var(--brand-deep);font-size:13px;cursor:pointer}
+.rw-fam-w i{font-style:normal;font-size:11.5px;color:var(--muted)}
+.rw-fam-w:hover{background:var(--brand);color:#fff}
+.rw-fam-w:hover i{color:#eafff5}
+/* 生词复习列表 */
+.vb-review{display:grid;gap:4px;max-height:46vh;overflow-y:auto}
+.vb-rev-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;cursor:pointer}
+.vb-rev-row:hover{border-color:var(--brand);background:var(--brand-soft)}
+.vb-rev-row .dim{flex:1;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vb-dot{font-size:11px;padding:1px 7px;border-radius:6px}
+.vb-dot.fresh{background:#FFE9B0;color:#7A5A00}
+.vb-dot.warming{background:#FFD3A8;color:#7A3E00}
+.vb-dot.solid{background:#C8F2D8;color:#0B5B34}
 /* 中英夹杂 */
 .mix-in{color:var(--brand-deep);font-weight:600}
 .mix-blank{display:inline-block;min-width:52px;border-bottom:2px solid var(--brand);text-align:center;cursor:pointer}
@@ -715,6 +749,7 @@ body.no-zh .sent .zh{display:none}
       <div class="nav-grp" id="navGrpMore" hidden>
         <button onclick="go('collections')">📚 书单</button>
         <button id="nav-press" onclick="go('press')">📰 外刊</button>
+        <button id="nav-notes" onclick="go('notes')">📝 笔记</button>
         <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
         <button id="nav-video" onclick="go('video')">🎬 看视频</button>
         <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
@@ -822,6 +857,18 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 三栏笔记 ============ -->
+  <section class="view" id="view-notes">
+    <h2 class="sec">📝 三栏笔记</h2>
+    <div class="sub">左：原文　中：生词与短语　右：译文对照。从阅读器里点「记笔记」的句子会自动汇到这里。</div>
+    <div class="lang-row" style="margin:10px 0">
+      <button class="btn small" onclick="noteAddBlank()">＋ 新建笔记</button>
+      <button class="btn ghost small" onclick="notesExport()">导出全部</button>
+      <button class="btn ghost small" onclick="notesClear()">清空</button>
+    </div>
+    <div class="notes-grid" id="notesGrid"></div>
   </section>
 
   <!-- ============ 单词打怪闯关 ============ -->
@@ -2320,6 +2367,7 @@ function applyVbHighlight(){
 function renderVocabBooks(){
   const host = document.getElementById("vbBody");
   if(!host) return;
+  setTimeout(()=>{ try{ renderVbReview(); }catch(e){} }, 0);
   const colors = vbColors();
   const st = vbState();
   const known = Object.values(st).filter(x => x === "known").length;
@@ -2329,6 +2377,15 @@ function renderVocabBooks(){
     <div class="settings-card">
       <b>我的进度</b>
       <div class="sub">已掌握 <b>${known}</b> 词 · 待学习 <b>${learn}</b> 词</div>
+    </div>
+    <div class="settings-card">
+      <h3>生词复习面版</h3>
+      <div class="sub">按熟练度筛选，点一个词直接进词卡。</div>
+      <div class="lang-row" style="margin:8px 0">
+        ${[["all","全部"],["fresh","没练过"],["warming","渐熟"],["solid","记牢"]].map(([k,n]) =>
+          `<button class="chip ${_vbFilter===k?'on':''}" onclick="_vbFilter='${k}';renderVocabBooks()">${n}</button>`).join("")}
+      </div>
+      <div id="vbReviewList" class="vb-review"></div>
     </div>
     ${Object.entries(VB_META).filter(([bk]) => (books[bk] || []).length).map(([bk, meta]) => {
       const total = (books[bk] || []).length;
@@ -2357,6 +2414,56 @@ function renderVocabBooks(){
         <button class="btn small" onclick="generateStoryFromVocab()">📝 用生词写小故事</button>
       </div>
     </div>`;
+}
+/* 生词复习三态：没练过 fresh(查词 0-1 次) / 渐熟 warming(2-5) / 记牢 solid(6+) */
+let _vbFilter = "all";
+function vbReviewWords(){
+  const ws = wordStates() || {};
+  const rows = [];
+  for(const [stem, st] of Object.entries(ws)){
+    if(st && st.st === -1) continue;                 /* 忽略的不列 */
+    const n = st.n || 0;
+    const state = n >= 6 ? "solid" : n >= 2 ? "warming" : "fresh";
+    const w = st.w || stem;
+    const d = _getDictEntry(String(w).toLowerCase());
+    rows.push({ w, zh: d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 12) : "", n, state });
+  }
+  /* 生词本里的词也补进来 */
+  for(const v of (store.vocab || [])){
+    const low = String(v.w || "").toLowerCase();
+    if(!low || rows.some(r => r.w.toLowerCase() === low)) continue;
+    const st = ws[stemOf(low)] || {};
+    const n = st.n || 0;
+    const d = _getDictEntry(low);
+    rows.push({ w: v.w, zh: d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 12) : "", n, state: n >= 6 ? "solid" : n >= 2 ? "warming" : "fresh" });
+  }
+  return rows;
+}
+function renderVbReview(){
+  const host = document.getElementById("vbReviewList");
+  if(!host) return;
+  const all = vbReviewWords();
+  const cnt = { all: all.length, fresh: 0, warming: 0, solid: 0 };
+  all.forEach(r => cnt[r.state]++);
+  const list = (_vbFilter === "all" ? all : all.filter(r => r.state === _vbFilter))
+    .sort((a, b) => a.n - b.n).slice(0, 60);
+  host.innerHTML = `<div class="tip" style="margin:0 0 6px">共 ${cnt.all} 词 · 没练过 ${cnt.fresh} · 渐熟 ${cnt.warming} · 记牢 ${cnt.solid}</div>` +
+    (list.length ? list.map(r => `
+      <div class="vb-rev-row" onclick="openWordCard('${escAttr(r.w)}')">
+        <b>${escHtml(r.w)}</b>
+        <span class="dim">${escHtml(r.zh)}</span>
+        <span class="vb-dot ${r.state}">${r.state === "solid" ? "记牢" : r.state === "warming" ? "渐熟" : "没练过"}</span>
+        <span class="tip" style="margin:0">${r.n} 次</span>
+      </div>`).join("") : `<div class="sub">这个状态下还没有词</div>`);
+}
+/* 从任意地方打开一个词的词卡 */
+function openWordCard(word){
+  try{
+    const el = document.createElement("span");
+    el.className = "w";
+    el.dataset.w = word;
+    wordClick({ target: el });
+  }catch(e){ toast("查词失败"); }
 }
 function vbBulk(book, status){
   const list = VOCAB_BOOKS()[book] || [];
@@ -2485,6 +2592,33 @@ function mnemoOf(word, senses){
   return "拆解：" + parts.join(" + ") + " → " + (senses && senses.length ? senses[0] : core);
 }
 
+/* 同根词族：用前缀/后缀/词干推断，再从 25.5 万词条里找真实同族词 */
+const _FAM_PREFIX = ["un","re","dis","pre","in","im","non","mis","over","under","out","anti","co","de","sub","inter","trans","super","en","ex"];
+const _FAM_SUFFIX = ["tion","sion","ment","ness","ance","ence","ity","ship","hood","able","ible","ful","less","ous","ive","al","ic","ly","ize","ise","ify","er","or","ist","ed","ing","s"];
+function wordFamilyOf(word){
+  const raw = String(word || "").toLowerCase().replace(/[^a-z]/g, "");
+  if(raw.length < 4) return { words:[] };
+  const G = window.LIZ_DICT || {};
+  let prefix = "", suffix = "", root = raw;
+  for(const p of _FAM_PREFIX){ if(raw.startsWith(p) && raw.length - p.length >= 3){ prefix = p; root = raw.slice(p.length); break; } }
+  for(const sf of _FAM_SUFFIX){ if(root.endsWith(sf) && root.length - sf.length >= 3){ suffix = sf; root = root.slice(0, root.length - sf.length); break; } }
+  if(root.length < 3) root = raw;
+  /* 枚举：前缀 + 词干 + 常见后缀，最多 12 个 */
+  const tries = new Set([root]);
+  for(const sf of _FAM_SUFFIX) { tries.add(root + sf); tries.add(root + "e" + sf); }
+  for(const p of _FAM_PREFIX) tries.add(p + root);
+  const words = [];
+  for(const w of tries){
+    if(w === raw) continue;
+    const e = G[w];
+    if(!e) continue;
+    const zh = String(e[1] || "").split(/[,，;；]/)[0].slice(0, 8);
+    if(zh && !/[a-zA-Z]{2,}/.test(zh)) words.push({ w, zh });
+    if(words.length >= 10) break;
+  }
+  return { words, root, prefix, suffix };
+}
+
 /* 从离线句库里找真实例句（原文 + 中文） */
 function findExamples(word, limit){
   limit = limit || 3;
@@ -2538,6 +2672,16 @@ function renderRichWordCard(word, low){
     ${mnemo ? `<div class="rw-block"><b>助记</b><div>${escHtml(mnemo)}</div></div>` : ""}
     ${exs.length ? `<div class="rw-block"><b>例句</b>${exs.map(x => `
       <div class="rw-ex"><div class="rw-ex-en">${escHtml(x.en)}</div><div class="rw-ex-zh">${escHtml(x.zh)}</div></div>`).join("")}</div>` : ""}
+    ${(()=>{
+      try{
+        const fam = wordFamilyOf(low);
+        if(!fam || !fam.words.length) return "";
+        return `<div class="rw-block"><b>同根词族</b>
+        <div class="rw-fam-root">${fam.root ? "词根 " + escHtml(fam.root) : ""}${fam.prefix ? " · 前缀 " + escHtml(fam.prefix) : ""}${fam.suffix ? " · 后缀 " + escHtml(fam.suffix) : ""}</div>
+        <div class="rw-fam">${fam.words.map(w => `<span class="rw-fam-w" onclick="event.stopPropagation();openWordCard('${escAttr(w.w)}')">${escHtml(w.w)}<i>${escHtml(w.zh)}</i></span>`).join("")}</div>
+      </div>`;
+      }catch(e){ return ""; }
+    })()}
     ${cols.length ? `<div class="rw-block"><b>词组</b>${cols.map(c => `
       <div class="rw-col"><span>${escHtml(c.phrase)}</span><span class="dim">${escHtml(c.zh)}</span></div>`).join("")}</div>` : ""}
     ${!groups.length && !cached && !exs.length ? `<div class="rw-block dim">本地词典未收录，可在「更多释义」里机翻一次。</div>` : ""}
@@ -2915,9 +3059,11 @@ function readerToolExtras(){
     <span class="tip" style="margin:0">排版</span>
     ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
+    <button class="btn ghost small" onclick="noteFromSentence()">📝 记笔记</button>
+    <button class="btn ghost small" onclick="startReadingAloud()">🔊 连读本章</button>
     <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
     <button class="btn ghost small" onclick="toggleInlineGloss()">${inlineGlossOn()?'📖 行间释义：开':'📖 行间释义：关'}</button>
-    ${isFull && (fullCache[id] && fullCache[id].imported) ? `<button class="btn ghost small" onclick="toggleRawFormat()">${rawFormatOn()?'📄 原格式：开':'📄 原格式：关'}</button>` : ""}
+    ${(()=>{ try{ const b = curBook && fullCache[curBook.id]; return b && (b.imported || (store.imports||[]).some(x=>x.id===curBook.id)); }catch(e){ return false; } })() ? `<button class="btn ghost small" onclick="toggleRawFormat()">${rawFormatOn()?'📄 原格式：开':'📄 原格式：关'}</button>` : ""}
     <button class="btn ghost small" onclick="setMixMode(mixMode()==='off'?'gloss':(mixMode()==='gloss'?'fill':'off'))">${mixMode()==='off'?'🔀 中英夹杂':(mixMode()==='gloss'?'🔀 渐进注释':'🔀 生词填空')}</button>
     <button class="btn ghost small" onclick="toggleGrammarTag()">${grammarTagOn()?'🎨 语法高亮：开':'🎨 语法高亮：关'}</button>
     <button class="btn ghost small" onclick="webSearch(prompt('搜索什么？')||'')">🔍 网页搜索</button>
@@ -3009,6 +3155,82 @@ function longPressTranslate(si){
   mtFetch(text).then(t => { const e = document.getElementById("lpZh"); if(e) e.textContent = t || "（翻译暂不可用）"; })
     .catch(()=>{ const e = document.getElementById("lpZh"); if(e) e.textContent = "（翻译暂不可用，可联网后重试）"; });
 }
+
+/* ================= 三栏笔记（A1） ================= */
+function notesAll(){
+  try{ return JSON.parse(localStorage.getItem(pk("notes")) || "[]"); }catch(e){ return []; }
+}
+function notesSave(list){
+  try{ localStorage.setItem(pk("notes"), JSON.stringify(list.slice(0, 500))); }catch(e){}
+  renderNotes();
+}
+function noteAdd(rec){
+  const list = notesAll();
+  list.unshift(Object.assign({ at: Date.now(), book:"", title:"", text:"", words:[], zh:"" }, rec));
+  notesSave(list);
+}
+function noteAddBlank(){ noteAdd({ title:"新笔记" }); }
+function noteFromSentence(){
+  if(!curBook) return;
+  const sents = getSents(curBook.id);
+  const vis = [...document.querySelectorAll("#view-reader .sent")].find(el => {
+    const r = el.getBoundingClientRect();
+    return r.top >= -40 && r.top < window.innerHeight * 0.6;
+  });
+  const si = vis ? Number(vis.dataset.si) : 0;
+  const s = sents[si];
+  if(!s) return;
+  const words = (s.en.match(/[A-Za-z'’-]{5,}/g) || []).slice(0, 8).map(w => {
+    const d = _getDictEntry(w.toLowerCase());
+    return { w, zh: d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 10) : "" };
+  });
+  noteAdd({ book: curBook.t || "", title: curBook.t || "笔记", text: s.en, words, zh: s.zh || "" });
+  toast("已记入三栏笔记");
+}
+function notesClear(){ if(confirm("清空全部笔记？")) notesSave([]); }
+function notesExport(){
+  const txt = notesAll().map(n => `【${n.title}】\n${n.text}\n生词：${(n.words||[]).map(w=>w.w+"("+w.zh+")").join("、")}\n译文：${n.zh}\n`).join("\n---\n");
+  try{
+    const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "LIZZREAD-notes.txt";
+    a.click();
+    toast("已导出");
+  }catch(e){ toast("导出失败"); }
+}
+function renderNotes(){
+  const host = document.getElementById("notesGrid");
+  if(!host) return;
+  const list = notesAll();
+  if(!list.length){
+    host.innerHTML = `<div class="empty-notes">还没有笔记。在阅读器工具栏点「📝 记笔记」，或点上方「＋ 新建笔记」。</div>`;
+    return;
+  }
+  host.innerHTML = list.map((n, i) => `
+    <div class="note-card">
+      <div class="note-grid">
+        <div class="note-col note-col-en">
+          <div class="note-col-h">原文</div>
+          <div class="note-text" contenteditable="true" oninput="noteEdit(${i},'text',this.innerText)">${escHtml(n.text || "")}</div>
+        </div>
+        <div class="note-col note-col-w">
+          <div class="note-col-h">生词 / 短语</div>
+          ${(n.words || []).map(w => `<div class="note-word" onclick="openWordCard('${escAttr(w.w)}')">${escHtml(w.w)}<i>${escHtml(w.zh || "")}</i></div>`).join("") || `<div class="note-empty">（这篇还没标注生词）</div>`}
+        </div>
+        <div class="note-col note-col-zh">
+          <div class="note-col-h">译文</div>
+          <div class="note-text" contenteditable="true" oninput="noteEdit(${i},'zh',this.innerText)">${escHtml(n.zh || "")}</div>
+        </div>
+      </div>
+      <div class="note-foot">
+        <span class="tip" style="margin:0">${escHtml(n.title || "")} · ${new Date(n.at || Date.now()).toLocaleDateString()}</span>
+        <button class="btn ghost small" style="margin-left:auto" onclick="noteDel(${i})">删除</button>
+      </div>
+    </div>`).join("");
+}
+function noteEdit(i, field, val){ const list = notesAll(); if(list[i]){ list[i][field] = val; try{ localStorage.setItem(pk("notes"), JSON.stringify(list)); }catch(e){} } }
+function noteDel(i){ const list = notesAll(); list.splice(i, 1); notesSave(list); }
 
 /* ================= 单词打怪闯关 ================= */
 const WQ = { hp:3, combo:0, right:0, round:0, queue:[], cur:null, src:"high", running:false };
@@ -4441,6 +4663,7 @@ function go(name){
   if(name==="changelog") renderChangelog();
   if(name==="video") renderSubList();
   if(name==="wordquest"){ renderWqWrong(); wqHud(); }
+  if(name==="notes") renderNotes();
   if(name==="browser"){
     const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
     /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
@@ -5882,7 +6105,7 @@ function openReader(id){
     for(let p=rng[0]; p<rng[1]; p+=3){
       const end = Math.min(p+3, rng[1]);
       const grp = sents.slice(p, end);
-      html += `<div class="sent para" data-si="${p}">
+      html += `<div class="sent para" data-si="${p}" id="sent-${p}">
         <div class="en" onclick="wordClick(event)">${grp.map((s,k)=>wordSpans(s,p+k)).join(" ")}</div>
         <div class="zh">${zhBlock("p"+p, grp)}</div>
         <div class="tools">
@@ -5898,7 +6121,7 @@ function openReader(id){
       const i = rng[0]+k;
       const en = wordSpans(s,i);
       const sm = bm.s[i] ? (" sm"+bm.s[i]) : "";
-      return `<div class="sent${sm}${rawFormatOn() ? " rawfmt" : ""}" data-si="${i}">
+      return `<div class="sent${sm}${rawFormatOn() ? " rawfmt" : ""}" data-si="${i}" id="sent-${i}">
         <div class="en" onclick="wordClick(event)">${en}</div>
         <div class="zh">${zhBlock("i"+i, [s])}</div>
         <div class="tools">
@@ -6251,6 +6474,76 @@ function toggleRawFormat(){
   toast(rawFormatOn() ? "原格式：开（保留分段与缩进）" : "原格式：关");
 }
 
+/* ================= 朗读逐句高亮（A3） ================= */
+let _speakQueue = [], _speakIdx = 0, _speakStop = false;
+function speakRange(from){
+  if(!curBook) return;
+  /* 确保阅读器里有句子（用户可能还在详情页） */
+  if(!document.querySelector("#view-reader .sent")){
+    toast("先点「开始阅读」再点连读"); return;
+  }
+  const sents = getSents(curBook.id);
+  const rng = (fullMode && fullCache[curBook.id])
+    ? [fullCache[curBook.id].chapters[fullMode.chap].start, fullCache[curBook.id].chapters[fullMode.chap].end]
+    : [0, sents.length];
+  const start = Math.max(rng[0], from || rng[0]);
+  _speakQueue = [];
+  for(let i = start; i < rng[1]; i++) if(sents[i] && sents[i].en) _speakQueue.push(i);
+  if(!_speakQueue.length){ toast("这一段没有可读的句子"); return; }
+  _speakIdx = 0; _speakStop = false;
+  showSpeakBar();
+  speakNext();
+}
+function startReadingAloud(){
+  /* 从当前视口第一句开始读 */
+  const vis = [...document.querySelectorAll("#view-reader .sent")].find(el => {
+    const r = el.getBoundingClientRect();
+    return r.top >= -40 && r.top < window.innerHeight * 0.6;
+  });
+  const si = vis ? Number(vis.dataset.si) : 0;
+  speakRange(si);
+  toast("连读开始，按空格或点「停止」可中断");
+}
+function showSpeakBar(){
+  let bar = document.getElementById("speakBar");
+  if(!bar){ bar = document.createElement("div"); bar.id = "speakBar"; bar.className = "speak-bar"; document.body.appendChild(bar); }
+  bar.innerHTML = `<span id="speakCur">朗读中…</span>
+    <button class="btn ghost small" onclick="stopSpeak()">⏹ 停止</button>`;
+  bar.style.display = "flex";
+}
+function speakNext(){
+  if(_speakStop) return;
+  if(_speakIdx >= _speakQueue.length){ stopSpeak(true); return; }
+  /* 队列里存的是句子下标，按顺序遍历 DOM 定位（DOM 里只有当前页/当前章） */
+  let si = _speakQueue[_speakIdx];
+  const sents = getSents(curBook.id);
+  let s = sents[si];
+  document.querySelectorAll(".sent.reading").forEach(e => e.classList.remove("reading"));
+  if(!document.querySelector('#view-reader .sent[data-si="' + si + '"]')) si = _speakQueue.find(k => document.querySelector('#view-reader .sent[data-si="' + k + '"]')) ?? si;
+  s = sents[si] || s;
+  const el = document.querySelector('#view-reader .sent[data-si="' + si + '"]') || document.getElementById("sent-" + si);
+  if(el){ el.classList.add("reading"); let sc = el; el.scrollIntoView({ block:"center", behavior:"smooth" }); }
+  const cur = document.getElementById("speakCur");
+  if(cur) cur.textContent = "朗读 " + (_speakIdx + 1) + "/" + _speakQueue.length;
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(s.en);
+    u.lang = ({en:"en-US",zh:"zh-CN",de:"de-DE",fr:"fr-FR",it:"it-IT",es:"es-ES",ja:"ja-JP",ko:"ko-KR",nl:"nl-NL",pt:"pt-PT",la:"it-IT",el:"el-GR",fi:"fi-FI",hu:"hu-HU",sv:"sv-SE",eo:"eo"})[activeLang()] || "en-US";
+    u.rate = 0.95;
+    u.onend = ()=>{ _speakIdx++; setTimeout(speakNext, 220); };
+    u.onerror = ()=>{ _speakIdx++; setTimeout(speakNext, 220); };
+    window.speechSynthesis.speak(u);
+  }catch(e){ _speakIdx++; setTimeout(speakNext, 220); }
+}
+function stopSpeak(done){
+  _speakStop = true;
+  try{ window.speechSynthesis.cancel(); }catch(e){}
+  document.querySelectorAll(".sent.reading").forEach(e => e.classList.remove("reading"));
+  const bar = document.getElementById("speakBar");
+  if(bar) bar.style.display = "none";
+  if(done) toast("这一段读完了");
+}
+
 /* ================= 翻页书籍模式（一页一页翻） ================= */
 function pageSize(){
   const h = window.innerHeight || 800;
@@ -6265,7 +6558,7 @@ function renderPageMode(sents, rng, wordSpans, zhBlock){
   const a = rng[0] + page * per, b = Math.min(rng[1], a + per);
   const body = sents.slice(a, b).map((s, k) => {
     const i = a + k;
-    return `<div class="sent" data-si="${i}"><div class="en" onclick="wordClick(event)">${wordSpans(s, i)}</div>
+    return `<div class="sent" data-si="${i}" id="sent-${i}"><div class="en" onclick="wordClick(event)">${wordSpans(s, i)}</div>
       ${store.showzh !== false ? `<div class="zh">${zhBlock("i"+i, [s])}</div>` : ""}</div>`;
   }).join("");
   return `<div class="page-mode">
