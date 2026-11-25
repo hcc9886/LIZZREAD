@@ -918,7 +918,7 @@ body.no-zh .sent .zh{display:none}
       <button class="chip" onclick="brSearch('baidu')" id="brB">百度</button>
       <button class="chip" onclick="brSearch('bing')" id="brN">Bing</button>
       <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
-      <label class="br-toggle"><input type="checkbox" id="brAutoTr" onchange="brApplyPageTr()"> 整页翻译</label>
+      <button class="btn small" onclick="brReadability()">提取正文精读</button>
     </div>
     <div class="br-frame-wrap">
       <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
