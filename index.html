@@ -650,6 +650,9 @@ body.no-zh .sent .zh{display:none}
 .lang-pill:hover{border-color:var(--brand);color:var(--brand-deep)}
 .lang-pill #langPillSub{color:var(--muted);font-weight:400;font-size:12px}
 .lang-pill #langPillSub::before{content:"→";margin-right:4px}
+.nav-grp{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%;padding:8px 0 2px;border-top:1px dashed var(--border);margin-top:4px}
+.nav-grp[hidden]{display:none}
+#mainNav button{white-space:nowrap}
 .nav-more{display:none;border:1px solid var(--border);background:var(--surface);border-radius:10px;
   padding:6px 10px;cursor:pointer;font-size:16px;color:var(--text)}
 .lang-sheet{position:fixed;inset:0;z-index:1400;background:rgba(8,12,10,.5);display:flex;align-items:center;justify-content:center;padding:16px}
@@ -699,28 +702,32 @@ body.no-zh .sent .zh{display:none}
     <button class="lang-pill lz-hide-on-library" id="langPill" onclick="openLangPanel()" title="切换学习语言 / 展示语言">
       <span id="langPillMain">🌐 英语</span><span id="langPillSub">中文</span>
     </button>
-    <button class="nav-more" id="navMore" onclick="toggleNavMore()" aria-label="更多菜单">☰</button>
+    <button class="nav-more" id="navMore" onclick="toggleNavMore()" aria-label="更多菜单">更多 ▾</button>
     <nav id="mainNav">
+      <!-- 一级：最高频的 6 个 -->
       <button id="nav-library" class="on" onclick="go('library')">书城</button>
-      <button id="nav-assembly" onclick="go('assembly')">🧩 句子拼装</button>
-      <button onclick="go('collections')">📚 书单</button>
-      <button id="nav-press" onclick="go('press')">📰 外刊</button>
+      <button id="nav-assembly" onclick="go('assembly')">🧩 拼装</button>
       <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
-      <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
-      <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
-      <button id="nav-video" onclick="go('video')">🎬 看视频</button>
-      <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
-      <button id="nav-test" onclick="go('test')">词汇测试</button>
-      <button id="nav-vocab" onclick="go('vocab')">生词本</button>
-      <button onclick="go('sentcol')">⭐ 金句</button>
-      <button onclick="go('review')" id="nav-review" style="display:none">📝 复习</button>
-      <button id="nav-sreview" onclick="go('sreview')">生词模式</button>
       <button id="nav-report" onclick="go('report')">📊 报告</button>
       <button id="nav-plan" onclick="go('plan')">💎 会员</button>
-      <button id="nav-guide" onclick="go('guide')">🎓 教程</button>
-      <button id="nav-settings" onclick="go('settings')">🎨 个性化</button>
       <button id="nav-account" onclick="go('account')">账号</button>
-      <button id="nav-feedback" onclick="go('feedback')">📮 反馈</button>
+      <!-- 二级：其余收进「更多」，避免一行挤断 -->
+      <div class="nav-grp" id="navGrpMore" hidden>
+        <button onclick="go('collections')">📚 书单</button>
+        <button id="nav-press" onclick="go('press')">📰 外刊</button>
+        <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
+        <button id="nav-video" onclick="go('video')">🎬 看视频</button>
+        <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
+        <button id="nav-test" onclick="go('test')">词汇测试</button>
+        <button id="nav-vocab" onclick="go('vocab')">生词本</button>
+        <button onclick="go('sentcol')">⭐ 金句</button>
+        <button id="nav-sreview" onclick="go('sreview')">生词模式</button>
+        <button onclick="go('review')" id="nav-review" style="display:none">📝 复习</button>
+        <button id="nav-guide" onclick="go('guide')">🎓 教程</button>
+        <button id="nav-settings" onclick="go('settings')">🎨 个性化</button>
+        <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
+        <button id="nav-feedback" onclick="go('feedback')">📮 反馈</button>
+      </div>
     </nav>
   </div>
 </header>
@@ -919,6 +926,9 @@ body.no-zh .sent .zh{display:none}
       <button class="chip" onclick="brSearch('bing')" id="brN">Bing</button>
       <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
       <button class="btn small" onclick="brReadability()">提取正文精读</button>
+      <button class="btn ghost small" onclick="brTranslatePage()">🌐 整页翻译</button>
+      <button class="btn ghost small" onclick="brClearTranslate()">清除翻译</button>
+      <label class="br-toggle"><input type="checkbox" id="brAutoTr" onchange="brToggleAutoTr()"> 自动逐词</label>
     </div>
     <div class="br-frame-wrap">
       <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
@@ -3611,6 +3621,154 @@ async function brReadability(){
   /* 都不行 → 让用户粘贴 */
   pressPasteImport(url || "网页精读");
 }
+/* ================= 整页翻译（同源可用，LinguoLand 那种效果） =================
+   原理：读到 iframe 的 DOM（同源才行），在页面里注入三种东西：
+   1) 每个单词外层包一层带 tooltip 的 <span>，悬浮/点击显示中文
+   2) 每个段落后面插一段中文译文
+   3) 底部浮出一条工具条（一键关掉）
+   跨域站点读不到 DOM → 退化为「提取正文精读」（把正文抓进阅读器再翻）。 */
+const _brDictCache = new Map();
+function _zhOf(word){
+  const low = String(word || "").toLowerCase();
+  if(_brDictCache.has(low)) return _brDictCache.get(low);
+  let zh = "";
+  try{
+    const G = window.LIZ_DICT || {};
+    const e = G[low] || G[low.replace(/s$|ed$|ing$/, "")];
+    if(e && e[1]) zh = String(e[1]).split(/[,，;；]/)[0].slice(0, 10);
+    if(!zh) zh = offlineWordHint(low, "zh") || "";
+  }catch(e){}
+  if(zh && /[a-zA-Z]{2,}/.test(zh)) zh = "";
+  _brDictCache.set(low, zh);
+  return zh;
+}
+function brTranslatePage(){
+  const frame = document.getElementById("brFrame");
+  let doc = null;
+  try{ doc = frame && frame.contentDocument; }catch(e){ doc = null; }
+  if(!doc || !doc.body || doc.body.innerText.trim().length < 50){
+    toast("这个站点不允许读取页面内容，改用「提取正文精读」");
+    brReadability();
+    return;
+  }
+  try{
+    const mark = doc.createElement("style");
+    mark.id = "lz-tr-style";
+    mark.textContent = `
+      .lz-tr-w{cursor:pointer;border-bottom:1px dashed rgba(34,201,138,.75)}
+      .lz-tr-w:hover{background:rgba(124,247,196,.35)}
+      .lz-tr-zh{display:block;margin:.25em 0 .6em;padding:6px 10px;border-left:3px solid #22C98A;
+        background:rgba(34,201,138,.10);border-radius:6px;font-size:.9em;line-height:1.6;color:#0B6E4F}
+      #lz-tr-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147483000;
+        display:flex;gap:10px;align-items:center;background:#0B6E4F;color:#fff;padding:8px 14px;
+        border-radius:24px;font:13px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+      #lz-tr-bar button{background:#7CF7C4;border:none;color:#04291C;padding:5px 12px;border-radius:16px;cursor:pointer;font-weight:600}
+    `;
+    if(!doc.getElementById("lz-tr-style")) doc.head.appendChild(mark);
+
+    /* 逐词包裹 + 段落后插译文 */
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
+      acceptNode(n){
+        if(!n.nodeValue || !/[A-Za-z]{2,}/.test(n.nodeValue)) return NodeFilter.FILTER_REJECT;
+        const p = n.parentElement;
+        if(!p) return NodeFilter.FILTER_REJECT;
+        if(/^(SCRIPT|STYLE|NOSCRIPT|CODE|PRE|TEXTAREA|INPUT|SVG)$/.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+        if(p.classList && (p.classList.contains("lz-tr-w") || p.classList.contains("lz-tr-zh"))) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const texts = [];
+    while(walker.nextNode()) texts.push(walker.currentNode);
+    let wrapped = 0;
+    for(const node of texts.slice(0, 4000)){
+      const parts = node.nodeValue.split(/([A-Za-z'’-]+)/);
+      if(parts.length < 2) continue;
+      const frag = doc.createDocumentFragment();
+      for(const part of parts){
+        if(/^[A-Za-z'’-]+$/.test(part)){
+          const sp = doc.createElement("span");
+          sp.className = "lz-tr-w";
+          sp.textContent = part;
+          sp.title = _zhOf(part) || part;
+          frag.appendChild(sp);
+          wrapped++;
+        } else if(part){
+          frag.appendChild(doc.createTextNode(part));
+        }
+      }
+      node.parentNode.replaceChild(frag, node);
+    }
+    /* 段落译文：离线整句 → 逐词拼接 → 异步机翻补 */
+    let paras = 0;
+    const pending = [];
+    doc.querySelectorAll("p, li, h1, h2, h3, blockquote").forEach(el => {
+      if(el.classList.contains("lz-tr-zh")) return;
+      const t = (el.textContent || "").trim();
+      if(t.length < 30 || paras >= 60) return;
+      let zh = offlineTranslate(t, "zh");
+      if(!zh){
+        /* 逐词拼接只作为"离线兜底"，前面标清楚，避免用户当成正经翻译 */
+        const parts = [];
+        for(const w of (t.match(/[A-Za-z'’-]+/g) || []).slice(0, 60)){
+          const z = _zhOf(w);
+          if(z) parts.push(z);
+        }
+        if(parts.length >= 4) zh = "（逐词直译）" + parts.join(" · ");
+      }
+      const div = doc.createElement("div");
+      div.className = "lz-tr-zh";
+      div.textContent = zh || "翻译中…";
+      el.insertAdjacentElement("afterend", div);
+      paras++;
+      if(!zh) pending.push({ el: div, text: t });
+    });
+    /* 离线没有的，异步走在线机翻，回来就替换 */
+    pending.slice(0, 12).forEach(({ el, text }) => {
+      try{
+        mtTo(text.slice(0, 800), "zh").then(t2 => { if(t2) el.textContent = t2; });
+      }catch(e){}
+    });
+    /* 逐词直译的段落也尝试换成在线整句翻译 */
+    pending.length || doc.querySelectorAll(".lz-tr-zh").forEach(el2 => {
+      if(!/^（逐词直译）/.test(el2.textContent)) return;
+      const prev = el2.previousElementSibling;
+      if(!prev) return;
+      const txt = (prev.textContent || "").trim().slice(0, 800);
+      if(!txt) return;
+      try{ mtTo(txt, "zh").then(t2 => { if(t2 && t2.length > 6) el2.textContent = t2; }); }catch(e){}
+    });
+    /* 底部工具条 */
+    if(!doc.getElementById("lz-tr-bar")){
+      const bar = doc.createElement("div");
+      bar.id = "lz-tr-bar";
+      bar.innerHTML = `<span>已标注 ${wrapped} 个词 · ${paras} 段译文</span><button id="lz-tr-off">关闭翻译</button>`;
+      doc.body.appendChild(bar);
+      bar.querySelector("#lz-tr-off").addEventListener("click", ()=>brClearTranslate());
+    }
+    toast("整页翻译：已标注 " + wrapped + " 个词、插入 " + paras + " 段译文");
+  }catch(e){
+    toast("整页翻译失败：" + (e.message || e));
+  }
+}
+function brClearTranslate(){
+  try{
+    const doc = document.getElementById("brFrame").contentDocument;
+    doc.querySelectorAll(".lz-tr-zh, #lz-tr-bar").forEach(n => n.remove());
+    doc.querySelectorAll(".lz-tr-w").forEach(sp => {
+      const t = doc.createTextNode(sp.textContent);
+      sp.replaceWith(t);
+    });
+    doc.body.normalize();
+    const st = doc.getElementById("lz-tr-style"); if(st) st.remove();
+    toast("已关闭整页翻译");
+  }catch(e){ toast("无法清除（跨域页面）"); }
+}
+function brToggleAutoTr(){
+  const on = document.getElementById("brAutoTr")?.checked;
+  try{ localStorage.setItem("lz_br_autotr", on ? "1" : "0"); }catch(e){}
+  if(on){ toast("自动逐词：开"); brTranslatePage(); } else { brClearTranslate(); }
+}
+
 function brBack(){ try{ document.getElementById("brFrame").contentWindow.history.back(); }catch(e){ history.back(); } }
 function brOpenNewTab(){
   const u = document.getElementById("brUrl")?.value || "";
@@ -4205,8 +4363,24 @@ function shareLangLink(){
   toast("已复制直达链接：" + u);
 }
 function toggleNavMore(){
-  const nav = document.getElementById("mainNav");
-  if(nav) nav.classList.toggle("open");
+  const grp = document.getElementById("navGrpMore");
+  const btn = document.getElementById("navMore");
+  if(!grp) return;
+  const willShow = grp.hidden;
+  grp.hidden = !willShow;
+  if(btn) btn.textContent = willShow ? "收起 ▴" : "更多 ▾";
+}
+/* 某视图属于「更多」分组时，展开分组以便看到高亮 */
+function revealNavFor(name){
+  const grp = document.getElementById("navGrpMore");
+  if(!grp) return;
+  const el = document.getElementById("nav-" + name);
+  const inGrp = el && grp.contains(el);
+  if(inGrp && grp.hidden){
+    grp.hidden = false;
+    const btn = document.getElementById("navMore");
+    if(btn) btn.textContent = "收起 ▴";
+  }
 }
 /* 语言相关的存储键：阅读进度 / 生词 / 词族状态 / 偏好都按学习语言隔离 */
 function langKey(base){ return base + "_" + activeLang(); }
@@ -4284,6 +4458,7 @@ function go(name){
   try{
     if(location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
   }catch(e){}
+  try{ revealNavFor(name); }catch(e){}
   updateNavRev();
 }
 
