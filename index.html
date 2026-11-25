@@ -3595,15 +3595,39 @@ async function openFull(id){
       `<div class="reader"><span class="back" onclick="openBook('${id}')">← 返回详情</span>
        <div class="rd-head"><h2>加载失败</h2></div>
        <p class="tip">${e.message||"这本书的全文文件暂时取不到。"}</p>
-       <p class="tip">公版书全文由 Project Gutenberg 镜像提供；网络较慢时可能需要重试，或先在可联网环境下点「离线下载本书」。</p>
+       <p class="tip">全文由 Project Gutenberg 镜像提供；网络较慢时需要重试。为避免跳转外站，这里提供三条站内路线。</p>
        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
          <button class="btn" onclick="openFull('${id}')">重试</button>
          <button class="btn ghost" onclick="openBook('${id}')">← 返回详情</button>
-         <a class="btn ghost" target="_blank" rel="noopener" href="https://www.gutenberg.org/ebooks/${gb}">在 Gutenberg 网页阅读 ↗</a>
+         <button class="btn ghost" onclick="switchToLocalBook('${id}')">换一本已内置的书</button>
+         <button class="btn ghost" onclick="reportThisBug('${escAttr(curBook ? curBook.t : "")}')">报告这个问题</button>
        </div></div>`;
     go("reader");
   }
 }
+/* 加载失败时：切到同语言已内置全文的一本书，避免用户卡死 */
+function switchToLocalBook(id){
+  try{
+    const cur = BOOKS.find(x => x.id === id);
+    const same = BOOKS.filter(x => x !== cur && hasLocalText(x) && (!cur || x.lv === cur.lv));
+    const pick = (same.length ? same : BOOKS.filter(x => hasLocalText(x)))[0];
+    if(pick){ openFull(pick.id); toast("已切到同类内置全文：" + pick.t); }
+    else toast("暂时没有可离线阅读的书");
+  }catch(e){ toast("切换失败，请返回详情重试"); }
+}
+/* 一键把加载失败写成反馈（自动带上书名与诊断信息） */
+function reportThisBug(note){
+  try{
+    const text = "阅读器加载失败：" + (note || "(未知书名)") + "\n" + feedbackDebugInfo();
+    go('feedback');
+    setTimeout(()=>{
+      const ta = document.getElementById("fbText");
+      if(ta){ ta.value = text; ta.focus(); }
+      setFbType("bug");
+    }, 120);
+  }catch(e){}
+}
+
 /* 离线下载当前书：拉全文 + 解析 + 存 IndexedDB（之后断网可读） */
 async function downloadBook(id){
   const b = BOOKS.find(x=>x.id===id);
