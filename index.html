@@ -213,6 +213,20 @@ html.rl-wide .reader{max-width:860px;margin:0 auto}
 .gr-row>b{flex:0 0 42px;color:var(--brand-deep)}
 .gr-block{margin-top:8px;padding:10px;background:var(--brand-soft);border-radius:10px;font-size:13px;line-height:1.7}
 .gr-block>b{display:block;color:var(--brand-deep);margin-bottom:2px}
+/* 看视频学 */
+.video-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden}
+.lz-video{width:100%;max-height:62vh;display:block;background:#000}
+.sub-overlay{position:absolute;left:0;right:0;bottom:10px;text-align:center;padding:0 18px;pointer-events:none}
+.sub-cur{display:inline-block;background:rgba(0,0,0,.72);color:#fff;font:600 15px/1.5 var(--font);padding:4px 10px;border-radius:8px}
+.sub-cur-zh{display:inline-block;margin-top:4px;background:rgba(0,0,0,.6);color:#e8f5ec;font-size:13px;padding:3px 10px;border-radius:8px}
+.sub-list{margin-top:12px;display:grid;gap:6px;max-height:46vh;overflow-y:auto}
+.sub-row{display:grid;grid-template-columns:52px 1fr;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;line-height:1.6}
+.sub-row:hover{border-color:var(--brand);background:var(--brand-soft)}
+.sub-t{color:var(--muted);font-size:12px}
+.sub-en{}
+.sub-zh{grid-column:2;color:var(--muted);font-size:12.5px}
+.vw{cursor:pointer;font-weight:600}
+.vw:hover{color:var(--brand-deep);text-decoration:underline}
 /* 内置浏览器 */
 .br-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .br-url{flex:1;min-height:40px;font-size:14px}
@@ -606,6 +620,7 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
       <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
       <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
+      <button id="nav-video" onclick="go('video')">🎬 看视频</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
       <button onclick="go('sentcol')">⭐ 金句</button>
@@ -711,6 +726,30 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 看视频学（本地视频 + SRT/VTT 字幕） ============ -->
+  <section class="view" id="view-video">
+    <h2 class="sec">🎬 看视频学</h2>
+    <div class="sub">导入自己的视频和字幕（SRT / VTT），画面下方逐句中英对照，点句子跳转、点词查义，全部在本机处理，不上传。</div>
+    <div class="lang-row" style="margin:10px 0">
+      <button class="btn small" onclick="document.getElementById('vidFile').click()">选择视频</button>
+      <input type="file" id="vidFile" accept="video/*" style="display:none" onchange="loadVideoFile(this)">
+      <button class="btn ghost small" onclick="document.getElementById('subFile').click()">导入字幕 SRT/VTT</button>
+      <input type="file" id="subFile" accept=".srt,.vtt,text/plain" style="display:none" onchange="loadSubtitleFile(this)">
+      <button class="btn ghost small" onclick="toggleSubTitle()">显示/隐藏字幕</button>
+    </div>
+    <div class="video-wrap">
+      <video id="lzVideo" class="lz-video" controls playsinline></video>
+      <div id="subOverlay" class="sub-overlay"></div>
+    </div>
+    <div class="lang-row" style="margin-top:10px">
+      <span class="tip" style="margin:0">字幕来源：</span>
+      <button class="chip" onclick="setSubMode('en')">只看原文</button>
+      <button class="chip on" onclick="setSubMode('both')">原文 + 中文</button>
+      <label class="br-toggle"><input type="checkbox" id="vidWordClick" checked> 点词翻译</label>
+    </div>
+    <div id="subList" class="sub-list"></div>
   </section>
 
   <!-- ============ 更新记录 ============ -->
@@ -2582,6 +2621,114 @@ function readerToolExtras(){
   </div>`;
 }
 
+/* ================= 看视频学：本地视频 + 字幕 ================= */
+let _videoSubs = [];      /* [{start,end,text}] */
+let _subMode = "both";
+function parseTimeTag(t){
+  t = String(t).trim().replace(",", ".");
+  const p = t.split(":").map(Number);
+  if(p.length === 3) return p[0]*3600 + p[1]*60 + p[2];
+  if(p.length === 2) return p[0]*60 + p[1];
+  return Number(t) || 0;
+}
+function parseSubtitles(text){
+  const raw = String(text || "").replace(/\r/g, "").trim();
+  const out = [];
+  /* 统一按「时间轴行 + 后续台词行」扫描，SRT / VTT 通吃 */
+  const lines = raw.split("\n");
+  const tagRe = /^(\d{1,2}:)?\d{1,2}:\d{2}([.,]\d{1,3})?\s*-->\s*(\d{1,2}:)?\d{1,2}:\d{2}([.,]\d{1,3})?/;
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    if(!tagRe.test(line.trim())) continue;
+    const parts = line.split("-->");
+    const startT = parseTimeTag(parts[0]);
+    const endT = parseTimeTag((parts[1] || "").trim().split(/\s+/)[0]);
+    const body = [];
+    let j = i + 1;
+    while(j < lines.length && lines[j].trim() !== "" && !tagRe.test(lines[j].trim())){
+      if(!/^\d+$/.test(lines[j].trim())) body.push(lines[j].trim());
+      j++;
+    }
+    const txt = body.join(" ").trim();
+    if(txt) out.push({ start: startT, end: endT || startT + 3, text: txt });
+    i = j;
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+function loadVideoFile(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const v = document.getElementById("lzVideo");
+  try{ v.src = URL.createObjectURL(f); }catch(e){}
+  toast("已载入视频：" + f.name);
+  v.playbackRate = 1;
+}
+function loadSubtitleFile(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    _videoSubs = parseSubtitles(rd.result);
+    renderSubList();
+    toast("已载入字幕 " + _videoSubs.length + " 句");
+  };
+  rd.readAsText(f, "utf-8");
+}
+function setSubMode(m){
+  _subMode = m;
+  document.querySelectorAll("#view-video .chip").forEach(c => c.classList.remove("on"));
+  const map = { en: 1, both: 2 };
+  const chips = [...document.querySelectorAll("#view-video .chip")];
+  if(map[m]) chips[map[m]-1] && chips[map[m]-1].classList.add("on");
+}
+function toggleSubTitle(){
+  const el = document.getElementById("subOverlay");
+  if(el) el.style.display = el.style.display === "none" ? "block" : "none";
+}
+function renderSubList(){
+  const host = document.getElementById("subList");
+  if(!host) return;
+  host.innerHTML = _videoSubs.map((s, i) => `
+    <div class="sub-row" data-i="${i}" onclick="seekSub(${i})">
+      <span class="sub-t">${fmtSec(s.start)}</span>
+      <span class="sub-en">${s.text.replace(/[A-Za-z'’-]+/g, m => `<b class="vw" onclick="event.stopPropagation();subWord('${escAttr(m)}')">${escHtml(m)}</b>`)}</span>
+      <span class="sub-zh" id="subzh-${i}"></span>
+    </div>`).join("");
+  /* 逐句补中文（离线包优先，必要时机翻） */
+  _videoSubs.slice(0, 40).forEach(async (s, i) => {
+    const t = offlineTranslate(s.text, "zh") || await offlineSimilar(s.text, "zh") || "";
+    const el = document.getElementById("subzh-" + i);
+    if(el && t) el.textContent = t;
+  });
+}
+function fmtSec(x){ const m = Math.floor(x/60), s = Math.floor(x%60); return m + ":" + String(s).padStart(2, "0"); }
+function seekSub(i){
+  const v = document.getElementById("lzVideo");
+  const s = _videoSubs[i];
+  if(v && s){ v.currentTime = s.start; v.play(); }
+}
+function subWord(w){
+  if(!(document.getElementById("vidWordClick")?.checked)) return;
+  const low = String(w).toLowerCase();
+  const d = dictEntry(low);
+  const el = document.getElementById("subOverlay");
+  const txt = d ? (d[0] + " " + d[1]) : (offlineWordHint(low, "zh") || "（无本地释义，可点下方更多）");
+  toast(w + "：" + txt);
+}
+/* 播放时同步字幕 */
+document.addEventListener("timeupdate", ()=>{}, true);
+setInterval(() => {
+  const v = document.getElementById("lzVideo");
+  const ov = document.getElementById("subOverlay");
+  if(!v || !ov || !_videoSubs.length || v.paused) return;
+  const t = v.currentTime;
+  const cur = _videoSubs.find(s => t >= s.start && t <= s.end + 0.35);
+  if(cur){
+    const zh = document.getElementById("subzh-" + _videoSubs.indexOf(cur))?.textContent || "";
+    ov.innerHTML = `<div class="sub-cur">${escHtml(cur.text)}</div>${(_subMode === "both" && zh) ? `<div class="sub-cur-zh">${escHtml(zh)}</div>` : ""}`;
+  }
+}, 300);
+
 /* ================= 内置浏览器 ================= */
 const BR_SEARCH = {
   google: "https://www.google.com/search?q=",
@@ -3190,6 +3337,7 @@ function go(name){
   if(name==="press") renderPress();
   if(name==="vocabbooks") renderVocabBooks();
   if(name==="changelog") renderChangelog();
+  if(name==="video") renderSubList();
   if(name==="browser"){ const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0"; }
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
