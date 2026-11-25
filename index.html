@@ -5029,23 +5029,11 @@ function wordClick(e){
     loadBigDict().then(ok => { if(ok) setTimeout(()=>{ try{ wordClick({ target: el }); }catch(e){} }, 30); });
     return;
   }
-  const d = dictEntry(low);
-  /* 本地词典没有 → 先从离线句库找一句含该词的译文，保证断网也有内容 */
-  if(!d && lc === "en"){
-    const hint = offlineWordHint(low, showLang());
-    if(hint){
-      try{
-        document.getElementById("shWord").textContent = sheetWord;
-        document.getElementById("shDef").innerHTML = `<span class="dim">（离线例句参考）</span><br>${escHtml(hint)}`;
-        const sheet = document.getElementById("sheet"), mask = document.getElementById("mask");
-        if(sheet) sheet.classList.add("on");
-        if(mask) mask.classList.add("on");
-      }catch(e){}
-      sheetWordKey = low;
-      return;
-    }
-  }
-  const isProper = isLatinLang(lc) ? (/^[A-Z][a-z]+$/.test(sheetWord) && !d) : false;
+  let d = dictEntry(low);
+  /* 本地词典没有 → 记下离线例句，走完整词卡（音标/例句/词组），而不是只显示一行译文；
+     离线句库也没收录时，仍渲染「近似音标 + 助记 + 词形」的卡片，避免只剩一个词 */
+  const _offHint = (!d && lc === "en") ? offlineWordHint(low, showLang()) : "";
+  let isProper = isLatinLang(lc) ? (/^[A-Z][a-z]+$/.test(sheetWord) && !d) : false;
   /* 日语/韩语：本地无词条时静默走机翻，不显示「专有名词未识别」 */
   if(d == null && (lc === "ja" || lc === "ko")){
     const zhEl0 = document.getElementById("shCtx");
@@ -5055,6 +5043,24 @@ function wordClick(e){
   if(lc !== "en" && lc !== "ja" && lc !== "ko" && d == null && typeof lcHint === "function"){
     const hint = lcHint(sheetWord);
     if(hint) setTimeout(() => { const el = document.getElementById("shMorph"); if(el) el.textContent = hint; }, 0);
+  }
+  /* 首字母大写但其实是普通词（句首大写、分词等）：小写能查到词条就不按专有名词处理 */
+  if(isProper && _getDictEntry(low)){
+    isProper = false;
+    d = dictEntry(low);
+  }
+  /* 「疑似专有名词」但其实可能是句首大写的普通词：句中出现过小写形式就按普通词处理；
+     没词条也能渲染富卡片（音标/助记/例句/词组），比只显示「翻译中」有用得多 */
+  /* 首字母大写的词先当普通词处理：句首大写、分词、普通名词都会出现这种情况。
+     只有「在其他地方出现过全小写形式 + 本地无任何释义」时才当作专有名词。 */
+  if(isProper){
+    let seenLower = false;
+    try{
+      const txt = (lastSent && lastSent.en) || sheetCtxEn || "";
+      const idx = txt.indexOf(sheetWord);
+      seenLower = idx > 0 || (idx === 0 && /^[A-Z][a-z]+\b/.test(txt));
+    }catch(e){}
+    isProper = !seenLower && !_offHint;
   }
   if(isProper){
     /* 首字母大写且 dict 未命中 → 不 recordLookup，直接 mtFetch */
@@ -5089,12 +5095,14 @@ function wordClick(e){
   /* 平时常用义：本地词典 → 缓存机翻 → 立刻机翻显示（不再显示“联网查取中”） */
   const zhEl = document.getElementById("shDef");
   const zhCached = _zhCache[low];
-  const localZhDef = d ? `${d[0]} ${d[1]}` : "";
+  const localZhDef = d ? `${d[0]} ${d[1]}`
+    : (_offHint ? `（离线例句）${_offHint}`
+    : (lc === "en" ? "（本地词典未收录，以下为自动生成的参考信息）" : ""));
   if(localZhDef){
     /* 富词卡：音标 / 多义项 / 助记 / 例句 / 词组，全部本地生成 */
     try{ renderRichWordCard(sheetWord, low); }catch(e){ zhEl.textContent = localZhDef; }
     try{ renderVbButtons(low); }catch(e){}
-  } else if(zhCached){
+  } else if(zhCached && lc !== "en"){
     zhEl.textContent = zhCached;
   } else {
     zhEl.textContent = "查询中…";
