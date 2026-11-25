@@ -160,6 +160,14 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
 .fd-level-hint{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.6}
+/* 阅读进度 / 读毕 */
+.rd-progress{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;border-radius:10px;background:var(--brand-soft);color:var(--brand-deep);font-size:12.5px;margin-bottom:10px}
+.fin-label{font-size:12px;letter-spacing:6px;color:var(--muted)}
+.fin-title{font:600 26px var(--serif);margin:8px 0 4px}
+.fin-author{color:var(--muted);font-size:13px}
+.fin-stats{display:flex;justify-content:center;gap:32px;margin:22px 0 6px}
+.fin-stats b{display:block;font-size:26px;font-family:var(--serif)}
+.fin-stats span{font-size:12px;color:var(--muted)}
 /* 阅读排版 */
 .rd-layout{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
 .rd-layout .chip{min-height:30px;font-size:12.5px;padding:0 12px}
@@ -2285,6 +2293,82 @@ function renderRichWordCard(word, low){
       <div class="rw-col"><span>${escHtml(c.phrase)}</span><span class="dim">${escHtml(c.zh)}</span></div>`).join("")}</div>` : ""}
     ${!groups.length && !cached && !exs.length ? `<div class="rw-block dim">本地词典未收录，可在「更多释义」里机翻一次。</div>` : ""}
   `;
+}
+
+/* ================= 阅读进度 / 读毕统计 ================= */
+function rdStats(){
+  try{ return JSON.parse(localStorage.getItem(pk("rdstats")) || "{}"); }catch(e){ return {}; }
+}
+function rdStatsSave(o){ try{ localStorage.setItem(pk("rdstats"), JSON.stringify(o)); }catch(e){} }
+function rdMarkRead(id, chapterIdx, totalChapters, words){
+  if(!id) return;
+  const st = rdStats();
+  const b = st[id] || (st[id] = { chapters:{}, start: Date.now(), last: 0, words:0 });
+  if(chapterIdx != null) b.chapters[chapterIdx] = Date.now();
+  b.last = Date.now();
+  if(words) b.words = Math.max(b.words || 0, words);
+  rdStatsSave(st);
+  const done = Object.keys(b.chapters).length;
+  if(totalChapters && done >= totalChapters && !b.finishedAt){
+    b.finishedAt = Date.now(); rdStatsSave(st);
+    setTimeout(()=>showBookFinished(id), 600);
+  }
+}
+function rdProgressOf(id){
+  const st = rdStats();
+  const b = st[id];
+  if(!b) return null;
+  return b;
+}
+window.__rdProgressBar = function(){
+  if(!curBook) return "";
+  const b = rdProgressOf(curBook.id);
+  if(!b) return "";
+  const done = Object.keys(b.chapters || {}).length;
+  const total = (fullMode && fullCache[curBook.id]) ? fullCache[curBook.id].chapters.length : 0;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const days = Math.max(1, Math.round((Date.now() - b.start) / 86400000) + 1);
+  return `<div class="rd-progress">
+    <span>📖 已读 <b>${done}</b>${total ? "/" + total : ""} 章 · ${pct}%</span>
+    <span>累计 ${days} 天</span>
+    <button class="btn ghost small" onclick="openBookFinished('${escAttr(curBook.id)}')">查看统计</button>
+  </div>`;
+};
+function showBookFinished(id){
+  const b = BOOKS.find(x => x.id === id) || curBook || { t:"这本书" };
+  const st = rdStats()[id] || { chapters:{}, start: Date.now(), last: Date.now() };
+  const total = (fullCache[id] && fullCache[id].chapters.length) || Object.keys(st.chapters || {}).length || 1;
+  const days = Math.max(1, Math.round((Date.now() - (st.start || Date.now())) / 86400000) + 1);
+  let el = document.getElementById("finSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "finSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box" style="text-align:center">
+    <div class="fin-label">读 完</div>
+    <div class="fin-title">${escHtml(b.t)}</div>
+    <div class="fin-author">${escHtml(dispAuthor(b) || "")}</div>
+    <div class="fin-stats">
+      <div><b>${days}</b><span>读了几天</span></div>
+      <div><b>${Object.keys(st.chapters || {}).length}</b><span>章</span></div>
+      <div><b>${total}</b><span>共几章</span></div>
+    </div>
+    <button class="btn" style="margin-top:16px;width:100%" onclick="document.getElementById('finSheet').style.display='none';go('library')">回书架</button>
+    <button class="btn ghost small" style="margin-top:8px" onclick="document.getElementById('finSheet').style.display='none';openFull('${escAttr(id)}')">从头重读</button>
+  </div>`;
+}
+function openBookFinished(id){
+  id = id || (curBook && curBook.id);
+  if(!id) return;
+  showBookFinished(id);
+}
+/* 全局阅读统计页（在报告里展示） */
+function rdStatsSummary(){
+  const st = rdStats();
+  const ids = Object.keys(st);
+  const finished = ids.filter(k => st[k].finishedAt).length;
+  let chapters = 0, days = 0;
+  for(const k of ids){ chapters += Object.keys(st[k].chapters || {}).length; }
+  return { books: ids.length, finished, chapters };
 }
 
 /* ================= 阅读排版：原书排版 / 简洁 / 双栏 ================= */
@@ -4442,6 +4526,7 @@ function openReader(id){
       <span class="back" onclick="openBook('${id}')">← 返回详情</span>
       <div class="rd-head"><h2>${title} · ${isGuide?"精读导读":(isFull ? "整本阅读" : "双语试读")}</h2></div>
       ${readerToolExtras()}
+      ${window.__rdProgressBar ? window.__rdProgressBar() : ""}
       ${(curBook && curBook.translated) ? `<div class="tip" style="margin:-4px 0 6px">📗 译本条目：标题为${escHtml((LANG_INFO[activeLang()]||{}).native || "")}译名，正文为《${escHtml(curBook.en || curBook.t)}》原版全文；点「翻译本章」即可逐句对照译文。</div>` : ""}
       ${isFull ? `
       <div class="rd-tools">
@@ -4500,6 +4585,11 @@ function openReader(id){
       </div>` : ""}
     </div>`;
   go("reader");
+  if(isFull){
+    try{
+      rdMarkRead(id, fullMode.chap, fullCache[id].chapters.length, sents.slice(rng[0], rng[1]).reduce((a,s)=>a + String(s.en||"").split(/\s+/).length, 0));
+    }catch(e){}
+  }
   if(isFull) setTimeout(updateRdFoot, 120);
   setTimeout(localizeReader, 30);
   setTimeout(()=>{ updateCoverageUI(); autoPrefetchChapter(); }, 300);
