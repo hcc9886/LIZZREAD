@@ -54,6 +54,51 @@ const MIME = {
   '.md':'text/markdown; charset=utf-8'
 };
 
+/* 阿里云短信（可选）：配置了 ALIYUN_SMS_KEY_ID/SECRET 才会真的发短信 */
+async function sendAliyunSms(phone, code){
+  const crypto = require('crypto');
+  const keyId = process.env.ALIYUN_SMS_KEY_ID;
+  const secret = process.env.ALIYUN_SMS_KEY_SECRET;
+  const sign = process.env.ALIYUN_SMS_SIGN || 'LIZZREAD';
+  const tpl = process.env.ALIYUN_SMS_TEMPLATE || '';
+  if(!keyId || !secret || !tpl) return { ok:false, skipped:true, reason:'未配置短信模板' };
+  const params = {
+    AccessKeyId: keyId,
+    Action: 'SendSms',
+    Format: 'JSON',
+    PhoneNumbers: phone,
+    RegionId: 'cn-hangzhou',
+    SignName: sign,
+    SignatureMethod: 'HMAC-SHA1',
+    SignatureNonce: String(Date.now()) + Math.random().toString(36).slice(2, 8),
+    SignatureVersion: '1.0',
+    TemplateCode: tpl,
+    TemplateParam: JSON.stringify({ code }),
+    Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    Version: '2017-05-25'
+  };
+  const enc = v => encodeURIComponent(v).replace(/\*/g, '%2A').replace(/%7E/g, '~').replace(/'/g, '%27');
+  const qs = Object.keys(params).sort().map(k => enc(k) + '=' + enc(params[k])).join('&');
+  const stringToSign = 'GET&%2F&' + enc(qs);
+  const signature = crypto.createHmac('sha1', secret + '&').update(stringToSign).digest('base64');
+  const url = 'https://dysmsapi.aliyuncs.com/?Signature=' + enc(signature) + '&' + qs;
+  const r = await fetch(url);
+  const j = await r.json();
+  return j.Code === 'OK' ? { ok:true } : { ok:false, err: j.Message || j.Code };
+}
+
+/* 反馈与 bug 报告：存到 data/feedback.json，可在 /api/feedback/list 查看 */
+async function saveFeedback(item){
+  const fs2 = require('fs');
+  const f = path.join(ROOT, 'data', 'feedback.json');
+  let all = [];
+  try{ all = JSON.parse(fs2.readFileSync(f, 'utf8')) || []; }catch(e){ all = []; }
+  all.unshift(item);
+  if(all.length > 2000) all = all.slice(0, 2000);
+  try{ fs2.writeFileSync(f + '.part', JSON.stringify(all, null, 2)); fs2.renameSync(f + '.part', f); }catch(e){}
+  return all.length;
+}
+
 function sendJSON(res, code, obj){
   const body = JSON.stringify(obj);
   res.writeHead(code, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});
@@ -671,6 +716,43 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* ===== 反馈与 Bug 报告 ===== */
+  if(u.pathname === '/api/feedback' && req.method === 'POST'){
+    let body = {};
+    try{
+      const raw = await new Promise(res => { let t=''; req.on('data', c=>{t+=c; if(t.length>2e5) req.destroy();}); req.on('end',()=>res(t)); req.on('error',()=>res('')); });
+      body = JSON.parse(raw || '{}');
+    }catch(e){ body = {}; }
+    const text = String(body.text || '').trim().slice(0, 4000);
+    if(text.length < 2){ sendJSON(res, 400, {ok:false, message:'请填写内容'}); return; }
+    const item = {
+      id: 'FB' + Date.now().toString(36).toUpperCase(),
+      type: String(body.type || 'bug').slice(0, 16),
+      text,
+      contact: String(body.contact || '').slice(0, 120),
+      device: String(body.device || '').slice(0, 64),
+      ua: String(req.headers['user-agent'] || '').slice(0, 200),
+      page: String(body.page || '').slice(0, 200),
+      lang: String(body.lang || '').slice(0, 8),
+      ver: String(body.ver || '').slice(0, 20),
+      at: Date.now(),
+      read: false
+    };
+    const n = await saveFeedback(item);
+    sendJSON(res, 200, {ok:true, id: item.id, total: n});
+    return;
+  }
+  /* 查看反馈：需要 ADMIN_TOKEN，防止被人翻看 */
+  if(u.pathname === '/api/feedback/list'){
+    const tok = String(u.searchParams.get('token') || req.headers['x-admin-token'] || '');
+    const want = process.env.ADMIN_TOKEN || '';
+    if(!want || tok !== want){ sendJSON(res, 403, {ok:false, message:'需要管理员令牌'}); return; }
+    let all = [];
+    try{ all = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'feedback.json'), 'utf8')) || []; }catch(e){ all = []; }
+    sendJSON(res, 200, {ok:true, count: all.length, items: all.slice(0, 200)});
+    return;
+  }
+
   /* ===== 兑换券：发放 / 记录（iOS 小程序等无法在线支付的场景） ===== */
   if(u.pathname.startsWith('/api/voucher/')){
     const VFILE = path.join(ROOT, 'data', 'vouchers.json');
@@ -682,6 +764,25 @@ const server = http.createServer(async (req, res) => {
       return 'LZ-' + String(tier || 'trial').toUpperCase().slice(0,4) + '-' + r(4) + '-' + r(4);
     };
     const cryptoPick = (arr) => require('crypto').randomInt(arr.length);
+
+    /* 兑换券使用：登记已用，防止一码多机 */
+    if(u.pathname === '/api/voucher/redeem' && req.method === 'POST'){
+      let body = {};
+      try{
+        const raw = await new Promise(res => { let t=''; req.on('data', c=>{t+=c; if(t.length>1e5) req.destroy();}); req.on('end',()=>res(t)); req.on('error',()=>res('')); });
+        body = JSON.parse(raw || '{}');
+      }catch(e){ body = {}; }
+      const code = String(body.voucher || body.code || '').trim().toUpperCase();
+      const device = String(body.device || '').slice(0, 64);
+      const all = readV();
+      const rec = all[code];
+      if(!rec){ sendJSON(res, 404, {ok:false, message:'兑换码不存在'}); return; }
+      if(rec.usedBy && rec.usedBy !== device){ sendJSON(res, 409, {ok:false, message:'这个兑换码已在另一台设备使用'}); return; }
+      rec.usedBy = device; rec.usedAt = rec.usedAt || Date.now();
+      writeV(all);
+      sendJSON(res, 200, {ok:true, plan: rec.plan || 'all_year', days: rec.days || 366});
+      return;
+    }
 
     if(u.pathname === '/api/voucher/issue' && req.method === 'POST'){
       let body = {};
@@ -695,7 +796,13 @@ const server = http.createServer(async (req, res) => {
       const all = readV();
       all[voucher] = { to, device: String(body.device || ''), at: Date.now(), used: false };
       writeV(all);
-      sendJSON(res, 200, {ok:true, voucher, to});
+      /* 配了阿里云短信 + 有手机号 → 直接发短信 */
+      let sms = null;
+      const phone = String(body.phone || '').trim();
+      if(phone && process.env.ALIYUN_SMS_KEY_ID && process.env.ALIYUN_SMS_KEY_SECRET){
+        try{ sms = await sendAliyunSms(phone, voucher); }catch(e){ sms = { ok: false, err: e.message }; }
+      }
+      sendJSON(res, 200, {ok:true, voucher, to, sms});
       return;
     }
 
@@ -786,7 +893,15 @@ const server = http.createServer(async (req, res) => {
 
     /* 支付可用性探测：前端据此决定显示哪些支付方式 */
     if(u.pathname === '/api/pay/config'){
-      sendJSON(res, 200, {ok:true, alipay: pay.alipayConfigured(), wechat: pay.wxpayConfigured(), plans: pay.PLANS});
+      /* 永久会员名额：已支付订单里 permanent 的数量 */
+      let permanentLeft = 100;
+      try{
+        const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'orders.json'), 'utf8')) || {};
+        const used = Object.values(all).filter(o => o && o.plan === 'permanent' && o.status === 'paid').length;
+        permanentLeft = Math.max(0, 100 - used);
+      }catch(e){}
+      sendJSON(res, 200, {ok:true, alipay: pay.alipayConfigured(), wechat: pay.wxpayConfigured(),
+        plans: pay.PLANS, permanentLeft, permanentQuota: 100});
       return;
     }
   }

@@ -18,10 +18,11 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 
 /* ---------- 价格表（与前端一致） ---------- */
 const PLANS = {
-  lang:        { name: '单语言会员 · 月', fen: 2200,  days: 31,  scope: 'one' },
-  all_month:   { name: '全语言 · 月',     fen: 4800,  days: 31,  scope: 'all' },
-  all_quarter: { name: '全语言 · 季',     fen: 10800, days: 93,  scope: 'all' },
-  all_year:    { name: '全语言 · 年',     fen: 29900, days: 366, scope: 'all' }
+  lang:        { name: '单语言会员 · 月', fen: 1500,  days: 31,  scope: 'one' },
+  all_month:   { name: '全语言 · 月',     fen: 2900,  days: 31,  scope: 'all' },
+  all_quarter: { name: '全语言 · 季',     fen: 8800,  days: 93,  scope: 'all' },
+  all_year:    { name: '全语言 · 年',     fen: 19900, days: 366, scope: 'all' },
+  permanent:   { name: '永久会员',        fen: 29800, days: 0,   scope: 'all', permanent: true, quota: 100 }
 };
 
 /* ---------- 订单存储 ---------- */

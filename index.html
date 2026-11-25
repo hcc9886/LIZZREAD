@@ -158,6 +158,16 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more:hover{border-color:var(--brand);color:var(--brand-deep)}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
+/* 反馈 / 外刊 样式 */
+.fb-text{width:100%;min-height:120px;margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:10px;font:14px/1.7 var(--font);background:var(--surface);color:var(--text);resize:vertical}
+.fb-item{padding:8px 0;border-top:1px dashed var(--border);font-size:13px}
+.fb-item:first-child{border-top:none}
+.press-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.press-list{display:grid;gap:8px}
+.press-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.press-main{flex:1;min-width:0}
+.press-name{font:600 15px var(--font)}
+.press-desc{font-size:12.5px;color:var(--muted);margin-top:2px}
 .lib-more-menu button:hover{background:var(--brand-soft);color:var(--brand-deep)}
 
 .rec-line{display:flex;align-items:center;gap:10px;padding:8px 12px;margin:0 0 8px;border-radius:10px;background:var(--brand-soft);color:var(--brand-deep);font-size:13px}
@@ -511,6 +521,7 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-library" class="on" onclick="go('library')">书城</button>
       <button id="nav-assembly" onclick="go('assembly')">🧩 句子拼装</button>
       <button onclick="go('collections')">📚 书单</button>
+      <button id="nav-press" onclick="go('press')">📰 外刊</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
       <button onclick="go('sentcol')">⭐ 金句</button>
@@ -521,6 +532,7 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-guide" onclick="go('guide')">🎓 教程</button>
       <button id="nav-settings" onclick="go('settings')">🎨 个性化</button>
       <button id="nav-account" onclick="go('account')">账号</button>
+      <button id="nav-feedback" onclick="go('feedback')">📮 反馈</button>
     </nav>
   </div>
 </header>
@@ -615,6 +627,40 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 外刊 / 新闻阅读 ============ -->
+  <section class="view" id="view-press">
+    <h2 class="sec">📰 外刊与新闻</h2>
+    <div class="sub">精选外刊与新闻源，点标题在站内阅读器里打开（点词、翻译、朗读全部可用）。</div>
+    <div class="press-tabs" id="pressTabs"></div>
+    <div class="press-list" id="pressList"></div>
+  </section>
+
+  <!-- ============ 反馈与 Bug 报告 ============ -->
+  <section class="view" id="view-feedback">
+    <h2 class="sec">📮 反馈 / Bug 报告</h2>
+    <div class="sub">遇到的问题、想要的改进都可以写在这里，带上自动附带的设备信息，方便定位。</div>
+    <div class="settings-card">
+      <div class="lang-row">
+        <button class="chip on" id="fbTypeBug" onclick="setFbType('bug')">🐞 Bug 报告</button>
+        <button class="chip" id="fbTypeIdea" onclick="setFbType('idea')">💡 功能建议</button>
+        <button class="chip" id="fbTypeOther" onclick="setFbType('other')">💬 其他</button>
+      </div>
+      <textarea id="fbText" class="fb-text" placeholder="发生了什么？在哪个页面？点了什么？"></textarea>
+      <div class="hang-inputs">
+        <input class="code-input" id="fbContact" placeholder="联系方式（邮箱/微信，可选）">
+      </div>
+      <div class="lang-row" style="margin-top:10px">
+        <button class="btn small" onclick="submitFeedback()">提交</button>
+        <button class="btn ghost small" onclick="copyFeedbackDebug()">复制诊断信息</button>
+      </div>
+      <div class="tip" id="fbMsg" style="margin-top:8px"></div>
+    </div>
+    <div class="settings-card">
+      <h3>我提交过的</h3>
+      <div id="fbHistory" class="sub">暂无</div>
+    </div>
   </section>
 
   <!-- ============ 书单合集（增长③） ============ -->
@@ -1836,6 +1882,114 @@ function clearFullTextSearch(){
   const ft = document.getElementById("ftResults");
   if(ft){ ft.innerHTML = ""; ft.style.display = "none"; }
 }
+/* ================= 反馈 / Bug 报告 ================= */
+let _fbType = "bug";
+function setFbType(t){
+  _fbType = t;
+  ["bug","idea","other"].forEach(k=>{
+    const el = document.getElementById("fbType" + (k === "bug" ? "Bug" : k === "idea" ? "Idea" : "Other"));
+    if(el) el.classList.toggle("on", k === t);
+  });
+}
+function feedbackDebugInfo(){
+  let ua = "", ver = "";
+  try{ ua = navigator.userAgent; }catch(e){}
+  try{ ver = (typeof APP_VERSION !== "undefined" ? APP_VERSION : "") + " / " + (typeof SW_BUILD !== "undefined" ? SW_BUILD : ""); }catch(e){}
+  return [
+    "页面: " + location.pathname + location.hash,
+    "语言: " + (typeof activeLang === "function" ? activeLang() : "?"),
+    "版本: " + ver,
+    "视口: " + window.innerWidth + "x" + window.innerHeight,
+    "UA: " + ua,
+    "时间: " + new Date().toLocaleString()
+  ].join("\n");
+}
+async function copyFeedbackDebug(){
+  try{ await copyText(feedbackDebugInfo()); toast("诊断信息已复制，可粘贴到反馈里"); }catch(e){ toast("复制失败"); }
+}
+function fbHistory(){
+  try{ return JSON.parse(localStorage.getItem("lz_feedback_local") || "[]"); }catch(e){ return []; }
+}
+function renderFbHistory(){
+  const el = document.getElementById("fbHistory");
+  if(!el) return;
+  const list = fbHistory();
+  if(!list.length){ el.textContent = "暂无"; return; }
+  el.innerHTML = list.slice(0, 10).map(x =>
+    `<div class="fb-item"><b>${x.type === "bug" ? "🐞" : x.type === "idea" ? "💡" : "💬"} ${escHtml(x.text.slice(0, 60))}</b>
+      <div class="tip" style="margin:2px 0 0">${new Date(x.at).toLocaleString()} · ${x.synced ? "已提交" : "仅本地"}</div></div>`).join("");
+}
+async function submitFeedback(){
+  const ta = document.getElementById("fbText");
+  const msg = document.getElementById("fbMsg");
+  const text = (ta && ta.value || "").trim();
+  if(text.length < 2){ if(msg) msg.textContent = "请先写点内容"; return; }
+  const contact = (document.getElementById("fbContact")?.value || "").trim();
+  const payload = {
+    type: _fbType, text, contact,
+    device: deviceId(),
+    page: location.pathname + location.hash,
+    lang: activeLang(),
+    ver: (typeof APP_VERSION !== "undefined" ? APP_VERSION : ""),
+    debug: feedbackDebugInfo()
+  };
+  let synced = false;
+  try{
+    const r = await fetch(apiUrl("api/feedback"), {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    synced = r.ok;
+  }catch(e){}
+  const list = fbHistory();
+  list.unshift({ type: _fbType, text, at: Date.now(), synced });
+  try{ localStorage.setItem("lz_feedback_local", JSON.stringify(list.slice(0, 50))); }catch(e){}
+  if(ta) ta.value = "";
+  renderFbHistory();
+  if(msg){
+    msg.textContent = synced ? "✅ 已提交，感谢反馈！" : "已保存在本机，联网后可在「复制诊断信息」里发给我们";
+    msg.style.color = synced ? "var(--brand-deep)" : "";
+  }
+}
+
+/* ================= 外刊 / 新闻 ================= */
+const PRESS_SOURCES = [
+  { g:"新闻", name:"BBC News",        url:"https://www.bbc.com/news",                  desc:"英文新闻，题材广，适合泛读" },
+  { g:"新闻", name:"The Guardian",     url:"https://www.theguardian.com",               desc:"英式英语，长文多" },
+  { g:"新闻", name:"AP News",          url:"https://apnews.com",                        desc:"美联社，短稿快讯" },
+  { g:"新闻", name:"BBC Chinese",      url:"https://www.bbc.com/zhongwen/simp",         desc:"中英文对照的新闻" },
+  { g:"外刊", name:"The Economist",     url:"https://www.economist.com",                 desc:"深度分析，C1 以上" },
+  { g:"外刊", name:"LSE Business Review",url:"https://blogs.lse.ac.uk/businessreview/",  desc:"商学院视角的短文" },
+  { g:"外刊", name:"Project Syndicate", url:"https://www.project-syndicate.org",        desc:"全球议题评论" },
+  { g:"科技", name:"Hacker News",       url:"https://news.ycombinator.com",             desc:"技术圈资讯，评论口语化" },
+  { g:"科技", name:"MIT Technology Review", url:"https://www.technologyreview.com",    desc:"科技长文" },
+  { g:"科技", name:"Ars Technica",      url:"https://arstechnica.com",                 desc:"深度科技报道" },
+  { g:"文学", name:"Poetry Foundation",  url:"https://www.poetryfoundation.org/poems",  desc:"英文诗，适合精读" },
+  { g:"文学", name:"The Paris Review",   url:"https://www.theparisreview.org",          desc:"作家访谈与小说" }
+];
+let _pressTab = "全部";
+function renderPress(){
+  const tabsEl = document.getElementById("pressTabs");
+  const listEl = document.getElementById("pressList");
+  if(!tabsEl || !listEl) return;
+  const groups = ["全部", ...new Set(PRESS_SOURCES.map(x => x.g))];
+  tabsEl.innerHTML = groups.map(g =>
+    `<button class="chip ${_pressTab === g ? "on" : ""}" onclick="_pressTab='${g}';renderPress()">${escHtml(g)}</button>`).join("");
+  const items = PRESS_SOURCES.filter(x => _pressTab === "全部" || x.g === _pressTab);
+  listEl.innerHTML = items.map(x => `
+    <div class="press-item">
+      <div class="press-main">
+        <div class="press-name">${escHtml(x.name)}</div>
+        <div class="press-desc">${escHtml(x.desc)}</div>
+      </div>
+      <button class="btn ghost small" onclick="openPress('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">站内打开</button>
+    </div>`).join("");
+}
+/* 站内打开外刊：优先走浏览器模式内嵌，失败则提示 */
+function openPress(url, name){
+  if(typeof openInAppBrowser === "function"){
+    openInAppBrowser(url, name);
+  } else {
+    window.open(url, "_blank", "noopener");
+  }
+}
 function renderLangChips(){
   const el = document.getElementById("langChips");
   if(!el) return;
@@ -2243,6 +2397,8 @@ function go(name){
   if(name==="test") renderTestIntro();
   if(name==="account") renderAccount();
   if(name==="collections") renderCollections();
+  if(name==="press") renderPress();
+  if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
   if(name==="review") renderReview();
   setTimeout(() => { try{
@@ -7288,7 +7444,7 @@ function renderGuide(){
     <div class="settings-card">
       <h3>常见问题</h3>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>点词/翻译没反应？</b>先看设置里「离线模式」是否打开；关闭它，或确认这本书的本章已缓存。翻译源是 Google/MyMemory，网络受限时会自动降级，已翻过的句子永远秒显。</div></div>
-      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。会员 ¥22/月起、全语言 ¥299/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
+      <div class="guide-step"><div class="n">Q</div><div class="tx"><b>免费版有什么限制？</b>16 门语言全部可以自由浏览、阅读、查词、拼装；每天整章翻译额度：英语 120 句、其他语言各 80 句。早鸟价 ¥15/月起、全语言 ¥199/年不限量，并解锁整书预翻译与报告导出。内测可用激活码开通（大小写不敏感，一机一码一次）。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>新书第一次打开很慢？</b>3300 本书默认按需下载完整全文（不删节）。常用 272 本已打包在本地秒开；其余第一次需联网，之后存入 IndexedDB。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>导入 PDF 提示失败？</b>扫描版 PDF 没有文字层，需先 OCR；普通文字版 PDF 可直接导入。</div></div>
       <div class="guide-step"><div class="n">Q</div><div class="tx"><b>怎么离线？</b>打开一本书后点「📶 离线本书」，或设置里「离线模式」。译文要离线显示，需先在线点「翻译本章」。</div></div>
@@ -7466,15 +7622,18 @@ function openKpi(){
   十一·F 会员订阅（单语言 ¥18/月 · 全语言 ¥268/年）与免费增值分层
 ===================================================== */
 const LZ_PRO_KEY = "lz_pro_v1";
+/* 早鸟价（名额有限）：语言 ¥15/月、全语言 ¥29/月、¥88/季、¥199/年、永久 ¥298（限 100 名） */
+const EARLY_BIRD = { enabled: true, permanentQuota: 100, label: "早鸟价" };
 const PLAN_DEF = {
   free:      { name:"免费版",     price:0,  unit:"",     days:0,   months:0,  scope:"free" },
-  lang:      { name:"单语言会员", price:18, unit:"/月",  days:31,  months:1,  scope:"one" },
-  all_month: { name:"全语言月度", price:38, unit:"/月",  days:31,  months:1,  scope:"all" },
+  lang:      { name:"单语言会员", price:15, unit:"/月",  days:31,  months:1,  scope:"one" },
+  all_month: { name:"全语言月度", price:29, unit:"/月",  days:31,  months:1,  scope:"all" },
   all_quarter:{name:"全语言季度", price:88, unit:"/季",  days:92,  months:3,  scope:"all" },
-  all_year:  { name:"全语言年度", price:268,unit:"/年",  days:366, months:12, scope:"all" },
-  month:     { name:"全语言月度", price:12, unit:"/月", days:31, months:1, scope:"all" },
-  quarter:   { name:"全语言季度", price:30, unit:"/季", days:92, months:3,  scope:"all" },
-  year:      { name:"全语言年度", price:98, unit:"/年", days:366, months:12, scope:"all" },
+  all_year:  { name:"全语言年度", price:199,unit:"/年",  days:366, months:12, scope:"all" },
+  permanent: { name:"永久会员",   price:298,unit:"/永久",days:0,   months:0,  scope:"all", permanent: true },
+  month:     { name:"全语言月度", price:15, unit:"/月", days:31, months:1, scope:"all" },
+  quarter:   { name:"全语言季度", price:88, unit:"/季", days:92, months:3,  scope:"all" },
+  year:      { name:"全语言年度", price:199,unit:"/年", days:366, months:12, scope:"all" },
   permanent: { name:"永久会员",   price:0,  unit:"内测", days:0,   months:0,  scope:"all", permanent:1 }
 };
 /* 学期计划包（季度卡 + 16 周书单打卡） */
@@ -7761,6 +7920,20 @@ function localRedeemed(){
   try{ return JSON.parse(localStorage.getItem("lz_redeemed_codes") || "{}") || {}; }catch(e){ return {}; }
 }
 function saveLocalRedeemed(o){ try{ localStorage.setItem("lz_redeemed_codes", JSON.stringify(o)); }catch(e){} }
+/* 永久会员剩余名额（服务端权威，拿不到就显示「名额充足」） */
+async function refreshPermQuota(){
+  const el = document.getElementById("permQuotaLeft");
+  if(!el) return;
+  try{
+    const r = await fetch(apiUrl("api/pay/config"), {cache:"no-store"});
+    const j = await r.json();
+    const left = (j && j.permanentLeft != null) ? j.permanentLeft : EARLY_BIRD.permanentQuota;
+    el.textContent = left > 0 ? ("剩余 " + left + " 名") : "名额已满，等待下批";
+    el.style.color = left > 0 ? "" : "var(--danger, #c0392b)";
+  }catch(e){
+    el.textContent = "名额充足";
+  }
+}
 function applyPro(plan, expires, source, lang, scopeOverride){
   /* 兼容字符串日期（App Store / Google Play 返回 ISO 时间） */
   if(typeof expires === "string"){ const d = Date.parse(expires); expires = isNaN(d) ? 0 : d; }
@@ -7900,10 +8073,10 @@ function showPaywall(reason){
         「${escHtml(reason)}」属于会员功能。会员解锁：<b>全部 16 门学习语言</b>、不限量整章翻译、整书预翻译、全部离线下载、学习报告导出。
       </p>
       <div style="display:grid;gap:8px">
-        <button class="btn" onclick="selectCheckout2('all_month')">全语言 ¥48 / 月</button>
-        <button class="btn ghost" onclick="selectCheckout2('all_quarter')">全语言 ¥108 / 季（¥36/月）</button>
+        <button class="btn" onclick="selectCheckout2('all_month')">全语言 ¥29 / 月</button>
+        <button class="btn ghost" onclick="selectCheckout2('all_quarter')">全语言 ¥88 / 季（¥29/月）</button>
         <button class="btn ghost" onclick="selectCheckout2('all_year')">全语言 ¥328 / 年（¥27/月）</button>
-        <button class="btn ghost" onclick="selectCheckout2('lang')">单语言 ¥22 / 月</button>
+        <button class="btn ghost" onclick="selectCheckout2('lang')">单语言 ¥15 / 月</button>
       </div>
       <div class="paywall-note" id="payChannelNote">
         支持：微信支付 / 支付宝 / 激活码。
@@ -7968,7 +8141,7 @@ function showCheckoutSheet(plan){
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost small" onclick="closePaywall();go('plan')">查看全部权益 →</button>
-        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥108/季）</button>` : ""}
+        ${def.scope === "one" ? `<button class="btn ghost small" onclick="closePaywall();selectCheckout('all_quarter')">改买全语言（¥88/季）</button>` : ""}
       </div>
     </div>`;
   el.classList.add("on");
@@ -8550,7 +8723,7 @@ async function iapBuy(productId){
 }
 function escapedAttr(v){ return String(v||"").replace(/"/g, "&quot;"); }
 function renderPlan(){
-  setTimeout(()=>{ try{ renderMiniPayNote(); }catch(e){} }, 0);
+  setTimeout(()=>{ try{ renderMiniPayNote(); }catch(e){}; refreshPermQuota(); }, 0);
   const body = document.getElementById("planBody");
   const st = proState();
   const current = st ? planLabel() : "免费版";
@@ -8591,7 +8764,7 @@ function renderPlan(){
       <div class="plan-card hot">
         <span class="tagline">按需订阅</span>
         <div class="plan-name">单语言会员</div>
-        <div class="plan-price">¥22<small>/月</small></div>
+        <div class="plan-price">¥15<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">选定 1 门语言（英语已免费）</li>
           <li class="ok">该语言不限量整章翻译</li>
@@ -8599,40 +8772,52 @@ function renderPlan(){
           <li class="ok">学习报告导出</li>
           <li class="ok">句子拼装完整记录</li>
         </div>
-        <button class="btn" onclick="selectCheckout2('lang')">选语言开通 ¥22</button>
+        <button class="btn" onclick="selectCheckout2('lang')">选语言开通 ¥15</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 月度</div>
-        <div class="plan-price">¥48<small>/月</small></div>
+        <div class="plan-price">¥29<small>/月</small></div>
         <div class="plan-feat">
           <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 整书预翻译</li>
           <li class="ok">学期计划包</li>
         </div>
-        <button class="btn ghost" onclick="selectCheckout2('all_month')">开通 ¥48</button>
+        <button class="btn ghost" onclick="selectCheckout2('all_month')">开通 ¥29</button>
       </div>
       <div class="plan-card hot">
         <span class="tagline">推荐 · 一个学期</span>
         <div class="plan-name">全语言 · 季度</div>
-        <div class="plan-price">¥108<small>/季</small></div>
+        <div class="plan-price">¥88<small>/季</small></div>
         <div class="plan-feat">
           <li class="ok">全部 16 门学习语言</li>
           <li class="ok">不限量翻译 + 全部离线</li>
           <li class="ok">学期计划包（16 周书单打卡）</li>
           <li class="ok">班级/小组共用生词本（5 个名额）</li>
         </div>
-        <button class="btn" onclick="selectCheckout2('all_quarter')">开通 ¥108</button>
+        <button class="btn" onclick="selectCheckout2('all_quarter')">开通 ¥88</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">全语言 · 年度</div>
-        <div class="plan-price">¥299<small>/年</small></div>
+        <div class="plan-price">¥199<small>/年</small></div>
         <div class="plan-feat">
           <li class="ok">季度会员全部权益</li>
-          <li class="ok">折合 ¥25/月</li>
+          <li class="ok">折合 ¥16.6/月</li>
           <li class="ok">一年内新功能免费</li>
           <li class="ok">班级共享 20 个名额</li>
         </div>
-        <button class="btn" onclick="selectCheckout2('all_year')">开通 ¥299</button>
+        <button class="btn" onclick="selectCheckout2('all_year')">开通 ¥199</button>
+      </div>
+      <div class="plan-card" style="border-color:var(--brand);position:relative">
+        <span class="tagline">限 ${EARLY_BIRD.permanentQuota} 名</span>
+        <div class="plan-name">永久会员</div>
+        <div class="plan-price">¥298<small>/永久</small></div>
+        <div class="plan-feat">
+          <li class="ok">一次付清，终身有效</li>
+          <li class="ok">全部 16 门语言 · 不限量翻译</li>
+          <li class="ok">未来所有新功能免费</li>
+          <li class="ok" id="permQuotaLeft">剩余名额查询中…</li>
+        </div>
+        <button class="btn" onclick="selectCheckout2('permanent')">开通 ¥298</button>
       </div>
     </div>
     <div class="settings-card" id="miniPayCard">
@@ -8681,7 +8866,7 @@ function renderPlan(){
         <button class="btn" onclick="planActivate()">立即激活</button>
       </div>
       <div class="paywall-note">
-        <b>价格</b>：单语言 ¥22/月；全语言 ¥48/月、¥108/季、¥299/年（含税）。<br>
+        <b>价格</b>：早鸟价：单语言 ¥15/月；全语言 ¥29/月、¥88/季、¥199/年（含税）。<br>
         <b>为什么这样分层</b>：阅读和查词免费，因为它们是学习基础；翻译和离线持续产生成本，按语言数收费可以覆盖成本，也保证没有广告。
       </div>
     </div>`}
@@ -8690,7 +8875,7 @@ function renderPlan(){
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="color:var(--muted);text-align:left">
-            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥22</th><th>全语言 ¥48/月</th><th>全语言 ¥108/季</th><th>全语言 ¥299/年</th></tr></thead>
+            <th style="padding:8px 6px">功能</th><th>免费</th><th>单语言 ¥15</th><th>全语言 ¥29/月</th><th>全语言 ¥88/季</th><th>全语言 ¥199/年</th></tr></thead>
           <tbody>
             ${[
               ["学习语言","英 + 1 自选","英 + 1 门","全部 8 门","全部 8 门","全部 8 门"],
