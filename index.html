@@ -160,6 +160,23 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
 .fd-level-hint{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.6}
+/* 阅读排版 */
+.rd-layout{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.rd-layout .chip{min-height:30px;font-size:12.5px;padding:0 12px}
+html.rl-simple .rd-head h2{display:none}
+html.rl-simple .chap-title{display:none}
+html.rl-compact .sent .en{font-size:14px;line-height:1.55}
+html.rl-compact .sent .zh{font-size:12.5px}
+html.rl-compact .reader{padding:10px 12px}
+html.rl-wide .sent .en{font-size:19px;line-height:1.85}
+html.rl-wide .reader{max-width:860px;margin:0 auto}
+/* 句子精讲 */
+.gr-sent{font:16px/1.7 var(--serif);margin:10px 0 4px;padding:10px;background:var(--surface2);border-radius:10px}
+.gr-zh{font-size:13.5px;color:var(--muted);margin-bottom:10px}
+.gr-row{display:flex;gap:10px;padding:6px 0;border-top:1px dashed var(--border);font-size:13.5px}
+.gr-row>b{flex:0 0 42px;color:var(--brand-deep)}
+.gr-block{margin-top:8px;padding:10px;background:var(--brand-soft);border-radius:10px;font-size:13px;line-height:1.7}
+.gr-block>b{display:block;color:var(--brand-deep);margin-bottom:2px}
 /* 内置浏览器 */
 .br-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .br-url{flex:1;min-height:40px;font-size:14px}
@@ -2270,6 +2287,106 @@ function renderRichWordCard(word, low){
   `;
 }
 
+/* ================= 阅读排版：原书排版 / 简洁 / 双栏 ================= */
+const READ_LAYOUTS = {
+  original: { name:"原书排版", desc:"保留章节标题、分隔线与对白缩进，最接近纸质书" },
+  simple:   { name:"简洁模式", desc:"去掉标题与分隔线，只留正文与译文" },
+  compact:  { name:"紧凑双栏", desc:"段落压缩、字号偏小，适合长文速读" },
+  wide:     { name:"宽屏大字", desc:"电脑上单栏宽排版，字号更大" }
+};
+function readLayout(){ try{ return localStorage.getItem(pk("read_layout")) || "original"; }catch(e){ return "original"; } }
+function setReadLayout(v){
+  try{ localStorage.setItem(pk("read_layout"), v); }catch(e){}
+  applyReadLayout();
+  toast("排版：" + ((READ_LAYOUTS[v] || {}).name || v));
+  try{ if(curBook) openReader(curBook.id); }catch(e){}
+}
+function applyReadLayout(){
+  const v = readLayout();
+  const root = document.documentElement;
+  root.classList.remove("rl-original","rl-simple","rl-compact","rl-wide");
+  root.classList.add("rl-" + v);
+}
+
+/* ================= 长难句精讲（本地规则拆解） ================= */
+const GRAM_RULES = [
+  { re:/\b(?:which|that|who|whom|whose|where|when)\b/, name:"定语从句", tip:"由关系词引导，修饰前面的名词；先找先行词，再看从句内部缺什么成分。" },
+  { re:/\b(?:because|since|as|for)\b/, name:"原因状语从句", tip:"说明主句动作发生的原因，可整体移到句首。" },
+  { re:/\b(?:although|though|even though|while)\b/, name:"让步状语从句", tip:"表示“虽然…”，主句通常不出现 but。" },
+  { re:/\bif\b/, name:"条件状语从句", tip:"主将从现：从句用一般现在时，主句用将来时。" },
+  { re:/\b(?:when|before|after|until|as soon as)\b/, name:"时间状语从句", tip:"交代时间顺序，注意主从句时态搭配。" },
+  { re:/\b(?:so that|in order that)\b/, name:"目的状语从句", tip:"表示目的，常与情态动词 can/could/may 连用。" },
+  { re:/\b(?:than\b|as\s+\w+\s+as)\b/, name:"比较结构", tip:"比较级或同级比较，注意比较对象要对等。" },
+  { re:/\b(?:not only|neither|nor|hardly|rarely|never)\b/, name:"倒装/否定前置", tip:"否定词置于句首时主谓常倒装，翻译时还原语序。" },
+  { re:/,\s*\w+ing\b/, name:"现在分词作状语", tip:"逻辑主语通常是主句主语，表示伴随、原因或结果。" },
+  { re:/,\s*\w+ed\b/, name:"过去分词作状语", tip:"多表示被动或完成，逻辑主语仍看主句主语。" },
+  { re:/\b(?:to\s+\w+|in order to)\b/, name:"不定式短语", tip:"常作目的状语或后置定语，先判断它修饰谁。" },
+  { re:/\b(?:with|without)\s+\w+\s+\w+ing/, name:"with 独立主格", tip:"with + 名词 + 分词，表示伴随状态，自带逻辑主语。" }
+];
+function grammarExplain(sentence){
+  const text = String(sentence || "");
+  const hits = GRAM_RULES.filter(r => r.re.test(text));
+  const words = text.split(/\s+/).filter(Boolean);
+  /* 主谓宾的粗略估计：第一个非功能词视作主语，其后动词视作谓语 */
+  const FUNC = new Set("the a an this that these those my your his her its our their".split(" "));
+  let subj = "", verb = "";
+  for(let i = 0; i < words.length && i < 6; i++){
+    const w = words[i].replace(/[^A-Za-z']/g, "");
+    if(!w) continue;
+    if(!subj && !FUNC.has(w.toLowerCase())) subj = w;
+    else if(subj && !verb && /\.?(ed|ing|s|es)?$/.test(w) && w.length > 2 && i > 0 && /^[a-z]/.test(words[i])){ verb = w; break; }
+  }
+  const tense = /\b(had\s+\w+ed|had\s+been)\b/.test(text) ? "过去完成时"
+    : /\b(will|shall)\b/.test(text) ? "一般将来时"
+    : /\b(is|are|am|was|were)\s+\w+ing\b/.test(text) ? "进行时"
+    : /\b(have|has)\s+\w+ed\b/.test(text) ? "现在完成时"
+    : /\bwas\b|\bwere\b|\b\w+ed\b/.test(text) ? "一般过去时"
+    : "一般现在时";
+  const mood = /\?/.test(text) ? "疑问语气"
+    : /\b(please|could you|would you)\b/i.test(text) ? "祈使/委婉请求"
+    : /\b(should|must|may|might|can|could)\b/.test(text) ? "情态（推测/必要）"
+    : "陈述语气";
+  return { hits, subj, verb, tense, mood, words: words.length };
+}
+function openGrammarSheet(){
+  if(!curBook) return;
+  const all = getSents(curBook.id);
+  const p = (store.progress[curBook.id] || {}).sent || 0;
+  const s = all[p] || all[0];
+  if(!s){ toast("这句还没准备好"); return; }
+  const g = grammarExplain(s.en);
+  let el = document.getElementById("gramSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "gramSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box" style="max-height:86vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font:600 18px var(--serif)">句子精讲</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('gramSheet').style.display='none'">✕</button>
+    </div>
+    <div class="gr-sent">${escHtml(s.en)}</div>
+    <div class="gr-zh">${escHtml(s.zh || "（暂无译文，可先点「翻译这句」）")}</div>
+    <div class="gr-row"><b>主干</b><span>主语 <b>${escHtml(g.subj || "?")}</b> · 谓语 <b>${escHtml(g.verb || "?")}</b> · 共 ${g.words} 词</span></div>
+    <div class="gr-row"><b>时态</b><span>${escHtml(g.tense)}</span></div>
+    <div class="gr-row"><b>语气</b><span>${escHtml(g.mood)}</span></div>
+    <div class="gr-row"><b>结构</b><span>${g.hits.length ? g.hits.map(h => escHtml(h.name)).join(" · ") : "简单句（无复杂从句）"}</span></div>
+    ${g.hits.map(h => `<div class="gr-block"><b>${escHtml(h.name)}</b><div>${escHtml(h.tip)}</div></div>`).join("")}
+    <div class="lang-row" style="margin-top:12px">
+      <button class="btn small" onclick="speak(sheetSent>=0?sheetSent:0)">🔊 朗读</button>
+      <button class="btn ghost small" onclick="document.getElementById('gramSheet').style.display='none'">关闭</button>
+    </div>
+  </div>`;
+}
+/* 阅读器工具栏加入排版与精讲入口 */
+function readerToolExtras(){
+  return `<div class="rd-layout">
+    <span class="tip" style="margin:0">排版</span>
+    ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
+      `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
+    <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
+  </div>`;
+}
+
 /* ================= 内置浏览器 ================= */
 const BR_SEARCH = {
   google: "https://www.google.com/search?q=",
@@ -4260,7 +4377,7 @@ function openReader(id){
     return `<button class="btn ghost small" onclick="mtOnce('${key}')">🌐 ${shown.length?"补译":"翻译这句"}</button>
       <span id="mtout-${key}">${escHtml(shown.join(""))}</span>`;
   };
-  let html = "";
+  let html = readerToolExtras() + (window.__rdProgressBar ? window.__rdProgressBar() : "");
   if(store.mode === "para"){
     for(let p=rng[0]; p<rng[1]; p+=3){
       const end = Math.min(p+3, rng[1]);
@@ -4319,10 +4436,12 @@ function openReader(id){
       onclick="setBg('${v}')"></button>`).join("");
   const translated = isFull ? sents.slice(rng[0],rng[1]).filter(s=>s.zh).length : 0;
   const total = Math.max(1, rng[1]-rng[0]);
+  applyReadLayout();
   document.getElementById("view-reader").innerHTML = `
     <div class="reader">
       <span class="back" onclick="openBook('${id}')">← 返回详情</span>
       <div class="rd-head"><h2>${title} · ${isGuide?"精读导读":(isFull ? "整本阅读" : "双语试读")}</h2></div>
+      ${readerToolExtras()}
       ${(curBook && curBook.translated) ? `<div class="tip" style="margin:-4px 0 6px">📗 译本条目：标题为${escHtml((LANG_INFO[activeLang()]||{}).native || "")}译名，正文为《${escHtml(curBook.en || curBook.t)}》原版全文；点「翻译本章」即可逐句对照译文。</div>` : ""}
       ${isFull ? `
       <div class="rd-tools">
