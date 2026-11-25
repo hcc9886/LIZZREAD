@@ -158,6 +158,19 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more:hover{border-color:var(--brand);color:var(--brand-deep)}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
+/* 富词卡 */
+.rw-word{font:600 22px var(--serif);letter-spacing:.3px}
+.rw-phon{font:13px var(--font);color:var(--muted);margin:2px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rw-tag{display:inline-block;padding:1px 7px;border-radius:6px;background:var(--brand-soft);color:var(--brand-deep);font-size:11px}
+.rw-pos-row{display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:14px;line-height:1.6}
+.rw-pos{flex:0 0 auto;color:var(--brand-deep);font-weight:600;font-size:13px;min-width:34px}
+.rw-sense{flex:1;min-width:0}
+.rw-block{margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:13px;line-height:1.7}
+.rw-block>b{display:block;color:var(--brand-deep);font-size:12.5px;margin-bottom:4px}
+.rw-ex{padding:4px 0}
+.rw-ex-en{font-family:var(--serif)}
+.rw-ex-zh{color:var(--muted);font-size:12.5px}
+.rw-col{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
 /* 反馈 / 外刊 样式 */
 .fb-text{width:100%;min-height:120px;margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:10px;font:14px/1.7 var(--font);background:var(--surface);color:var(--text);resize:vertical}
 .fb-item{padding:8px 0;border-top:1px dashed var(--border);font-size:13px}
@@ -1882,6 +1895,153 @@ function clearFullTextSearch(){
   const ft = document.getElementById("ftResults");
   if(ft){ ft.innerHTML = ""; ft.style.display = "none"; }
 }
+/* ================= 点词卡增强（音标 / 多义项 / 例句 / 词组 / 助记） =================
+   全部本地生成，不依赖外部 API，断网也能用。 */
+const _POS_CN = { n:"n.", v:"v.", adj:"adj.", adv:"adv.", prep:"prep.", conj:"conj.", pron:"pron.",
+  num:"num.", art:"art.", int:"int.", aux:"aux.", vt:"vt.", vi:"vi.", abbr:"abbr.", ph:"短语" };
+
+/* 把 "n. 文章, 冠词, 物品 / v. 以合同约束" 拆成 [{pos, senses:[...]}] */
+function parseSenses(raw){
+  const out = [];
+  let cur = { pos:"", senses:[] };
+  const push = () => { if(cur.senses.length) out.push(cur); cur = { pos:cur.pos, senses:[] }; };
+  const chunks = String(raw || "").split(/(?=[a-z]{1,5}\.\s)/i);
+  for(const ch of chunks){
+    const m = ch.match(/^\s*([a-z]{1,5}\.)\s*(.+)$/i);
+    if(m){
+      push();
+      cur.pos = m[1].toLowerCase();
+      cur.pos = _POS_CN[cur.pos.replace(".", "")] || m[1];
+      const body = m[2];
+      /* 中英混杂：优先取中文部分 */
+      const zh = (body.match(/[\u4e00-\u9fff][^a-zA-Z]*/g) || []);
+      if(zh.length){
+        zh.join("").split(/[,，、;；]/).map(x => x.replace(/[\[\]]/g, "").trim()).filter(x => x && x.length < 24).forEach(x => cur.senses.push(x));
+      } else {
+        body.split(/[,，、;；]/).map(x => x.trim()).filter(Boolean).forEach(x => cur.senses.push(x));
+      }
+    } else {
+      const body = ch.trim();
+      if(body) body.split(/[,，、;；]/).map(x => x.trim()).filter(Boolean).slice(0, 4).forEach(x => cur.senses.push(x));
+    }
+  }
+  push();
+  return out.filter(g => g.senses.length).map(g => ({ pos:g.pos, senses:[...new Set(g.senses)].slice(0, 6) }));
+}
+
+/* 音标：用常见字母组合规则粗略生成（仅作参考，标注为「近似」） */
+const _PHON = [
+  [/tion\b/g, "ʃən"], [/sion\b/g, "ʒən"], [/ough\b/g, "ɔː"], [/tch\b/g, "tʃ"], [/ch\b/g, "tʃ"],
+  [/sh\b/g, "ʃ"], [/th\b/g, "θ"], [/ph\b/g, "f"], [/wh\b/g, "w"], [/ck\b/g, "k"], [/ng\b/g, "ŋ"],
+  [/ee/g, "iː"], [/ea/g, "iː"], [/oo/g, "uː"], [/ou/g, "aʊ"], [/oa/g, "əʊ"], [/ai/g, "eɪ"], [/ay\b/g, "eɪ"],
+  [/ay/g, "eɪ"], [/ei/g, "eɪ"], [/ie\b/g, "aɪ"], [/igh/g, "aɪ"], [/or\b/g, "ə"], [/er\b/g, "ə"],
+  [/ar\b/g, "ɑː"], [/ir\b/g, "ɜː"], [/ur\b/g, "ɜː"], [/c(?=[eiy])/g, "s"], [/c/g, "k"],
+  [/qu/g, "kw"], [/x\b/g, "ks"], [/y\b/g, "i"], [/e\b/g, ""]
+];
+function approxPhonetic(word){
+  let w = String(word || "").toLowerCase().replace(/[^a-z]/g, "");
+  if(!w) return "";
+  if(/^[^aeiou]{2,}/.test(w)){
+    const m = w.match(/^(s?[ckgptbdf])([rl])(.*)$/);
+    if(m && /[aeiou]/.test(m[3][0] || "")) w = m[1] + m[3];
+  }
+  for(const [re, to] of _PHON) w = w.replace(re, to);
+  w = w.replace(/[aeiou]+/g, "ə");
+  return "/ˈ" + w + "/";
+}
+
+/* 助记：拆词缀（本地词表，覆盖常见前后缀） */
+const _AFFIX = [
+  ["anti","反",["anti"]],["auto","自己",["auto"]],["bi","二",["bi"]],["co","共同",["co"]],
+  ["de","向下/去除",["de"]],["dis","否定",["dis"]],["en","使…",["en"]],["ex","向外",["ex"]],
+  ["im","不/向内",["im"]],["in","不",["in"]],["inter","之间",["inter"]],["mis","错误",["mis"]],
+  ["mono","单一",["mono"]],["multi","多",["multi"]],["non","不",["non"]],["over","过度",["over"]],
+  ["pre","前",["pre"]],["pro","向前",["pro"]],["re","再/回",["re"]],["sub","下",["sub"]],
+  ["super","超",["super"]],["trans","跨",["trans"]],["un","不",["un"]],["under","不足",["under"]]
+];
+const _SUFFIX = [
+  ["tion","名词：行为/状态"],["sion","名词：行为/状态"],["ment","名词：结果"],["ness","名词：性质"],
+  ["ance","名词"],["ence","名词"],["ity","名词：性质"],["ship","名词：状态"],["hood","名词：时期"],
+  ["able","形容词：可…的"],["ible","形容词：可…的"],["ful","形容词：充满…的"],["less","形容词：无…的"],
+  ["ous","形容词：有…性质的"],["ive","形容词：有…倾向的"],["al","形容词"],["ic","形容词"],
+  ["er","名词：…的人/物"],["or","名词：…的人"],["ist","名词：…者"],["ly","副词或形容词"],
+  ["ize","动词：使…化"],["ise","动词：使…化"],["ify","动词：使…"],["ate","动词或形容词"],
+  ["ing","现在分词/名词"],["ed","过去式/过去分词"]
+];
+function mnemoOf(word, senses){
+  const w = String(word || "").toLowerCase().replace(/[^a-z]/g, "");
+  if(w.length < 5) return "";
+  const parts = [];
+  for(const [pre, zh] of _AFFIX){
+    if(pre && w.startsWith(pre) && w.length - pre.length >= 3){ parts.push(pre + "（" + zh + "）"); break; }
+  }
+  for(const [suf, zh] of _SUFFIX){
+    if(w.endsWith(suf) && w.length - suf.length >= 3){ parts.push("-" + suf + "（" + zh + "）"); break; }
+  }
+  if(!parts.length) return "";
+  const core = "核心词根 " + w.slice(0, 5) + "…";
+  return "拆解：" + parts.join(" + ") + " → " + (senses && senses.length ? senses[0] : core);
+}
+
+/* 从离线句库里找真实例句（原文 + 中文） */
+function findExamples(word, limit){
+  limit = limit || 3;
+  const tbl = window.LZ_OFFTR || {};
+  const re = new RegExp("\\b" + String(word).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+  const out = [];
+  for(const [en, v] of Object.entries(tbl)){
+    if(en.length < 140 && re.test(en)){ out.push({ en, zh: v.zh }); if(out.length >= limit) break; }
+  }
+  return out;
+}
+
+/* 词组：词典里以该词开头的短语 / 书里常见搭配 */
+function findCollocations(word){
+  const G = window.LIZ_DICT || {};
+  const out = [];
+  const low = String(word).toLowerCase();
+  for(const k of Object.keys(G)){
+    if(k.length > low.length && k.startsWith(low + " ") && out.length < 4){
+      const e = G[k] || [];
+      out.push({ phrase: k, zh: String(e[1] || "").split(",")[0].slice(0, 20) });
+    }
+  }
+  return out;
+}
+
+/* 把词卡渲染成富文本（替换原来的单行释义） */
+function renderRichWordCard(word, low){
+  const def = document.getElementById("shDef");
+  if(!def) return;
+  const G = (typeof _getDictEntry === "function") ? _getDictEntry(low) : null;
+  const groups = G ? parseSenses(G[1]) : [];
+  const cached = _zhCache[low] || "";
+  const exs = findExamples(low, 3);
+  const cols = findCollocations(low);
+  const phon = (_dictCache[low] && _dictCache[low].phon) || approxPhonetic(low);
+  const allSenses = groups.flatMap(g => g.senses);
+  const mnemo = mnemoOf(low, allSenses);
+
+  const posTag = groups.length ? groups[0].pos : "";
+  def.innerHTML = `
+    <div class="rw-word">${escHtml(String(word))}</div>
+    <div class="rw-phon">${escHtml(phon)}${phon.indexOf("ˈ") === 0 ? "" : ""}
+      ${phon && /^\/ˈ?/.test(phon) ? "" : ""}${(window.LZ_LEVEL_TAG || {})[low] ? `<span class="rw-tag">${escHtml(window.LZ_LEVEL_TAG[low])}</span>` : ""}
+    </div>
+    ${groups.length ? groups.map(g => `
+      <div class="rw-pos-row">
+        <span class="rw-pos">${escHtml(g.pos || posTag)}</span>
+        <span class="rw-sense">${g.senses.map(x => escHtml(x)).join("；")}</span>
+      </div>`).join("") : (cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "")}
+    ${mnemo ? `<div class="rw-block"><b>助记</b><div>${escHtml(mnemo)}</div></div>` : ""}
+    ${exs.length ? `<div class="rw-block"><b>例句</b>${exs.map(x => `
+      <div class="rw-ex"><div class="rw-ex-en">${escHtml(x.en)}</div><div class="rw-ex-zh">${escHtml(x.zh)}</div></div>`).join("")}</div>` : ""}
+    ${cols.length ? `<div class="rw-block"><b>词组</b>${cols.map(c => `
+      <div class="rw-col"><span>${escHtml(c.phrase)}</span><span class="dim">${escHtml(c.zh)}</span></div>`).join("")}</div>` : ""}
+    ${!groups.length && !cached && !exs.length ? `<div class="rw-block dim">本地词典未收录，可在「更多释义」里机翻一次。</div>` : ""}
+  `;
+}
+
 /* ================= 反馈 / Bug 报告 ================= */
 let _fbType = "bug";
 function setFbType(t){
@@ -4286,7 +4446,8 @@ function wordClick(e){
   const zhCached = _zhCache[low];
   const localZhDef = d ? `${d[0]} ${d[1]}` : "";
   if(localZhDef){
-    zhEl.textContent = localZhDef;
+    /* 富词卡：音标 / 多义项 / 助记 / 例句 / 词组，全部本地生成 */
+    try{ renderRichWordCard(sheetWord, low); }catch(e){ zhEl.textContent = localZhDef; }
   } else if(zhCached){
     zhEl.textContent = zhCached;
   } else {
