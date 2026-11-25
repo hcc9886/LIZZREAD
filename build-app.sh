@@ -2,6 +2,13 @@
 # 一键构建 LIZZREAD 安装包（网页 + Android APK + iOS 工程）
 # 本机已内置：Android SDK(.sdk/) + JDK21(.sdk/amazon-corretto-21.jdk) + Gradle 8.10.2(.sdk/gradle-8.10.2)
 set -e
+
+# 统一版本来源：环境变量 APPVER > data/app-version.json > 2.0.0
+if [ -z "${APPVER:-}" ]; then
+  APPVER="$(node -e 'try{process.stdout.write(require("./data/app-version.json").latest)}catch(e){}' 2>/dev/null)"
+fi
+[ -z "${APPVER:-}" ] && APPVER="2.0.0"
+export APPVER
 cd "$(dirname "$0")"
 
 echo "== 1/4 同步网页到 www/ =="
@@ -47,8 +54,8 @@ if [ -d "$SDK/platforms/android-34" ]; then
   echo "APK: android/app/build/outputs/apk/release/app-release.apk"
   echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
   mkdir -p dist
-  cp -f android/app/build/outputs/apk/release/app-release.apk "dist/LIZZREAD-${VER:-2.0.0}-release.apk" 2>/dev/null || true
-  cp -f android/app/build/outputs/bundle/release/app-release.aab "dist/LIZZREAD-${VER:-2.0.0}.aab" 2>/dev/null || true
+  cp -f android/app/build/outputs/apk/release/app-release.apk "dist/LIZZREAD-${APPVER}-release.apk" 2>/dev/null || true
+  cp -f android/app/build/outputs/bundle/release/app-release.aab "dist/LIZZREAD-${APPVER}.aab" 2>/dev/null || true
   mkdir -p download
   cp -f android/app/build/outputs/apk/release/app-release.apk download/LIZZREAD.apk 2>/dev/null || true
 elif [ -n "$ANDROID_SDK_ROOT" ] || [ -n "$ANDROID_HOME" ]; then
@@ -61,7 +68,7 @@ fi
 echo "== 4/4 完成：iOS 工程在 ios/，需在 Mac 上用 Xcode 打开（store/upload-ios.sh） =="
 
 echo "== 4.5 写入版本信息（App 内「检查更新」与 /api/version 用） =="
-VER="${APPVER:-2.0.0}"
+VER="$APPVER"
 BUILD="$(date +%Y-%m-%dT%H:%M:%S%z)"
 VER="$VER" BUILD="$BUILD" node -e '
 const fs=require("fs");
@@ -78,8 +85,14 @@ console.log("版本写入:", ver, build);
 '
 
 echo "== 5/5 版本号 =="
-APPVER="${APPVER:-$(node -e 'try{process.stdout.write(require("./data/app-version.json").latest)}catch(e){process.stdout.write("2.0.0")}' 2>/dev/null)}"
-APPVER="${APPVER:-2.0.0}"
 BUILDNUM="${BUILDNUM:-$(date +%Y%m%d%H)}"
+# 真正把版本号写进 Gradle（之前只打印没写，导致 APK 始终是 2.0.0）
+GRADLE="android/app/build.gradle"
+if [ -f "$GRADLE" ]; then
+  CODE="$(node -e "const p=process.argv[1].split('.').map(Number);process.stdout.write(String(p[0]*10000+p[1]*100+p[2]))" "$APPVER")"
+  sed -i.bak -E "s/versionCode [0-9]+/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$APPVER\"/" "$GRADLE" && rm -f "$GRADLE.bak"
+  echo "  Android 已写入 $GRADLE：versionName=$APPVER versionCode=$CODE"
+else
+  echo "  未找到 $GRADLE，跳过版本写入"
+fi
 echo "版本 $APPVER ($BUILDNUM)  — iOS 用 xcodebuild MARKETING_VERSION=$APPVER CURRENT_PROJECT_VERSION=$BUILDNUM"
-echo "  Android 已写入 android/app/build.gradle（versionName/versionCode）"
