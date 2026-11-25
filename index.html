@@ -159,6 +159,11 @@ body.on-library .lz-hide-on-library{display:none !important}
 .lib-more:hover{border-color:var(--brand);color:var(--brand-deep)}
 .lib-more-menu{position:absolute;right:0;top:42px;z-index:60;min-width:196px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
 .lib-more-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;background:none;border-radius:8px;font:500 14px var(--font);color:var(--text);cursor:pointer;text-align:left;min-height:40px}
+/* 拼装：模式条 + 打字区 */
+.asm-mode-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+.asm-mode-bar .chip{min-height:30px;font-size:12.5px;padding:0 12px}
+.asm-type-input{width:100%;min-height:88px;margin-top:6px;padding:12px;border:1px solid var(--border);border-radius:10px;font:15px/1.6 var(--font);background:var(--surface);color:var(--text);resize:vertical}
+.asm-type-wrap{margin-top:4px}
 /* 富词卡 */
 .rw-word{font:600 22px var(--serif);letter-spacing:.3px}
 .rw-phon{font:13px var(--font);color:var(--muted);margin:2px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -7160,13 +7165,18 @@ async function asmUsePack(bookId, sentence){
     const pool0 = (lv==="all" ? arr : (arr.filter(s=>s.level===lv).length ? arr.filter(s=>s.level===lv) : arr))
       .filter(s=> s && s.text && s.text.trim().length >= 12 && /[\p{L}]{2,}/u.test(s.text)
         && !/^(chapter|contents|part\b|copyright|transcriber|produced by)/i.test(s.text.trim()));
-    const pool = pool0.length ? pool0 : arr;
-    const s = sentence || pool[Math.floor(Math.random()*pool.length)];
+    const sentPool = pool0.length ? pool0 : arr;
+    const s = sentence || sentPool[Math.floor(Math.random()*sentPool.length)];
     asmTextUnlocked = false;
     const chunks = (s.chunks && s.chunks.length ? s.chunks : AC.splitIntoChunks(s.text));
+    /* 分块模式：意群 / 单词 / 混合（默认混合，打得更乱，更接近真实组句） */
+    const mode = (window.__asmMode || "mixed");
+    const pieces = mode === "chunk" ? chunks
+      : mode === "word" ? String(s.text).split(/\s+/).filter(Boolean)
+      : buildMixedChunks(s.text, chunks);
     const idx = arr.findIndex(x => x && x.sentence_id === s.sentence_id);
-    asmState = { sentence:s, chunks, userChunks:new Array(chunks.length).fill(null),
-      shuffled: chunks.slice().sort(()=>Math.random()-.5), selected:null, custom:false, bookId, startedAt: Date.now(),
+    asmState = { sentence:s, chunks, pool:pieces, mode, userChunks:new Array(pieces.length).fill(null),
+      shuffled: shuffleHard(pieces), selected:null, custom:false, bookId, startedAt: Date.now(),
       ctx:{ prev: idx>0 && arr[idx-1] ? arr[idx-1].text : "", next: idx>=0 && arr[idx+1] ? arr[idx+1].text : "", chapter:"" },
       showAnswer:false, revealUsed:false, hideText:true };
     asmRenderStage();
@@ -7310,9 +7320,12 @@ function asmRenderStage(){
     return;
   }
   const s = asmState.sentence;
-  const chunks = asmState.chunks;
+  const chunks = asmState.pool || asmState.chunks;   /* 实际拼装用 pool（可能已打散到单词级） */
   const used = new Set(asmState.userChunks.filter(Boolean));
-  const remaining = asmState.shuffled.filter(c=>!used.has(c));
+  const remaining = asmState.shuffled.filter((c, i) => {
+    /* 同词多块时按索引扣减，避免重复词被一次全消 */
+    return !asmState.userChunks.includes(c) || asmState.shuffled.filter(x => x === c).length > asmState.userChunks.filter(x => x === c).length;
+  });
   stage.innerHTML = `
     <div class="asm-sent">
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${asmState.custom?"来自当前阅读":"📖 "+escHtml(asmBookTitle(asmState.bookId))} · ${s.level||"B1"}
@@ -7345,9 +7358,14 @@ function asmRenderStage(){
         <div style="font-size:13px;line-height:1.7">${asmUsageHtml(s)}</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 6px">
-      <span style="font-size:13px;color:var(--muted)">① 把下面打乱的意群块按正确顺序放进槽位（点击块 → 自动填入下一个位置）</span>
+    <div class="asm-mode-bar">
+      <span style="font-size:12.5px;color:var(--muted)">分块难度</span>
+      ${[["chunk","意群"],["mixed","混合"],["word","单词 "] ].map(([k,label])=>
+        `<button class="chip ${(asmState.mode||"mixed")===k?"on":""}" onclick="asmSetMode('${k}')">${label}</button>`).join("")}
       <span style="margin-left:auto">${asmAnswerHtml()}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 6px">
+      <span style="font-size:13px;color:var(--muted)">① 按正确顺序点击下方块放入槽位（点击已放好的槽位可取回）</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
       ${chunks.map((c,i)=>{
@@ -7368,10 +7386,96 @@ function asmRenderStage(){
       <button class="btn ghost" onclick="asmHint()">💡 提示一块</button>
       <button class="btn ghost" onclick="asmNewRandom()">🎲 下一句</button>
     </div>
+    <div class="asm-type-wrap">
+      <div style="font-size:13px;color:var(--muted);margin:14px 0 6px">② 也可以直接打字（按顺序输入整句，不用加标点）</div>
+      <textarea id="asmTypeInput" class="asm-type-input" placeholder="在这里输入整句…"></textarea>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn small" onclick="asmSubmitTyped()">提交打字答案</button>
+        <button class="btn ghost small" onclick="asmTypeHint()">给点提示（首字母）</button>
+      </div>
+      <div class="tip" id="asmTypeTip" style="margin-top:6px"></div>
+    </div>
     <div id="asmResult" style="margin-top:12px;font-size:14px;line-height:1.7"></div>
     <div class="tip" style="margin-top:10px">提示：可以先看中文意思自己拼，核对时再点「查看答案」；看过答案本次不计分。</div>`;
   /* 没有译文时自动翻译当前句（不阻塞拼装） */
   if(!s.zh) autoTranslateAsm(s);
+}
+/* 混合分块：一半意群、一半单词，打散得更彻底 */
+function buildMixedChunks(text, chunks){
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  if(words.length <= 3) return words;
+  const out = [];
+  const half = Math.ceil(words.length / 2);
+  /* 前半句按意群切，后半句逐词切，避免整句被一个超大块带走 */
+  let acc = 0;
+  for(const c of chunks){
+    const n = String(c).split(/\s+/).filter(Boolean).length;
+    if(acc < half){ out.push(c); acc += n; }
+    else String(c).split(/\s+/).filter(Boolean).forEach(w => out.push(w));
+  }
+  return out.length >= 3 ? out : words;
+}
+/* 洗牌：保证至少 70% 的块不挨着原顺序，减少「顺序没打乱」的枯燥感 */
+function shuffleHard(list){
+  const arr = list.slice();
+  for(let attempt = 0; attempt < 12; attempt++){
+    for(let i = arr.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    let adjacent = 0;
+    for(let i = 1; i < arr.length; i++) if(list.indexOf(arr[i]) - list.indexOf(arr[i-1]) === 1) adjacent++;
+    if(adjacent <= Math.max(0, Math.floor(arr.length * 0.3))) break;
+  }
+  return arr;
+}
+/* 原句在用户没点「看原句」前绝不渲染 */
+function asmSetMode(m){
+  window.__asmMode = m;
+  if(asmState) asmState.mode = m;
+  /* 重新打散当前句，不换句 */
+  asmRelayout();
+}
+function asmRelayout(){
+  if(!asmState) return;
+  const AC = window.AssemblyCore;
+  const s = asmState.sentence;
+  const mode = asmState.mode || "mixed";
+  const pieces = mode === "chunk" ? asmState.chunks
+    : mode === "word" ? String(s.text).split(/\s+/).filter(Boolean)
+    : buildMixedChunks(s.text, asmState.chunks);
+  asmState.pool = pieces;
+  asmState.userChunks = new Array(pieces.length).fill(null);
+  asmState.shuffled = shuffleHard(pieces);
+  asmState.revealUsed = false;
+  asmRenderStage();
+}
+/* 打字模式：整句比对（忽略大小写、标点、多余空格） */
+function asmNorm(t){
+  return String(t || "").toLowerCase().replace(/[“”"‘’'`.,;:!?—–-]/g, " ").replace(/\s+/g, " ").trim();
+}
+function asmSubmitTyped(){
+  if(!asmState) return;
+  const inp = document.getElementById("asmTypeInput");
+  const got = asmNorm(inp && inp.value);
+  const want = asmNorm(asmState.sentence.text);
+  const box = document.getElementById("asmResult");
+  if(!got){ if(box) box.textContent = "先输入一句再提交"; return; }
+  if(got === want){
+    if(box) box.innerHTML = `<b style="color:var(--brand-deep)">✅ 完全正确！</b><div class="tip">${escHtml(asmState.sentence.zh || "")}</div>`;
+    try{ asmLogResult && asmLogResult(true, true); }catch(e){}
+  } else {
+    const gw = got.split(" "), ww = want.split(" ");
+    let same = 0;
+    for(let i = 0; i < Math.min(gw.length, ww.length); i++) if(gw[i] === ww[i]) same++;
+    const pct = Math.round(same / ww.length * 100);
+    if(box) box.innerHTML = `<b style="color:#c0392b">还不完全正确</b><div class="tip">词序对上约 ${pct}%（${same}/${ww.length} 词）。可以先点「💡 提示一块」再试。</div>`;
+  }
+}
+function asmTypeHint(){
+  if(!asmState) return;
+  const inputs = String(asmState.sentence.text).split(/\s+/);
+  const shown = inputs.map((w, i) => i < 3 ? w : (i === 3 ? w.slice(0, 1) + "…" : "…")).join(" ");
+  const tip = document.getElementById("asmTypeTip");
+  if(tip) tip.innerHTML = `开头提示：<b>${escHtml(shown)}</b>（共 ${inputs.length} 词）`;
+  asmState.revealUsed = true;
 }
 function asmSlotClick(i){
   /* 点已填槽位 = 把这块意群退回下方的块池 */
