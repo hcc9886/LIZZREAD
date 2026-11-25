@@ -31,6 +31,7 @@
 <script src="data/lang-tests.js?v=1"></script>
 <script src="data/lang-test-options.js?v=1"></script>
 <script src="data/offline-tr.js?v=1" defer></script>
+<script src="data/vocab-books.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
@@ -535,6 +536,7 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-assembly" onclick="go('assembly')">🧩 句子拼装</button>
       <button onclick="go('collections')">📚 书单</button>
       <button id="nav-press" onclick="go('press')">📰 外刊</button>
+      <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
       <button id="nav-test" onclick="go('test')">词汇测试</button>
       <button id="nav-vocab" onclick="go('vocab')">生词本</button>
       <button onclick="go('sentcol')">⭐ 金句</button>
@@ -640,6 +642,13 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ 考试词书 ============ -->
+  <section class="view" id="view-vocabbooks">
+    <h2 class="sec">📚 考试词书</h2>
+    <div class="sub">选一本词书，把里面的词标成「已学」或「要学」，阅读时自动用颜色标出，边读边巩固。</div>
+    <div id="vbBody"></div>
   </section>
 
   <!-- ============ 外刊 / 新闻阅读 ============ -->
@@ -748,6 +757,7 @@ body.no-zh .sent .zh{display:none}
   <div class="sec-t">📖 常用义</div>
   <div class="d" id="shDef"></div>
   <div id="shGlossBox"></div>
+  <div id="shVbBox"></div>
   <div class="d dim" id="shMorph" style="font-size:12px;margin-top:2px"></div>
   <div class="sheet-mini">
     <button class="linkbtn" id="shTr" onclick="translateSheetWord()">🌐 重译此词</button>
@@ -1895,6 +1905,143 @@ function clearFullTextSearch(){
   const ft = document.getElementById("ftResults");
   if(ft){ ft.innerHTML = ""; ft.style.display = "none"; }
 }
+/* ================= 考试词书：已学 / 要学 标记 =================
+   支持 CET4/CET6/IELTS/TOEFL，颜色可自定义；标记后阅读器里同样的词自动着色。 */
+const VOCAB_BOOKS = () => (window.LZ_VOCAB_BOOKS || {});
+const VB_META = {
+  cet4:  { name:"四级 CET-4",  color:"#2F80ED" },
+  cet6:  { name:"六级 CET-6",  color:"#9B51E0" },
+  ielts: { name:"雅思 IELTS",  color:"#F2994A" },
+  toefl: { name:"托福 TOEFL",  color:"#EB5757" }
+};
+function vbState(){ try{ return JSON.parse(localStorage.getItem(pk("vb_state")) || "{}"); }catch(e){ return {}; } }
+function vbSave(o){ try{ localStorage.setItem(pk("vb_state"), JSON.stringify(o)); }catch(e){} }
+function vbColors(){ try{ return Object.assign({}, Object.fromEntries(Object.entries(VB_META).map(([k,v])=>[k,v.color])), JSON.parse(localStorage.getItem("lz_vb_colors") || "{}")); }catch(e){ return {}; } }
+function setVbColor(book, color){ try{ const c = JSON.parse(localStorage.getItem("lz_vb_colors") || "{}"); c[book] = color; localStorage.setItem("lz_vb_colors", JSON.stringify(c)); }catch(e){}; applyVbHighlight(); }
+function vbBooksOf(word){
+  const w = String(word || "").toLowerCase();
+  const out = [];
+  for(const [bk, list] of Object.entries(VOCAB_BOOKS())){
+    if(Array.isArray(list) && list.indexOf(w) >= 0) out.push(bk);
+  }
+  return out;
+}
+function vbStatus(word){
+  const st = vbState();
+  return st[String(word).toLowerCase()] || "";
+}
+function setVbStatus(word, status){
+  const st = vbState();
+  const w = String(word).toLowerCase();
+  if(status) st[w] = status; else delete st[w];
+  vbSave(st);
+  applyVbHighlight();
+  try{ openReader(curBook.id); }catch(e){}
+}
+/* 给阅读器里的单词上色：已学=绿色系，要学=橙色系（按词书自定义色） */
+function applyVbHighlight(){
+  const st = vbState();
+  const colors = vbColors();
+  const styleId = "lzVbStyle";
+  let css = "";
+  const groups = { known:new Set(), learn:new Set() };
+  for(const [w, s] of Object.entries(st)){
+    if(s === "known") groups.known.add(w);
+    else if(s === "learn") groups.learn.add(w);
+  }
+  let rules = "";
+  let i = 0;
+  for(const w of groups.known){
+    if(i++ > 3000) break;
+    rules += `.w[data-w="${w}"]{color:${colors.cet4 || "#0E9F6E"};font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}`;
+  }
+  i = 0;
+  for(const w of groups.learn){
+    if(i++ > 3000) break;
+    rules += `.w[data-w="${w}"]{background:rgba(242,153,74,.28);border-radius:3px;box-shadow:inset 0 -2px 0 #F2994A}`;
+  }
+  let el = document.getElementById(styleId);
+  if(!el){ el = document.createElement("style"); el.id = styleId; document.head.appendChild(el); }
+  el.textContent = rules;
+}
+/* 词书选择 + 统计页面 */
+function renderVocabBooks(){
+  const host = document.getElementById("vbBody");
+  if(!host) return;
+  const colors = vbColors();
+  const st = vbState();
+  const known = Object.values(st).filter(x => x === "known").length;
+  const learn = Object.values(st).filter(x => x === "learn").length;
+  const books = VOCAB_BOOKS();
+  host.innerHTML = `
+    <div class="settings-card">
+      <b>我的进度</b>
+      <div class="sub">已掌握 <b>${known}</b> 词 · 待学习 <b>${learn}</b> 词</div>
+    </div>
+    ${Object.entries(VB_META).map(([bk, meta]) => {
+      const total = (books[bk] || []).length;
+      return `<div class="settings-card">
+        <div style="display:flex;align-items:center;gap:10px">
+          <b>${escHtml(meta.name)}</b>
+          <span class="tip" style="margin:0">${total} 词</span>
+          <input type="color" value="${escHtml(colors[bk] || meta.color)}" onchange="setVbColor('${bk}','this.value')" title="标记颜色" style="margin-left:auto;width:36px;height:28px;border:none;background:none;cursor:pointer">
+        </div>
+        <div class="lang-row" style="margin-top:8px">
+          <button class="btn small" onclick="vbBulk('${bk}','learn')">整本标为「要学」</button>
+          <button class="btn ghost small" onclick="vbBulk('${bk}','known')">整本标为「已学」</button>
+          <button class="btn ghost small" onclick="vbBulk('${bk}','')">清除</button>
+        </div>
+      </div>`;
+    }).join("")}
+    <div class="settings-card">
+      <h3>手动加词</h3>
+      <div class="share-link-box">
+        <input class="code-input" id="vbWord" placeholder="单词，如 stranger">
+        <button class="btn small" onclick="vbAddManual('known')">标为已学</button>
+        <button class="btn ghost small" onclick="vbAddManual('learn')">标为要学</button>
+      </div>
+      <div class="tip">标记后回到阅读器，同样的词会用不同颜色标出（已学=下划线，要学=橙色底）。</div>
+    </div>`;
+}
+function vbBulk(book, status){
+  const list = VOCAB_BOOKS()[book] || [];
+  const st = vbState();
+  for(const w of list){ if(status) st[w] = status; else delete st[w]; }
+  vbSave(st); applyVbHighlight(); renderVocabBooks();
+  toast((status === "known" ? "已标记已学 " : status === "learn" ? "已标记要学 " : "已清除 ") + list.length + " 词");
+}
+function vbAddManual(status){
+  const el = document.getElementById("vbWord");
+  const w = (el && el.value || "").trim().toLowerCase();
+  if(!w){ toast("请输入单词"); return; }
+  setVbStatus(w, status);
+  if(el) el.value = "";
+  renderVocabBooks();
+  toast("已标记：" + w);
+}
+/* 在词卡上加词书标签与标记按钮 */
+let _vbPendingWord = "";
+function renderVbButtons(word){
+  const host = document.getElementById("shVbBox");
+  if(!host) return;
+  _vbPendingWord = word;
+  const books = vbBooksOf(word);
+  const status = vbStatus(word);
+  if(!books.length && !status){ host.innerHTML = ""; return; }
+  host.innerHTML = `
+    <div class="rw-block" style="border-top:none;padding-top:0">
+      <b>词书</b>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px">
+        ${books.map(b => `<span class="rw-tag" style="background:${vbColors()[b] || VB_META[b].color};color:#fff">${escHtml(VB_META[b].name)}</span>`).join("") || `<span class="dim" style="font-size:12px">不在常见词书中</span>`}
+      </div>
+      <div class="lang-row">
+        <button class="btn small ${status === "known" ? "" : "ghost"}" onclick="setVbStatus('${escAttr(word)}','known');renderVbButtons('${escAttr(word)}')">✅ 已学过</button>
+        <button class="btn small ${status === "learn" ? "" : "ghost"}" onclick="setVbStatus('${escAttr(word)}','learn');renderVbButtons('${escAttr(word)}')">📌 要学</button>
+        <button class="btn ghost small" onclick="setVbStatus('${escAttr(word)}','');renderVbButtons('${escAttr(word)}')">取消</button>
+      </div>
+    </div>`;
+}
+
 /* ================= 点词卡增强（音标 / 多义项 / 例句 / 词组 / 助记） =================
    全部本地生成，不依赖外部 API，断网也能用。 */
 const _POS_CN = { n:"n.", v:"v.", adj:"adj.", adv:"adv.", prep:"prep.", conj:"conj.", pron:"pron.",
@@ -2558,6 +2705,7 @@ function go(name){
   if(name==="account") renderAccount();
   if(name==="collections") renderCollections();
   if(name==="press") renderPress();
+  if(name==="vocabbooks") renderVocabBooks();
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
   if(name==="review") renderReview();
@@ -4448,6 +4596,7 @@ function wordClick(e){
   if(localZhDef){
     /* 富词卡：音标 / 多义项 / 助记 / 例句 / 词组，全部本地生成 */
     try{ renderRichWordCard(sheetWord, low); }catch(e){ zhEl.textContent = localZhDef; }
+    try{ renderVbButtons(low); }catch(e){}
   } else if(zhCached){
     zhEl.textContent = zhCached;
   } else {
@@ -9563,6 +9712,8 @@ window.addEventListener("load", () => {
 setTimeout(() => {
   if(window.AssemblyCore && AssemblyCore.initReaderAssembly && !window.LZAssembly) AssemblyCore.initReaderAssembly();
 }, 600);
+/* 启动时把词书标记应用到阅读器 */
+try{ setTimeout(()=>{ try{ applyVbHighlight(); }catch(e){} }, 1500); }catch(e){}
 /* 小程序 web-view 打开订阅页时自动弹支付 */
 try{ if(document.readyState !== "loading") autoOpenPayFromMini(); else document.addEventListener("DOMContentLoaded", autoOpenPayFromMini); }catch(e){}
 /* 本地大词典不再开机预载（18MB 会很慢）。改为：
