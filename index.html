@@ -33,7 +33,7 @@
 <script src="data/offline-tr.js?v=1" defer></script>
 <script src="data/vocab-books.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
-<script src="data/app-version.js?v=1"></script>
+<script src="data/app-version.js?v=2"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <style>html.lz-mini .lz-no-mini{display:none !important}</style>
@@ -9573,7 +9573,7 @@ window.addEventListener("online", ()=>{ iapSyncOnLaunch(); checkAppUpdate(); });
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") iapSyncOnLaunch(); });
 
 /* 检查更新：对比服务端最新版本（App 内“设置 → 关于”可手动触发） */
-const APP_VERSION = (window.LZ_BUILD && window.LZ_BUILD.version) || "2.0.0";
+const APP_VERSION = (window.LZ_BUILD && window.LZ_BUILD.version) || "2.1.0";
 const SW_BUILD = (window.LZ_BUILD && window.LZ_BUILD.build) || "";
 async function fetchVersionInfo(){
   /* 依次尝试：原生 public/api/version → 后端 /api/version → 静态 data/app-version.json */
