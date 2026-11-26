@@ -33,6 +33,8 @@
 <script src="data/offline-tr.js?v=1" defer></script>
 <script src="data/vocab-books.js?v=2" defer></script>
 <script src="data/vocab-books-ext.js?v=2" defer></script>
+<script src="data/books-pg-multi.js?v=1" defer></script>
+<script src="data/books-pg-multi2.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=1"></script>
@@ -107,6 +109,13 @@
 /* AI 工具 */
 .ait-out{margin-top:10px;font-size:13.5px;line-height:1.75;white-space:pre-wrap}
 .ait-article{font:15px/1.85 var(--read-font, Georgia, serif);padding:12px;background:var(--surface2);border-radius:10px;white-space:pre-wrap}
+/* 浏览器阅读模式 */
+.br-read-host{border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:var(--surface);max-height:70vh;overflow-y:auto}
+.br-read-head{border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px}
+.br-read-body{font:16px/1.85 var(--read-font, Georgia, serif)}
+.br-read-body p{margin:0 0 .9em}
+.br-read-body .rw{cursor:pointer}
+.br-read-body .rw:hover{background:rgba(34,201,138,.18);border-radius:3px}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1159,11 +1168,15 @@ body.no-zh .sent .zh{display:none}
       <button class="chip" onclick="brSearch('baidu')" id="brB">百度</button>
       <button class="chip" onclick="brSearch('bing')" id="brN">Bing</button>
       <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
-      <button class="btn small" onclick="brReadability()">提取正文精读</button>
-      <button class="btn ghost small" onclick="brTranslatePage()">🌐 整页翻译</button>
-      <button class="btn ghost small" onclick="brClearTranslate()">清除翻译</button>
-      <label class="br-toggle"><input type="checkbox" id="brAutoTr" onchange="brToggleAutoTr()"> 自动逐词</label>
     </div>
+    <div class="br-row">
+      <button class="btn small" onclick="brReadMode()">📖 阅读模式（推荐）</button>
+      <button class="btn ghost small" onclick="brReadability()">📥 导入阅读器精读</button>
+      <button class="btn ghost small" onclick="brOpenNewTab()">在新标签打开</button>
+      <button class="btn ghost small" onclick="brToggleRaw()">原始网页视图</button>
+    </div>
+    <div class="tip" style="margin:-2px 0 10px">大多数网站禁止被内嵌（BBC/Google/知乎都会拒绝）。<b>阅读模式</b>会把正文抓下来在站内排版，点词、翻译、朗读全部可用。</div>
+    <div id="brReadHost" class="br-read-host" style="display:none"></div>
     <div class="br-frame-wrap">
       <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
       <div id="brBlocked" class="br-blocked" style="display:none">
@@ -1197,7 +1210,7 @@ body.no-zh .sent .zh{display:none}
   <!-- ============ 外刊 / 新闻阅读 ============ -->
   <section class="view" id="view-press">
     <h2 class="sec">📰 外刊与新闻</h2>
-    <div class="sub">外刊网站禁止被别的网页内嵌，所以这里不假装能"打开"。每一条都有三条真能用的路：<b>抓取正文精读</b>（自动提取正文进阅读器）、<b>粘贴</b>（自己复制正文）、<b>官网</b>（新标签打开）。</div>
+    <div class="sub">外刊网站禁止被内嵌，所以这里不假装能"打开"。每条有三个真能用的动作：<b>📖 阅读模式</b>（自动抓正文在站内排版，点词翻译可用）、<b>粘贴</b>（自己复制正文）、<b>官网</b>（新标签打开）。</div>
     <div class="press-tabs" id="pressTabs"></div>
     <div class="press-list" id="pressList"></div>
   </section>
@@ -2983,6 +2996,52 @@ async function applyUpdateNow(){
   try{ localStorage.setItem("lz_seen_version", (CHANGELOG[0] || {}).ver || ""); }catch(e){}
   location.reload(true);
 }
+
+/* ================= 多语言公版书（古腾堡，含全文） ================= */
+function pgMultiBooks(){
+  const a = window.LZ_PG_MULTI || [];
+  const b = window.LZ_PG_MULTI2 || [];
+  return [...a, ...b];
+}
+/* 启动时把公版书挂进书库与全文缓存 */
+function installPgMulti(){
+  const list = pgMultiBooks();
+  if(!list.length){ console.warn("[pg-multi] 没有数据"); return; }
+  if(window.__LZ_PG_INSTALLED){ return; }
+  window.__LZ_PG_INSTALLED = true;
+  try{
+    for(const rec of list){
+      const id = rec.id;
+      if(!fullCache[id]){
+        /* 用最简单的按段落+句末切分，避免依赖尚未定义的函数 */
+        const paras = String(rec.text).split(/\n{2,}/);
+        const sents = [];
+        for(const para of paras){
+          const parts = para.match(/[^.!?]+[.!?]+["”']?|[^.!?]+$/g) || [para];
+          for(const x of parts){ const t2 = x.trim(); if(t2.length > 12) sents.push({ en: t2, zh: null }); }
+        }
+        fullCache[id] = { imported: true, sents: sents.length ? sents : [{ en: rec.text.slice(0, 4000), zh: null }], chapters: [{ t: rec.t, start: 0, end: Math.max(1, sents.length) }] };
+      }
+      /* 分别挂到对应语言的书库桶里，切语言时才会出现 */
+      const bucket = (window.__LZ_PG_BY_LANG || (window.__LZ_PG_BY_LANG = {}));
+      const recBook = { id, gb: rec.gb, lang: rec.lang, t: rec.t, a: rec.a, lv: rec.lv, g: rec.g || "lit", en: rec.en, _pgMulti: true };
+      (bucket[rec.lang] || (bucket[rec.lang] = [])).push(recBook);
+      /* 英语直接进 BOOKS（BOOKS 就是英语书库） */
+      if(rec.lang === "en" && !BOOKS.some(b => b.id === id)) BOOKS.push(recBook);
+    }
+    console.log("[pg-multi] 已安装", Object.fromEntries(Object.entries(window.__LZ_PG_BY_LANG||{}).map(([k,v])=>[k,v.length])));
+  }catch(e){ console.error("[pg-multi] 安装失败", e); }
+}
+function pgMultiFor(code){ return (window.__LZ_PG_BY_LANG || {})[code] || []; }
+/* 公版书在启动流程末尾安装（splitIntoSentences 等依赖已就绪），
+   这里再兜一次防止顺序问题 */
+try{
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", ()=>setTimeout(installPgMulti, 300));
+  } else {
+    setTimeout(installPgMulti, 300);
+  }
+}catch(e){}
 
 /* ================= 收藏图书 ================= */
 function favorites(){ try{ return JSON.parse(localStorage.getItem(pk("fav")) || "[]"); }catch(e){ return []; } }
@@ -4860,6 +4919,104 @@ function brToggleAutoTr(){
   if(on){ toast("自动逐词：开"); brTranslatePage(); } else { brClearTranslate(); }
 }
 
+/* ================= 阅读模式：抓正文 → 站内排版（绕过 iframe 限制） ================= */
+let _brText = "", _brTitle = "";
+async function brReadMode(){
+  const raw = (document.getElementById("brUrl")?.value || "").trim();
+  const url = brNormalize(raw) || raw;
+  if(!/^https?:\/\//i.test(url)){ toast("先输入网址或搜索词"); return; }
+  const host = document.getElementById("brReadHost");
+  const frame = document.getElementById("brFrame");
+  if(frame) frame.style.display = "none";
+  if(host){ host.style.display = "block"; host.innerHTML = `<div class="sub">正在抓取正文…</div>`; }
+  let text = "", title = "";
+  try{
+    const doc = frame && frame.contentDocument;
+    if(doc && doc.body && doc.body.innerText.length > 300){
+      text = htmlToText(doc.documentElement.innerHTML); title = doc.title || "";
+    }
+  }catch(e){}
+  if(!text || text.length < 100){
+    for(const prox of ["https://r.jina.ai/" + url, "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)]){
+      try{
+        const r = await fetch(prox, { signal: AbortSignal.timeout(35000) });
+        if(!r.ok) continue;
+        let t = await r.text();
+        const titleLine = (t.match(/Title:\s*(.+)/) || [])[1];
+        if(titleLine) title = titleLine.trim();
+        const cut = t.indexOf("Markdown Content:");
+        if(cut >= 0) t = t.slice(cut + 17);
+        t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
+        if(t && t.length > 40 && !/^\s*<(!DOCTYPE|html)/i.test(t)){ text = t; break; }
+      }catch(e){}
+    }
+  }
+  if(!text || text.length < 40){
+    if(host) host.innerHTML = `<div class="empty-notes">这个站点抓不到正文（可能有反爬或需要登录）。<br><br>
+      <button class="btn ghost small" onclick="pressPasteImport('网页')">手动粘贴正文</button>
+      <button class="btn ghost small" onclick="brToggleRaw()">看原始网页视图</button>
+      <button class="btn ghost small" onclick="brOpenNewTab()">在新标签打开</button></div>`;
+    return;
+  }
+  _brText = text; _brTitle = title;
+  renderBrRead();
+  toast("已进入阅读模式：" + text.length + " 字");
+}
+function renderBrRead(){
+  const host = document.getElementById("brReadHost");
+  if(!host) return;
+  const paras = _brText.split(/\n{2,}/).filter(p => p.trim().length > 0).slice(0, 200);
+  host.style.display = "block";
+  host.innerHTML = `
+    <div class="br-read-head">
+      <b>${escHtml(_brTitle || "阅读模式")}</b>
+      <div class="lang-row" style="margin-top:8px;flex-wrap:wrap">
+        <button class="btn ghost small" onclick="brReadGloss()">🌐 逐词注释</button>
+        <button class="btn ghost small" onclick="brImportRead()">📥 导入阅读器精读</button>
+        <button class="btn ghost small" onclick="brToggleRaw()">原始网页视图</button>
+      </div>
+    </div>
+    <div class="br-read-body" id="brReadBody">
+      ${paras.map(p => `<p>${p.split(/(\s+)/).map(w => {
+        const t = w.trim();
+        if(!t) return " ";
+        return /^[A-Za-z'’-]+$/.test(t) ? `<span class="rw" onclick="brWord('${escAttr(t)}',event)">${escHtml(t)}</span>` : escHtml(w);
+      }).join("")}</p>`).join("")}
+    </div>`;
+}
+function brImportRead(){ importTextAsBook(_brText, (_brTitle || "网页").slice(0, 24)); }
+function brReadGloss(){
+  const body = document.getElementById("brReadBody");
+  if(!body) return;
+  if(body.dataset.gl !== "1"){
+    body.innerHTML = body.innerHTML.replace(/<span class="rw"[^>]*>([^<]+)<\/span>/g, (m, w) => {
+      const low = w.toLowerCase();
+      const d = (typeof _getDictEntry === "function") ? _getDictEntry(low) : null;
+      const zh = d ? String(d[1]).split(/[,，;；]/)[0].slice(0, 8) : "";
+      const ok = zh && !/[a-zA-Z]{2,}/.test(zh);
+      return `<span class="rw">${escHtml(w)}</span>` + (ok ? `<span class="igl">${escHtml(zh)}</span>` : "");
+    });
+    body.dataset.gl = "1";
+    toast("逐词注释：开");
+  } else {
+    body.querySelectorAll(".igl").forEach(n => n.remove());
+    body.dataset.gl = "0";
+    toast("逐词注释：关");
+  }
+}
+function brWord(word, ev){
+  if(ev) ev.stopPropagation();
+  if(!(document.getElementById("brWordTr")?.checked)) return;
+  openWordCard(word);
+}
+function brToggleRaw(){
+  const host = document.getElementById("brReadHost");
+  const frame = document.getElementById("brFrame");
+  const showRaw = !(frame && frame.style.display !== "none");
+  if(host) host.style.display = "none";
+  if(frame) frame.style.display = showRaw ? "block" : "none";
+}
+
 function brBack(){ try{ document.getElementById("brFrame").contentWindow.history.back(); }catch(e){ history.back(); } }
 function brOpenNewTab(){
   const u = document.getElementById("brUrl")?.value || "";
@@ -4982,11 +5139,22 @@ function renderPress(){
         <div class="press-name">${escHtml(x.name)}</div>
         <div class="press-desc">${escHtml(x.desc)}</div>
       </div>
-      <button class="btn small" onclick="pressFetchRead('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">抓取正文精读</button>
+      <button class="btn small" onclick="pressReadMode('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">📖 阅读模式</button>
+      <button class="btn ghost small" onclick="pressFetchRead('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">抓取正文精读</button>
       <button class="btn ghost small" onclick="pressPasteImport('${escapedAttr(x.name)}')">粘贴</button>
       <button class="btn ghost small" onclick="window.open('${escapedAttr(x.url)}','_blank','noopener')">官网</button>
     </div>`).join("");
 }
+/* 外刊：用浏览器阅读模式直接看（不需要后端） */
+function pressReadMode(url, name){
+  go('browser');
+  setTimeout(()=>{
+    const inp = document.getElementById('brUrl');
+    if(inp) inp.value = url;
+    brReadMode();
+  }, 250);
+}
+
 /* 外刊：自动抓正文 → 导入阅读器 */
 async function pressFetchRead(url, name){
   toast("正在抓取正文…");
@@ -5166,12 +5334,17 @@ async function setShowLang(code){
 async function refreshBooksForLang(){
   const code = activeLang();
   if(code === "en"){
-    if(!_langBooks.en) _langBooks.en = (window.LZ_BOOKS_EN || []).map(b => b);
+    /* 每次都从干净源重建，避免之前切语言时被污染 */
+    const base = (window.LZ_BOOKS_EN || []).filter(b => !b._pgMulti).map(b => b);
+    const extra = pgMultiFor("en");
+    _langBooks.en = base.concat(extra);
     BOOKS_LANG = _langBooks.en;
     BOOKS = _langBooks.en;
     return;
   }
-  const list = await loadLanguageBooks(code);
+  const base = await loadLanguageBooks(code);
+  const extra = pgMultiFor(code).filter(b => !base.some(x => x.id === b.id));
+  const list = extra.length ? base.concat(extra) : base;
   BOOKS_LANG = list;
   BOOKS = list;
 }

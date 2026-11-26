@@ -1,6 +1,6 @@
 # LIZZREAD 项目交接文档
 
-> 最后更新：2026-11-26（第 6 版）· 版本 2.1.0 · **AI 已接入**
+> 最后更新：2026-11-26（第 7 版）· 版本 2.1.0 · **AI 已接入**
 > 给下一个 AI / 开发者：先读这份，再动手。所有"已完成/未完成/要问用户"都在这里。
 
 ---
@@ -534,3 +534,42 @@ classic PAT 勾选 `repo` 即可（旧的那个就是 classic，但被用户吊�
 
 - **RSS 和 AI 都需要后端**。GitHub Pages 是纯静态站，跑不了 `server.js`。
   要真正可用必须部署到 Vercel（免费），`vercel.json` 已写好。
+
+
+---
+
+## 14. 第 7 版新增
+
+### 14.1 浏览器「阅读模式」（绕过 iframe 限制）
+
+**问题**：浏览器页主视图是 iframe，但 Wikipedia/example.com 这类站也拒绝被内嵌（XFO / CSP frame-ancestors），
+所以页面永远空白 + 遮罩「这个站点不允许被内嵌」。
+
+**解法**：主路径改成「阅读模式」
+- `brReadMode()` → r.jina.ai 抓正文 → 在站内排版（`#brReadHost`）
+- 每个词可点开词卡；`brReadGloss()` 逐词加中文注释
+- `brImportRead()` 把正文变成一本书
+- `brToggleRaw()` 切回 iframe（可嵌入的站才用）
+- 外刊列表每条也加了「📖 阅读模式」按钮
+
+### 14.2 多语言公版书（22 本，约 1.5MB）
+
+`scripts/build-pg-multi.py` 从 gutenberg.pglaf.org 抓取，生成：
+- `data/books-pg-multi.js`（英 10 本：Frankenstein / Pride and Prejudice / Alice / Sherlock / Dorian Gray / Moby Dick / Yellow Wallpaper / Metamorphosis / Tale of Two Cities / Christmas Carol）
+- `data/books-pg-multi2.js`（法 3 / 德 3 / 西 2 / 意 2 / 葡 1 / 荷 1）
+
+安装方式：`installPgMulti()` 在 DOMContentLoaded 后 300ms 执行，把书挂进
+`window.__LZ_PG_BY_LANG[lang]`，`refreshBooksForLang()` 按当前语言并入书库。
+
+**踩坑**：
+- 不要在模块顶层立即调用（`splitIntoSentences` 等未定义），且 `installPgMulti` 内部自行切句
+- `refreshBooksForLang("en")` 每次都从 `LZ_BOOKS_EN` 重建，否则会被其他语言的书污染
+
+### 14.3 仍未完成
+
+| # | 功能 | 说明 |
+|---|---|---|
+| 1 | 中文小说英译工具 | 需要中文文本导入 + 逐句 AI 翻译 |
+| 2 | 跟读录音评分 | Web Speech API |
+| 3 | 播客音频自动转字幕 | Whisper 或云 ASR |
+| 4 | RSS 外刊 / AI 五个功能 | **必须部署到 Vercel 才能用**（静态站没有后端） |
