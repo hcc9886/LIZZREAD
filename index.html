@@ -116,6 +116,13 @@
 .br-read-body p{margin:0 0 .9em}
 .br-read-body .rw{cursor:pointer}
 .br-read-body .rw:hover{background:rgba(34,201,138,.18);border-radius:3px}
+/* 外刊头条 */
+.press-head-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:14px}
+.press-heads{display:grid;gap:8px}
+.press-head{border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--surface)}
+.press-head:hover{border-color:var(--brand);background:var(--brand-soft)}
+.press-head-t{font:600 14px var(--font);line-height:1.5}
+.press-head-a{font-size:12px;color:var(--brand-deep);margin-top:4px}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -4712,10 +4719,10 @@ function brLoad(url){
 function brGo(){
   const raw = (document.getElementById("brUrl")?.value || "").trim();
   const url = brNormalize(raw);
-  if(url){ brLoad(url); return; }
+  if(url){ brReadMode(); return; }
   if(!raw){ toast("请输入网址或搜索内容"); return; }
-  /* 纯关键词（含中文，如「猫」）直接走搜索引擎；默认 Google，可切百度/Bing */
-  brSearch(window.__brEngine || "google", raw);
+  /* 关键词 → 站内开放搜索（维基百科/文库/词典），不依赖被禁的内嵌 */
+  brOpenSearch(raw);
 }
 /* 从阅读器/外刊/任意位置一键搜索：调用同一个浏览器页 */
 function webSearch(q, engine){
@@ -4733,7 +4740,8 @@ function brSearch(engine, q){
   const query = q != null ? q : (document.getElementById("brUrl")?.value || "").trim();
   if(!query){ toast("请输入搜索内容"); return; }
   window.__brEngine = engine;
-  brLoad(BR_SEARCH[engine] + encodeURIComponent(query));
+  /* 先给站内开放搜索结果；结果页里可再「用 Bing 打开」 */
+  brOpenSearch(query);
 }
 /* 提取当前网址的正文并精读：跨域读不到 DOM 时，退化为「粘贴正文」 */
 async function brReadability(){
@@ -4917,6 +4925,59 @@ function brToggleAutoTr(){
   const on = document.getElementById("brAutoTr")?.checked;
   try{ localStorage.setItem("lz_br_autotr", on ? "1" : "0"); }catch(e){}
   if(on){ toast("自动逐词：开"); brTranslatePage(); } else { brClearTranslate(); }
+}
+
+/* ================= 站内搜索（不依赖 iframe） =================
+   Google/Bing 都禁止被内嵌，所以"在站内搜"用开放 API：
+   维基百科 / 维基文库 / 维基词典 的 action=query&list=search（CORS 允许）。
+   结果列成卡片，点开直接进阅读模式。 */
+const OPEN_SEARCH = {
+  wiki: "https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=12&srsearch=",
+  wiktionary: "https://zh.wiktionary.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=12&srsearch=",
+  wikisource: "https://zh.wikisource.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=12&srsearch="
+};
+async function brOpenSearch(q){
+  const host = document.getElementById("brReadHost");
+  const frame = document.getElementById("brFrame");
+  if(frame) frame.style.display = "none";
+  if(host){ host.style.display = "block"; host.innerHTML = `<div class="sub">正在搜索「${escHtml(q)}」…</div>`; }
+  const out = [];
+  const hosts = { wiki: "zh.wikipedia.org", wikisource: "zh.wikisource.org", wiktionary: "zh.wiktionary.org" };
+  const names = { wiki: "维基百科", wikisource: "维基文库", wiktionary: "维基词典" };
+  for(const key of Object.keys(OPEN_SEARCH)){
+    try{
+      const r = await fetch(OPEN_SEARCH[key] + encodeURIComponent(q), { signal: AbortSignal.timeout(15000) });
+      if(!r.ok) continue;
+      const j = await r.json();
+      for(const h of ((j.query && j.query.search) || []).slice(0, 6)){
+        out.push({ src: names[key], title: h.title,
+          url: `https://${hosts[key]}/wiki/${encodeURIComponent(String(h.title).replace(/ /g, "_"))}`,
+          snippet: String(h.snippet || "").replace(/<[^>]+>/g, "") });
+      }
+    }catch(e){}
+  }
+  if(!host) return;
+  if(!out.length){
+    host.innerHTML = `<div class="empty-notes">开放搜索没有结果。<br><br>
+      <button class="btn ghost small" onclick="openWordCard('${escAttr(q)}')">🔍 查这个词</button>
+      <button class="btn ghost small" onclick="brLoad('https://www.bing.com/search?q=' + encodeURIComponent('${escAttr(q)}'))">Bing 打开</button></div>`;
+    return;
+  }
+  host.innerHTML = `<div class="br-read-head"><b>「${escHtml(q)}」的站内结果</b>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn ghost small" onclick="openWordCard('${escAttr(q)}')">🔍 查这个词</button>
+        <button class="btn ghost small" onclick="brLoad('https://www.bing.com/search?q=' + encodeURIComponent('${escAttr(q)}'))">Bing 打开</button>
+      </div></div>
+    <div class="br-search-list">${out.map(x => `
+      <div class="br-search-item" onclick="brOpenSearchResult('${escAttr(x.url)}')">
+        <div class="br-src">${escHtml(x.src)}</div>
+        <div class="br-title">${escHtml(x.title)}</div>
+        <div class="br-snip">${escHtml(x.snippet.slice(0, 120))}</div>
+      </div>`).join("")}</div>`;
+}
+function brOpenSearchResult(url){
+  const inp = document.getElementById("brUrl"); if(inp) inp.value = url;
+  brReadMode();
 }
 
 /* ================= 阅读模式：抓正文 → 站内排版（绕过 iframe 限制） ================= */
@@ -5125,111 +5186,113 @@ const PRESS_SOURCES = [
   { g:"文学", name:"The Paris Review",   url:"https://www.theparisreview.org",          desc:"作家访谈与小说" }
 ];
 let _pressTab = "全部";
-function renderPress(){
-  const tabsEl = document.getElementById("pressTabs");
-  const listEl = document.getElementById("pressList");
-  if(!tabsEl || !listEl) return;
-  const groups = ["全部", ...new Set(PRESS_SOURCES.map(x => x.g))];
-  tabsEl.innerHTML = groups.map(g =>
-    `<button class="chip ${_pressTab === g ? "on" : ""}" onclick="_pressTab='${g}';renderPress()">${escHtml(g)}</button>`).join("");
-  const items = PRESS_SOURCES.filter(x => _pressTab === "全部" || x.g === _pressTab);
-  listEl.innerHTML = items.map(x => `
-    <div class="press-item">
-      <div class="press-main">
-        <div class="press-name">${escHtml(x.name)}</div>
-        <div class="press-desc">${escHtml(x.desc)}</div>
-      </div>
-      <button class="btn small" onclick="pressReadMode('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">📖 阅读模式</button>
-      <button class="btn ghost small" onclick="pressFetchRead('${escapedAttr(x.url)}','${escapedAttr(x.name)}')">抓取正文精读</button>
-      <button class="btn ghost small" onclick="pressPasteImport('${escapedAttr(x.name)}')">粘贴</button>
-      <button class="btn ghost small" onclick="window.open('${escapedAttr(x.url)}','_blank','noopener')">官网</button>
-    </div>`).join("");
-}
-/* 外刊：用浏览器阅读模式直接看（不需要后端） */
-function pressReadMode(url, name){
-  go('browser');
-  setTimeout(()=>{
-    const inp = document.getElementById('brUrl');
-    if(inp) inp.value = url;
-    brReadMode();
-  }, 250);
-}
-
-/* 外刊：自动抓正文 → 导入阅读器 */
-async function pressFetchRead(url, name){
-  toast("正在抓取正文…");
-  const proxies = [
-    "https://r.jina.ai/" + url,
-    "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)
-  ];
-  for(const prox of proxies){
+/* ================= 外刊：头条抓取（不依赖 RSS 后端） ================= */
+const PRESS_HOMES = [
+  ["BBC News","https://www.bbc.com/news","新闻"],
+  ["The Guardian","https://www.theguardian.com/international","新闻"],
+  ["Al Jazeera","https://www.aljazeera.com/","新闻"],
+  ["NPR","https://www.npr.org/","新闻"],
+  ["AP News","https://apnews.com/","新闻"],
+  ["The Economist","https://www.economist.com/","外刊"],
+  ["Financial Times","https://www.ft.com/","外刊"],
+  ["The Atlantic","https://www.theatlantic.com/","外刊"],
+  ["Wired","https://www.wired.com/","科技"],
+  ["Ars Technica","https://arstechnica.com/","科技"],
+  ["Le Monde","https://www.lemonde.fr/","法语"],
+  ["Spiegel","https://www.spiegel.de/","德语"],
+  ["El País","https://elpais.com/","西语"],
+  ["La Repubblica","https://www.repubblica.it/","意语"],
+  ["The Paris Review","https://www.theparisreview.org/","文学"],
+  ["Poetry Foundation","https://www.poetryfoundation.org/","文学"]
+];
+async function pressFetchHeadlines(url){
+  for(const prox of ["https://r.jina.ai/" + url, "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)]){
     try{
-      const r = await fetch(prox, {signal: AbortSignal.timeout(35000)});
+      const r = await fetch(prox, { signal: AbortSignal.timeout(40000) });
       if(!r.ok) continue;
       let t = await r.text();
       const cut = t.indexOf("Markdown Content:");
       if(cut >= 0) t = t.slice(cut + 17);
       t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
-      if(!t || t.length < 300 || /^\s*<(!DOCTYPE|html)/i.test(t)) continue;
-      const title = (t.split("\n").find(l => l.trim().length > 8) || name || "外刊精读").slice(0, 30);
-      await importTextAsBook(t, title);
-      return;
+      if(!t || t.length < 200) continue;
+      const items = [];
+      /* 先去掉 Markdown 图片语法 ![alt](src)，避免把图片说明当标题 */
+      t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+      const re = /\[([^\]\n]{18,110})\]\((https?:\/\/[^)\s]+)\)/g;
+      let m;
+      while((m = re.exec(t)) && items.length < 24){
+        const title = m[1].replace(/[*_`#!]/g, "").trim();
+        if(/^(Home|News|Subscribe|Sign in|Log in|Menu|Search|Image \d|Skip to|Advertisement|Share|Listen|Watch|Play)/i.test(title)) continue;
+        if(/^(Image|Figure|Photo|Illustration)\b/i.test(title)) continue;
+        if(title.length < 22) continue;
+        if(/^[a-z]/.test(title)) continue;   /* 标题一般首字母大写 */
+        items.push({ title, link: m[2] });
+      }
+      if(items.length) return items;
     }catch(e){}
   }
-  toast("自动抓取失败（该站限制），请用「粘贴」把正文复制进来");
-  pressPasteImport(name);
+  return [];
 }
-
-/* 外刊精读：粘贴正文 → 进阅读器逐句点词 + 核心词表 */
-function pressPasteImport(name){
-  let el = document.getElementById("pasteSheet");
-  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "pasteSheet"; document.body.appendChild(el); }
-  el.style.display = "flex";
-  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
-  el.innerHTML = `<div class="box">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div style="font:600 17px var(--serif)">📋 粘贴正文精读 · ${escHtml(name || "外刊")}</div>
-      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('pasteSheet').style.display='none'">✕</button>
-    </div>
-    <p class="sub" style="margin:8px 0 10px">把文章正文复制进来（Ctrl/⌘+C 后粘贴），会自动切句、统计核心词，点词、朗读、拼装全部可用。</p>
-    <textarea id="pressPasteText" class="asm-type-input" style="min-height:220px" placeholder="在此粘贴英文正文…"></textarea>
-    <div class="lang-row" style="margin-top:10px">
-      <button class="btn small" onclick="pressDoImport()">导入并精读</button>
-      <button class="btn ghost small" onclick="document.getElementById('pasteSheet').style.display='none'">取消</button>
-    </div>
-  </div>`;
-  setTimeout(()=>{ const t = document.getElementById("pressPasteText"); if(t) t.focus(); }, 80);
+function pressRenderHomes(){
+  const host = document.getElementById("pressList");
+  if(!host) return;
+  host.innerHTML = PRESS_HOMES.map(([name, url, g]) => `
+    <div class="press-item" data-g="${escAttr(g)}">
+      <div class="press-main">
+        <div class="press-name">${escHtml(name)}</div>
+        <div class="press-desc">${escHtml(g)} · ${escHtml(url.replace(/^https?:\/\//, "").replace(/\/$/, ""))}</div>
+      </div>
+      <button class="btn small" onclick="pressHeadlines('${escAttr(url)}','${escAttr(name)}')">头条</button>
+      <button class="btn ghost small" onclick="pressReadMode('${escAttr(url)}','${escAttr(name)}')">📖 阅读模式</button>
+      <button class="btn ghost small" onclick="window.open('${escAttr(url)}','_blank','noopener')">官网</button>
+    </div>`).join("");
 }
-async function pressDoImport(){
-  const ta = document.getElementById("pressPasteText");
-  const text = (ta && ta.value || "").trim();
-  if(text.length < 120){ toast("正文太短，至少粘贴 120 个字符"); return; }
-  const title = text.split(/[.!?。]/)[0].slice(0, 40) || "外刊精读";
-  const sents = splitIntoSentences(text);
-  const chapters = [{ t:title, start:0, end:sents.length }];
-  const sh = document.getElementById("pasteSheet"); if(sh) sh.style.display = "none";
-  /* 走统一导入落地：写 IndexedDB + meta，之后能从书架打开 */
-  let id;
-  try{ id = await saveImportedBook({ title, format:"TXT", source:"press", text }, title, sents, chapters); }
-  catch(e){ toast("导入失败：" + (e.message || e)); return; }
-  openBook(id);
-  toast("已导入，共 " + sents.length + " 句");
-}
-
-/* 简易切句（外刊正文用） */
-function splitIntoSentences(text){
-  const clean = String(text || "").replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim();
-  const out = [];
-  for(const para of clean.split(/\n+/)){
-    const parts = para.match(/[^.!?]+[.!?]+["”']?|[^.!?]+$/g) || [para];
-    for(const p of parts){
-      const t = p.trim();
-      if(t.length > 12) out.push({ en:t, zh:null });
-    }
+async function pressHeadlines(url, name){
+  const host = document.getElementById("pressList");
+  if(host) host.innerHTML = `<div class="sub">正在抓 ${escHtml(name)} 的头条…</div>`;
+  const heads = await pressFetchHeadlines(url);
+  if(!heads.length){
+    toast("抓不到头条（该站限制），改用阅读模式");
+    renderPress();
+    pressReadMode(url, name);
+    return;
   }
-  return out.length ? out : [{ en:clean, zh:null }];
+  window.__pressHeads = heads;
+  host.innerHTML = `<div class="press-head-bar">
+      <b>${escHtml(name)} · 今日头条</b>
+      <button class="btn ghost small" style="margin-left:auto" onclick="renderPress()">← 返回源列表</button>
+    </div>
+    <div class="press-heads">${heads.map((h, i) => `
+      <div class="press-head" onclick="pressOpenHead(${i})">
+        <div class="press-head-t">${escHtml(h.title)}</div>
+        <div class="press-head-a">在站内精读 →</div>
+      </div>`).join("")}</div>`;
+}
+function pressOpenHead(i){
+  const h = (window.__pressHeads || [])[i];
+  if(!h) return;
+  go('browser');
+  setTimeout(()=>{ const inp = document.getElementById('brUrl'); if(inp) inp.value = h.link; brReadMode(); }, 250);
 }
 
+function renderPress(){
+  const tabsEl = document.getElementById("pressTabs");
+  if(!tabsEl) return;
+  const groups = ["全部", "新闻", "外刊", "科技", "文学", "其他语言"];
+  tabsEl.innerHTML = groups.map(g =>
+    `<button class="chip ${_pressTab === g ? "on" : ""}" onclick="_pressTab='${g}';renderPress()">${escHtml(g)}</button>`).join("");
+  /* 用头条版渲染 */
+  pressRenderHomes();
+  /* 按分类过滤 */
+  if(_pressTab !== "全部"){
+    const host = document.getElementById("pressList");
+    const items = [...host.querySelectorAll(".press-item")];
+    PRESS_HOMES.forEach(([, , g], i) => {
+      const match = _pressTab === "其他语言" ? ["法语","德语","西语","意语"].includes(g) : g === _pressTab;
+      if(items[i]) items[i].style.display = match ? "" : "none";
+    });
+  }
+}
 /* 站内打开外刊：优先走浏览器模式内嵌，失败则提示 */
 function openPress(url, name){
   /* 大多数外刊设了 X-Frame-Options，无法内嵌。先给出两个可用入口，不假装能打开 */
