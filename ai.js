@@ -54,7 +54,10 @@
   }
   async function chatTutor(scene, history, lang){
     const langName = (window.LANG_INFO && window.LANG_INFO[lang] && window.LANG_INFO[lang].native) || "English";
-    const sys = `你是耐心的${langName}陪练。规则：\n1) 用${langName}回应用户，句子简单、贴近${scene || "日常"}场景；\n2) 每句${langName}后面用括号给出中文翻译；\n3) 用户打错时先自然回应，再用一行「小提示：」指出语法或用词问题；\n4) 每次回复不超过 3 句。`;
+    let persona = "";
+    try{ persona = localStorage.getItem("lz_ai_persona") || ""; }catch(e){}
+    if(persona) persona = "人设要求（优先遵守）：" + persona + "\n";
+    const sys = persona + `你是耐心的${langName}陪练。规则：\n1) 用${langName}回应用户，句子简单、贴近${scene || "日常"}场景；\n2) 每句${langName}后面用括号给出中文翻译；\n3) 用户打错时先自然回应，再用一行「小提示：」指出语法或用词问题；\n4) 每次回复不超过 3 句。`;
     const msgs = [{ role:"system", content: sys }];
     for(const h of (history || []).slice(-10)) msgs.push(h);
     return await ask(msgs, { maxTokens: 400, temperature: 0.8 });

@@ -95,6 +95,18 @@
 .rss-d{font-size:11.5px;color:var(--muted);margin:3px 0 5px}
 .rss-x{font-size:13px;line-height:1.6;color:var(--text)}
 .vids-help{padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--surface2);font-size:13px;line-height:1.7}
+.ai-status{font-size:12.5px;padding:6px 10px;border-radius:8px;margin:6px 0 8px;display:none}
+.ai-status.ok{display:block;background:#E6F7EE;color:#0B5B34}
+.ai-status.off{display:block;background:#FFF4E5;color:#8A5200}
+/* 影子跟读 */
+.shadow-box{margin-top:12px}
+.shadow-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.shadow-pos{font-size:12.5px;color:var(--muted)}
+.shadow-sent{font:17px/1.8 var(--read-font, Georgia, serif);padding:12px;background:var(--surface2);border-radius:10px}
+.shadow-zh{font-size:13.5px;color:var(--muted);margin-top:8px;line-height:1.7}
+/* AI 工具 */
+.ait-out{margin-top:10px;font-size:13.5px;line-height:1.75;white-space:pre-wrap}
+.ait-article{font:15px/1.85 var(--read-font, Georgia, serif);padding:12px;background:var(--surface2);border-radius:10px;white-space:pre-wrap}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -800,7 +812,6 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-library" class="on" onclick="go('library')">书城</button>
       <button id="nav-assembly" onclick="go('assembly')">🧩 拼装</button>
       <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
-      <button id="nav-report" onclick="go('report')">📊 报告</button>
       <button id="nav-plan" onclick="go('plan')">💎 会员</button>
       <button id="nav-account" onclick="go('account')">账号</button>
       <!-- 二级：其余收进「更多」，避免一行挤断 -->
@@ -813,6 +824,7 @@ body.no-zh .sent .zh{display:none}
         <button id="nav-serial" onclick="go('serial')">📖 AI 连载</button>
         <button id="nav-manga" onclick="go('manga')">🖼️ 漫画翻译</button>
         <button id="nav-rss" onclick="go('rss')">📰 RSS 外刊</button>
+        <button id="nav-aitools" onclick="go('aitools')">🤖 AI 工具</button>
         <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
         <button id="nav-video" onclick="go('video')">🎬 看视频</button>
         <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
@@ -821,6 +833,7 @@ body.no-zh .sent .zh{display:none}
         <button onclick="go('sentcol')">⭐ 金句</button>
         <button id="nav-sreview" onclick="go('sreview')">生词模式</button>
         <button onclick="go('review')" id="nav-review" style="display:none">📝 复习</button>
+        <button id="nav-report" onclick="go('report')">📊 报告</button>
         <button id="nav-guide" onclick="go('guide')">🎓 教程</button>
         <button id="nav-settings" onclick="go('settings')">🎨 个性化</button>
         <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
@@ -926,6 +939,7 @@ body.no-zh .sent .zh{display:none}
   <section class="view" id="view-bookchat">
     <h2 class="sec">💬 与书对话</h2>
     <div class="sub">针对当前这本书提问，AI 只依据书里的片段回答。</div>
+    <div id="bcStatus" class="ai-status"></div>
     <div class="lang-row" style="margin:10px 0">
       <span class="tip" style="margin:0" id="bcBook">当前书：—</span>
       <button class="btn ghost small" style="margin-left:auto" onclick="bcClear()">清空对话</button>
@@ -1009,6 +1023,18 @@ body.no-zh .sent .zh{display:none}
     <div id="mangaPages" class="manga-pages"></div>
   </section>
 
+  <!-- ============ AI 写作批改 / 定制新闻 / 老师人设 / 生词故事 ============ -->
+  <section class="view" id="view-aitools">
+    <h2 class="sec">🤖 AI 工具</h2>
+    <div class="lang-row" style="margin:10px 0;flex-wrap:wrap">
+      <button class="chip on" id="aitTabReview" onclick="aitTab('review')">✍️ 写作批改</button>
+      <button class="chip" id="aitTabNews" onclick="aitTab('news')">📰 定制新闻</button>
+      <button class="chip" id="aitTabPersona" onclick="aitTab('persona')">🧑‍🏫 老师人设</button>
+      <button class="chip" id="aitTabStory" onclick="aitTab('story')">📝 生词故事</button>
+    </div>
+    <div id="aitBody"></div>
+  </section>
+
   <!-- ============ 三栏笔记 ============ -->
   <section class="view" id="view-notes">
     <h2 class="sec">📝 三栏笔记</h2>
@@ -1089,8 +1115,10 @@ body.no-zh .sent .zh{display:none}
     <div class="lang-row" style="margin-top:10px">
       <button class="chip ${dictMode?'':'on'}" onclick="setVideoTab('sub')">字幕对照</button>
       <button class="chip ${dictMode?'on':''}" onclick="setVideoTab('dict')">逐句听写</button>
+      <button class="chip" onclick="setVideoTab('shadow')">影子跟读</button>
     </div>
     <div id="subList" class="sub-list"></div>
+    <div id="shadowBox" class="shadow-box" style="display:none"></div>
     <div id="dictBox" class="dict-box" style="display:none">
       <div class="dict-row">
         <button class="btn ghost small" onclick="dictReplay()">▶ 重播这句</button>
@@ -3687,6 +3715,89 @@ async function mangaRun(){
   toast("完成：识别 " + total + " 段文字");
 }
 
+/* ================= AI 工具页（批改写作 / 定制新闻 / 老师人设 / 生词故事） ================= */
+let _ait = "review";
+function aitTab(t){
+  _ait = t;
+  ["review","news","persona","story"].forEach(k => {
+    const el = document.getElementById("aitTab" + (k[0].toUpperCase() + k.slice(1)));
+    if(el) el.classList.toggle("on", k === t);
+  });
+  renderAitBody();
+}
+function renderAitBody(){
+  const host = document.getElementById("aitBody");
+  if(!host) return;
+  if(_ait === "review"){
+    host.innerHTML = `<div class="settings-card">
+      <b>写作批改</b><div class="sub">贴一段你写的英文（或任意目标语言），AI 会逐条指出语法、用词、地道性问题。</div>
+      <textarea id="aitText" class="asm-type-input" placeholder="粘贴你的作文…"></textarea>
+      <div class="lang-row" style="margin-top:10px"><button class="btn" onclick="aitReview()">开始批改</button></div>
+      <div id="aitOut" class="ait-out"></div></div>`;
+  } else if(_ait === "news"){
+    const topics = ["AI 与科技","环保与气候","体育","教育","商业","文学与艺术","健康","社会热点"];
+    host.innerHTML = `<div class="settings-card">
+      <b>定制新闻</b><div class="sub">选话题和难度，AI 写一篇适合你水平的英文短文（原创，不涉及真实人物）。</div>
+      <div class="lang-row" style="margin:8px 0;flex-wrap:wrap">${topics.map((t, i) =>
+        `<button class="chip ${i===0?'on':''}" onclick="document.querySelectorAll('#aitBody .chip').forEach(c=>c.classList.remove('on'));this.classList.add('on');_newsTopic='${t}'">${t}</button>`).join("")}</div>
+      <div class="lang-row"><span class="tip" style="margin:0">难度</span>
+        ${["A2","B1","B2","C1"].map((lv, i) => `<button class="chip ${lv==='B1'?'on':''}" onclick="_newsLevel='${lv}'">${lv}</button>`).join("")}
+        <button class="btn small" style="margin-left:8px" onclick="aitNews()">生成文章</button></div>
+      <div id="aitOut" class="ait-out"></div></div>`;
+  } else if(_ait === "persona"){
+    host.innerHTML = `<div class="settings-card">
+      <b>自定义 AI 老师</b><div class="sub">描述你想要的陪练风格，AI 会按这个人设跟你对话。</div>
+      <input class="ai-input" id="aitPersona" style="width:100%" placeholder="例如：严格但耐心的雅思口语考官，每次只问一个问题">
+      <div class="lang-row" style="margin-top:10px"><button class="btn" onclick="aitSavePersona()">保存人设</button>
+        <span class="tip" style="margin:0" id="aitPersonaNow"></span></div></div>`;
+    const cur = localStorage.getItem("lz_ai_persona") || "";
+    const now = document.getElementById("aitPersonaNow");
+    if(now) now.textContent = cur ? "当前：" + cur.slice(0, 30) : "未设置（默认是普通陪练）";
+    const inp = document.getElementById("aitPersona"); if(inp) inp.value = cur;
+  } else {
+    host.innerHTML = `<div class="settings-card">
+      <b>用生词写故事</b><div class="sub">取你的生词本，AI 写一篇能把这些词串起来的小故事。</div>
+      <div class="lang-row" style="margin:8px 0"><button class="btn" onclick="aitStory()">生成故事</button>
+        <span class="tip" style="margin:0" id="aitStoryTip"></span></div>
+      <div id="aitOut" class="ait-out"></div></div>`;
+  }
+}
+let _newsTopic = "AI 与科技", _newsLevel = "B1";
+async function aitReview(){
+  const out = document.getElementById("aitOut");
+  const text = (document.getElementById("aitText")?.value || "").trim();
+  if(text.length < 20){ out.textContent = "至少写 20 个字符"; return; }
+  out.textContent = "AI 批改中…";
+  const r = await (window.LZ_AI ? window.LZ_AI.reviewWriting(text) : null);
+  out.textContent = r || "AI 未启用：需要部署后端并配置 ZHIPU_API_KEY";
+}
+async function aitNews(){
+  const out = document.getElementById("aitOut");
+  out.textContent = "生成中…";
+  const r = await (window.LZ_AI ? window.LZ_AI.makeNews(_newsTopic, _newsLevel, 180) : null);
+  if(!r){ out.textContent = "AI 未启用：需要部署后端并配置 ZHIPU_API_KEY"; return; }
+  out.innerHTML = `<div class="ait-article">${escHtml(r)}</div>
+    <div class="lang-row" style="margin-top:8px"><button class="btn ghost small" onclick="importTextAsBook(this.closest('.ait-out').querySelector('.ait-article').innerText,'${escAttr(_newsTopic)}')">导入阅读器精读</button></div>`;
+}
+function aitSavePersona(){
+  const v = (document.getElementById("aitPersona")?.value || "").trim();
+  try{ localStorage.setItem("lz_ai_persona", v); }catch(e){}
+  toast(v ? "人设已保存" : "人设已清空");
+  renderAitBody();
+}
+async function aitStory(){
+  const out = document.getElementById("aitOut");
+  const words = [...new Set((store.vocab || []).map(v => String(v.w || "").toLowerCase()).filter(Boolean))].slice(0, 12);
+  const tip = document.getElementById("aitStoryTip");
+  if(words.length < 3){ out.textContent = "生词本里至少要有 3 个词"; return; }
+  if(tip) tip.textContent = "用到 " + words.length + " 个词";
+  out.textContent = "生成中…";
+  const r = await (window.LZ_AI ? window.LZ_AI.storyFromWords(words, "B1") : null);
+  if(!r){ out.textContent = "AI 未启用：需要部署后端并配置 ZHIPU_API_KEY"; return; }
+  out.innerHTML = `<div class="ait-article">${escHtml(r)}</div>
+    <div class="lang-row" style="margin-top:8px"><button class="btn ghost small" onclick="importTextAsBook(this.closest('.ait-out').querySelector('.ait-article').innerText,'生词故事')">导入阅读器精读</button></div>`;
+}
+
 /* ================= AI 三个页面 ================= */
 function aiLogEl(id){ return document.getElementById(id); }
 function aiPush(logId, role, text){
@@ -3705,6 +3816,43 @@ function aiThinking(logId){
 }
 let _bcHistory = [];
 function bcBookName(){ const el = document.getElementById("bcBook"); if(el) el.textContent = "当前书：" + (curBook ? (curBook.t || curBook.id) : "（先打开一本书）"); }
+/* AI 不可用时的降级：给出这本书的真实信息 + 替代路径，而不是一句"未启用" */
+function buildAiFallback(question, ctx){
+  const title = curBook ? (curBook.t || curBook.id) : "当前这本书";
+  const lines = [];
+  lines.push("（AI 后端未启用 —— GitHub Pages 是纯静态站，跑不了 server.js）");
+  lines.push("");
+  lines.push("不过你可以直接用这些离线能力：");
+  /* 1) 书的信息 */
+  const sents = curBook ? (getSents(curBook.id) || []) : [];
+  lines.push("· 本书共 " + sents.length + " 句" + (fullMode && fullCache[curBook.id] ? "，" + fullCache[curBook.id].chapters.length + " 章" : ""));
+  /* 2) 关键句：挑最长的 3 句（通常信息量最大） */
+  const top = sents.filter(s => s.en && s.en.length > 60).slice(0, 400)
+    .sort((a, b) => b.en.length - a.en.length).slice(0, 3);
+  if(top.length){
+    lines.push("");
+    lines.push("· 信息量最大的 3 句：");
+    top.forEach((s, i) => lines.push("  " + (i + 1) + ". " + s.en.slice(0, 120) + (s.en.length > 120 ? "…" : "")));
+  }
+  /* 3) 核心词：出现频次最高的长词 */
+  const freq = {};
+  for(const s of sents.slice(0, 600)){
+    for(const w of (s.en || "").match(/[A-Za-z'’-]{6,}/g) || []){
+      const low = w.toLowerCase();
+      freq[low] = (freq[low] || 0) + 1;
+    }
+  }
+  const keys = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
+  if(keys.length){
+    lines.push("");
+    lines.push("· 本书高频词：" + keys.join("、"));
+  }
+  lines.push("");
+  lines.push("想要真正的 AI 问答，两种办法：");
+  lines.push("① 把项目部署到 Vercel（免费，能跑 server.js），配上 ZHIPU_API_KEY");
+  lines.push("② 或者用下面「更多 ▾」里的「📰 RSS 外刊」「🖼️ 漫画翻译」等不依赖 AI 的功能");
+  return lines.join("\n");
+}
 function bcClear(){ _bcHistory = []; const l = aiLogEl("bcLog"); if(l) l.innerHTML = ""; }
 async function bcAsk(q){
   const question = q || (document.getElementById("bcInput")?.value || "").trim();
@@ -3722,7 +3870,9 @@ async function bcAsk(q){
   const out = window.LZ_AI ? await window.LZ_AI.chatAboutBook(question, ctx, _bcHistory) : null;
   if(tip) tip.remove();
   if(out){ aiPush("bcLog", "ai", out); _bcHistory.push({ role:"user", content: question }, { role:"assistant", content: out }); }
-  else aiPush("bcLog", "ai", "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY）");
+  else {
+    aiPush("bcLog", "ai", buildAiFallback(question, ctx));
+  }
 }
 const TUTOR_SCENES = [["点餐","咖啡馆点单"],["机场","机场值机"],["面试","求职面试"],["问路","街头问路"],["租房","看房租房"],["闲聊","日常闲聊"]];
 let _tuHistory = [], _tuScene = "点餐";
@@ -4218,10 +4368,59 @@ async function fetchSubUrl(){
   }
 }
 
+/* ================= 播客影子跟读（音频 + 字幕逐句） ================= */
+let _shadowIdx = 0, _shadowOn = false;
+function renderShadowPanel(){
+  const host = document.getElementById("shadowBox");
+  if(!host) return;
+  const s = _videoSubs[_shadowIdx];
+  host.innerHTML = `<div class="shadow-row">
+      <span class="shadow-pos">${_videoSubs.length ? (_shadowIdx + 1) + " / " + _videoSubs.length : "先导入字幕"}</span>
+      <button class="btn ghost small" onclick="shadowPrev()">← 上一句</button>
+      <button class="btn small" onclick="shadowPlay()">▶ 跟读这一句</button>
+      <button class="btn ghost small" onclick="shadowNext()">下一句 →</button>
+      <button class="btn ghost small" onclick="shadowToggleLoop()">${_shadowOn ? "⏹ 停止循环" : "🔁 单句循环"}</button>
+    </div>
+    <div class="shadow-sent" id="shadowSent">${s ? escHtml(s.text) : "—"}</div>
+    <div class="shadow-zh" id="shadowZh">${s && s.zh ? escHtml(s.zh) : ""}</div>
+    <div class="tip" style="margin-top:6px">跟读法：先听一遍 → 模仿语调读一遍 → 再听一遍对照。</div>`;
+  if(s && !s.zh){
+    mtTo(s.text, "zh").then(t => { const e = document.getElementById("shadowZh"); if(e && t) e.textContent = t; }).catch(()=>{});
+  }
+}
+function shadowPlay(){
+  const v = document.getElementById("lzVideo");
+  const s = _videoSubs[_shadowIdx];
+  if(!v || !s){ toast("先导入音频或字幕"); return; }
+  v.currentTime = s.start;
+  v.play().catch(()=>{});
+}
+function shadowNext(){ if(_shadowIdx < _videoSubs.length - 1){ _shadowIdx++; renderShadowPanel(); shadowPlay(); } }
+function shadowPrev(){ if(_shadowIdx > 0){ _shadowIdx--; renderShadowPanel(); shadowPlay(); } }
+function shadowToggleLoop(){
+  _shadowOn = !_shadowOn;
+  if(_shadowOn){
+    toast("单句循环：开（读完这句会自动停）");
+    shadowPlay();
+  } else toast("单句循环：关");
+  renderShadowPanel();
+}
+
 /* ================= 逐句听写 ================= */
 let dictMode = false;
 let dictIdx = 0;
 function setVideoTab(t){
+  if(t === "shadow"){
+    dictMode = false;
+    const list0 = document.getElementById("subList"); if(list0) list0.style.display = "none";
+    const d0 = document.getElementById("dictBox"); if(d0) d0.style.display = "none";
+    const sb = document.getElementById("shadowBox"); if(sb) sb.style.display = "block";
+    document.querySelectorAll("#view-video .chip").forEach(c => c.classList.remove("on"));
+    const cs = [...document.querySelectorAll("#view-video .chip")]; cs[cs.length-1] && cs[cs.length-1].classList.add("on");
+    renderShadowPanel();
+    return;
+  }
+  const sb0 = document.getElementById("shadowBox"); if(sb0) sb0.style.display = "none";
   dictMode = (t === "dict");
   document.querySelectorAll("#view-video .chip").forEach(c => c.classList.remove("on"));
   const chips = [...document.querySelectorAll("#view-video .chip")];
@@ -5309,6 +5508,8 @@ function go(name){
     if(typeof toast === "function") toast("这个页面不存在，已回到书城。");
   }
   target.classList.add("on");
+  /* 章导航条只在阅读器里显示，切到别的页面必须收起来 */
+  try{ const cb = document.getElementById("chapBar"); if(cb && name !== "reader") cb.style.display = "none"; }catch(e){}
   document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));
   const nb = document.getElementById("nav-"+name);
   if(nb) nb.classList.add("on");
@@ -5339,6 +5540,7 @@ function go(name){
   if(name==="serial") renderSerialControls();
   if(name==="manga") mangaFillSelects();
   if(name==="rss"){ rssFill(); if(!_rssItems.length) rssLoad(); }
+  if(name==="aitools") renderAitBody();
   if(name==="browser"){
     const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
     /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
@@ -13012,17 +13214,7 @@ function showIosInstallGuide(force){
     </div>
   </div>`;
 }
-/* 顶栏「❓ 教程」快捷按钮 */
-(function addGuideLink(){
-  const nav = document.getElementById("mainNav");
-  if(!nav || document.getElementById("navGuideQuick")) return;
-  const a = document.createElement("button");
-  a.id = "navGuideQuick";
-  a.className = "navlink";
-  a.textContent = "❓ 教程";
-  a.onclick = () => go("guide");
-  nav.appendChild(a);
-})();
+/* 「❓ 教程」入口已合并进「更多 ▾」菜单里的「🎓 教程」，不再重复注入 */
 
 /* =====================================================
   句子拼装模块集成 — assembly-core + assembly-panel
