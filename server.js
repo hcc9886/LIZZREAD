@@ -607,6 +607,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* /api/feed —— RSS/Atom 代理（外刊阅读器用）
+     原因：浏览器直连 rss 源会被 CORS 挡，必须由服务端代取。
+     只做「取 XML + 清洗」，不缓存正文，不做任何二次分发。 */
+  if(u.pathname === '/api/feed'){
+    const target = String(u.searchParams.get('url') || '');
+    if(!/^https?:\/\//i.test(target)){ sendJSON(res, 400, { ok:false, message:'url 不合法' }); return; }
+    /* 白名单：只允许常见的公开 RSS 源，避免被当成任意代理 */
+    const ALLOW = [
+      'feeds.bbci.co.uk','www.bbc.co.uk','www.theguardian.com','feeds.a.dj.com',
+      'rss.nytimes.com','feeds.npr.org','www.theverge.com','feeds.arstechnica.com',
+      'hnrss.org','www.economist.com','feeds.feedburner.com','www.aljazeera.com',
+      'feeds.reuters.com','www.technologyreview.com','www.ft.com','rss.cnn.com',
+      'www.lemonde.fr','www.spiegel.de','www.lefigaro.fr','elpais.com','www.repubblica.it',
+      'www.asahi.com','www.yahoo.co.jp','rss.hankyung.com','www.dw.com','rss.dw.com'
+    ];
+    let host = '';
+    try{ host = new URL(target).hostname; }catch(e){ sendJSON(res, 400, { ok:false, message:'url 解析失败' }); return; }
+    if(!ALLOW.some(h => host === h || host.endsWith('.' + h))){
+      sendJSON(res, 200, { ok:false, message:'这个源不在白名单里：' + host }); return;
+    }
+    try{
+      const r = await fetch(target, {
+        headers: { 'User-Agent':'LIZZREAD/2.1 (+https://hcc9886.github.io/LIZZREAD/)', 'Accept':'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' },
+        signal: AbortSignal.timeout(25000)
+      });
+      if(!r.ok){ sendJSON(res, 200, { ok:false, message:'源返回 ' + r.status }); return; }
+      let xml = await r.text();
+      if(xml.length > 3e6) xml = xml.slice(0, 3e6);
+      sendJSON(res, 200, { ok:true, xml });
+    }catch(e){ sendJSON(res, 200, { ok:false, message:'抓取失败：' + (e.message || e) }); }
+    return;
+  }
+
   /* /api/ai/chat —— AI 代理（智谱 GLM-4-Flash，免费）
      Key 只放在服务端环境变量 ZHIPU_API_KEY，前端拿不到。 */
   if(u.pathname === '/api/ai/chat' && req.method === 'POST'){

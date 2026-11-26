@@ -87,6 +87,14 @@
 .manga-orig{display:none;font-size:.8em;color:#666;margin-top:2px;cursor:pointer}
 .manga-orig.show{display:block}
 .manga-meta{font-size:12px;color:var(--muted);margin-top:6px}
+/* RSS 阅读 */
+.rss-list{display:grid;gap:10px}
+.rss-item{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--surface)}
+.rss-t{font:600 14.5px var(--font);line-height:1.45;cursor:pointer}
+.rss-t:hover{color:var(--brand-deep)}
+.rss-d{font-size:11.5px;color:var(--muted);margin:3px 0 5px}
+.rss-x{font-size:13px;line-height:1.6;color:var(--text)}
+.vids-help{padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--surface2);font-size:13px;line-height:1.7}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -804,6 +812,7 @@ body.no-zh .sent .zh{display:none}
         <button id="nav-tutor" onclick="go('tutor')">🗣️ AI 陪读</button>
         <button id="nav-serial" onclick="go('serial')">📖 AI 连载</button>
         <button id="nav-manga" onclick="go('manga')">🖼️ 漫画翻译</button>
+        <button id="nav-rss" onclick="go('rss')">📰 RSS 外刊</button>
         <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
         <button id="nav-video" onclick="go('video')">🎬 看视频</button>
         <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
@@ -956,7 +965,25 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="serialReset()">重新开始</button>
       <span class="tip" style="margin:0" id="serialTip">—</span>
     </div>
+    <div class="lang-row" style="margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn ghost small" onclick="serialToBook()">把这一章导入阅读器精读</button>
+      <button class="btn ghost small" onclick="serialSpeak()">朗读最新章节</button>
+    </div>
     <div id="serialBox" class="serial-box"></div>
+  </section>
+
+  <!-- ============ RSS 外刊阅读器 ============ -->
+  <section class="view" id="view-rss">
+    <h2 class="sec">📰 外刊 RSS 阅读</h2>
+    <div class="sub">订阅公开 RSS 源，直接在这里读全文摘要，点标题可进阅读器精读（点词、翻译、朗读全可用）。</div>
+    <div class="lang-row" style="margin:10px 0;flex-wrap:wrap" id="rssTabs"></div>
+    <div class="lang-row" style="margin-bottom:10px;flex-wrap:wrap">
+      <select class="chip" id="rssFeed" style="width:auto;max-width:72%"></select>
+      <button class="btn small" onclick="rssLoad()">刷新</button>
+      <span class="tip" style="margin:0" id="rssStat">—</span>
+    </div>
+    <div class="tip" id="rssTip">提示：RSS 需要后端代理（服务端 /api/feed）。静态站会提示"未配置"。也可以用「粘贴正文」把任意文章带进阅读器。</div>
+    <div id="rssList" class="rss-list"></div>
   </section>
 
   <!-- ============ 漫画翻译 ============ -->
@@ -974,6 +1001,10 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="mangaClear()">清空</button>
     </div>
     <div class="tip" id="mangaTip">支持 15 种识别语言（英/中简体/中繁体/日/韩/德/法/意/西/荷/葡/希/芬/匈/瑞典）。第一次用某种语言会下载识别包（10–40MB），之后离线可用。</div>
+    <div class="vids-help" style="margin:8px 0">
+      <b>没有漫画图？</b> 直接用手机截图、拍的课本页、任何图片都行 —— 会自动识别里面的文字并翻译。
+      <div class="tip" style="margin-top:4px">目标语言可随时切换：中文、英、日、韩、德、法、意、西、荷、葡、希腊、芬、匈、瑞典、拉丁、世界语。</div>
+    </div>
     <div id="mangaProgress" class="manga-progress" style="display:none"></div>
     <div id="mangaPages" class="manga-pages"></div>
   </section>
@@ -1036,6 +1067,15 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="loadDemoSubs()">载入示例字幕试试</button>
     </div>
     <div class="tip" id="vidTip">① 先「选择视频/音频」（可多选：视频 + 同名字幕会自动配对）② 再「导入字幕」③ 字幕列表出现后即可逐句点、逐句听。</div>
+    <div class="vids-help">
+      <b>没有素材？三条路都能用：</b>
+      <div class="lang-row" style="margin-top:6px;flex-wrap:wrap">
+        <button class="btn ghost small" onclick="loadDemoSubs();setVideoTab('dict')">用示例字幕练听写</button>
+        <button class="btn ghost small" onclick="openSubUrlImport()">粘贴在线字幕链接（SRT/VTT）</button>
+        <button class="btn ghost small" onclick="document.getElementById('subFile').click()">我有字幕文件</button>
+      </div>
+      <div class="tip" style="margin-top:6px">YouTube 等平台本身提供字幕下载，下载后导入即可（合法使用自己的文件）。</div>
+    </div>
     <div class="video-wrap">
       <video id="lzVideo" class="lz-video" controls playsinline></video>
       <div id="subOverlay" class="sub-overlay"></div>
@@ -3378,6 +3418,159 @@ function longPressTranslate(si){
     .catch(()=>{ const e = document.getElementById("lpZh"); if(e) e.textContent = "（翻译暂不可用，可联网后重试）"; });
 }
 
+/* ================= 剪贴板监听查词（替代跨 App 悬浮翻译） =================
+   用法：在任意 App/网页里复制一个词或一句话 → 切回 LIZZREAD → 自动弹词卡。
+   系统不允许网页在后台读取剪贴板，所以是「回到页面时检测」，这是能做到的最接近方案。 */
+let _lastClip = "";
+let _clipOn = false;
+function clipboardWatchOn(){ try{ return localStorage.getItem("lz_clip_watch") === "1"; }catch(e){ return false; } }
+function setClipboardWatch(on){
+  _clipOn = on;
+  try{ localStorage.setItem("lz_clip_watch", on ? "1" : "0"); }catch(e){}
+  if(on) startClipboardWatch(); else stopClipboardWatch();
+  toast(on ? "剪贴板监听：开（复制词后切回本页自动查）" : "剪贴板监听：关");
+  renderSettings && renderSettings();
+}
+let _clipTimer = null;
+function startClipboardWatch(){
+  if(_clipTimer) return;
+  _clipTimer = setInterval(checkClipboard, 2500);
+  checkClipboard();
+}
+function stopClipboardWatch(){ if(_clipTimer){ clearInterval(_clipTimer); _clipTimer = null; } }
+async function checkClipboard(){
+  if(!clipboardWatchOn()) return;
+  if(document.visibilityState !== "visible") return;
+  try{
+    if(!navigator.clipboard || !navigator.clipboard.readText) return;
+    const txt = (await navigator.clipboard.readText() || "").trim();
+    if(!txt || txt === _lastClip || txt.length > 400) return;
+    _lastClip = txt;
+    /* 只处理"像词或句子"的内容 */
+    if(!/[A-Za-z\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(txt)) return;
+    const words = txt.match(/[A-Za-z'’-]+|[\u4e00-\u9fff]+|[\u3040-\u30ff]+|[\uac00-\ud7af]+/g) || [];
+    if(!words.length) return;
+    if(words.length === 1 || txt.length <= 24){
+      openWordCard(words[0]);                       /* 单个词：直接弹词卡 */
+    } else {
+      /* 整句：弹整句翻译 */
+      let el = document.getElementById("clipSheet");
+      if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "clipSheet"; document.body.appendChild(el); }
+      el.style.display = "flex";
+      el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+      const zh = offlineTranslate(txt, "zh");
+      el.innerHTML = `<div class="box">
+        <div style="display:flex;align-items:center;gap:8px"><div style="font:600 16px var(--serif)">📋 剪贴板内容</div>
+          <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('clipSheet').style.display='none'">✕</button></div>
+        <div class="lp-en">${escHtml(txt)}</div>
+        <div class="lp-zh" id="clipZh">${escHtml(zh || "翻译中…")}</div>
+        <div class="lang-row" style="margin-top:10px">
+          <button class="btn small" onclick="document.getElementById('clipSheet').style.display='none';importTextAsBook(document.querySelector('#clipSheet .lp-en').textContent,'剪贴板')">导入阅读器</button>
+          <button class="btn ghost small" onclick="speakText(document.querySelector('#clipSheet .lp-en').textContent)">🔊 朗读</button>
+        </div>
+      </div>`;
+      if(!zh){
+        try{ const t = await mtTo(txt, "zh"); const e2 = document.getElementById("clipZh"); if(e2 && t) e2.textContent = t; }catch(e){}
+      }
+    }
+  }catch(e){ /* 用户没授权或浏览器不支持，静默 */ }
+}
+try{ if(clipboardWatchOn()) setTimeout(startClipboardWatch, 3000); }catch(e){}
+
+/* ================= RSS 外刊阅读器 ================= */
+const RSS_FEEDS = [
+  ["BBC News","https://feeds.bbci.co.uk/news/world/rss.xml","新闻"],
+  ["BBC 中文","https://feeds.bbci.co.uk/zhongwen/simp/rss.xml","新闻"],
+  ["The Guardian","https://www.theguardian.com/world/rss","新闻"],
+  ["Guardian Books","https://www.theguardian.com/books/rss","文学"],
+  ["NPR News","https://feeds.npr.org/1001/rss.xml","新闻"],
+  ["Al Jazeera","https://www.aljazeera.com/xml/rss/all.xml","新闻"],
+  ["Ars Technica","https://feeds.arstechnica.com/arstechnica/index","科技"],
+  ["Hacker News","https://hnrss.org/frontpage","科技"],
+  ["Le Monde","https://www.lemonde.fr/rss/une.xml","法语"],
+  ["Spiegel","https://www.spiegel.de/schlagzeilen/index.rss","德语"],
+  ["El País","https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada","西语"],
+  ["La Repubblica","https://www.repubblica.it/rss/homepage/rss2.0.xml","意语"]
+];
+let _rssItems = [];
+function rssFill(){
+  const sel = document.getElementById("rssFeed");
+  if(sel && !sel.options.length){
+    const groups = [...new Set(RSS_FEEDS.map(f => f[2]))];
+    sel.innerHTML = groups.map(g => `<optgroup label="${g}">` +
+      RSS_FEEDS.filter(f => f[2] === g).map((f, i) => `<option value="${f[1]}">${escHtml(f[0])}</option>`).join("") +
+      `</optgroup>`).join("");
+  }
+}
+async function rssFetch(url){
+  /* 先走服务端代理（静态站没有 → 返回未配置） */
+  for(const ep of ["api/feed?url=" + encodeURIComponent(url), "public/api/feed?url=" + encodeURIComponent(url)]){
+    try{
+      const r = await fetch(ep, { signal: AbortSignal.timeout(30000) });
+      if(!r.ok) continue;
+      const j = await r.json();
+      if(j && j.ok && j.xml) return { xml: j.xml };
+      if(j && j.message) return { error: j.message };
+    }catch(e){}
+  }
+  return { error: "需要部署后端才可用（静态站没有 RSS 代理）" };
+}
+function rssParse(xml){
+  try{
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    const items = [...doc.querySelectorAll("item, entry")].slice(0, 40);
+    return items.map(it => {
+      const t = (it.querySelector("title") || {}).textContent || "";
+      const l = (it.querySelector("link") || {}).textContent || (it.querySelector("link") || {}).getAttribute?.("href") || "";
+      const d = (it.querySelector("pubDate, updated, published") || {}).textContent || "";
+      const desc = (it.querySelector("description, summary, content") || {}).textContent || "";
+      return { title: t.trim(), link: l.trim(), date: d.slice(0, 16), desc: desc.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) };
+    }).filter(x => x.title);
+  }catch(e){ return []; }
+}
+async function rssLoad(){
+  rssFill();
+  const url = document.getElementById("rssFeed")?.value;
+  const host = document.getElementById("rssList");
+  const stat = document.getElementById("rssStat");
+  if(!url || !host) return;
+  host.innerHTML = `<div class="sub">加载中…</div>`;
+  const res = await rssFetch(url);
+  if(res.error){ host.innerHTML = `<div class="empty-notes">${escHtml(res.error)}</div>`; if(stat) stat.textContent = "失败"; return; }
+  _rssItems = rssParse(res.xml);
+  if(stat) stat.textContent = _rssItems.length + " 条";
+  host.innerHTML = _rssItems.length ? _rssItems.map((it, i) => `
+    <div class="rss-item">
+      <div class="rss-t" onclick="rssRead(${i})">${escHtml(it.title)}</div>
+      <div class="rss-d">${escHtml(it.date)}</div>
+      <div class="rss-x">${escHtml(it.desc)}</div>
+      <div class="lang-row" style="margin-top:6px">
+        <button class="btn ghost small" onclick="rssRead(${i})">在站内精读</button>
+      </div>
+    </div>`).join("") : `<div class="empty-notes">这个源没有条目</div>`;
+}
+/* 把 RSS 条目正文带进阅读器精读 */
+async function rssRead(i){
+  const it = _rssItems[i];
+  if(!it) return;
+  let body = it.desc;
+  /* 尽量抓完整正文 */
+  if(it.link){
+    for(const prox of ["https://r.jina.ai/" + it.link, "https://api.allorigins.win/raw?url=" + encodeURIComponent(it.link)]){
+      try{
+        const r = await fetch(prox, { signal: AbortSignal.timeout(30000) });
+        if(!r.ok) continue;
+        let t = await r.text();
+        const cut = t.indexOf("Markdown Content:");
+        if(cut >= 0) t = t.slice(cut + 17);
+        t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
+        if(t && t.length > 300 && !/^\s*<(!DOCTYPE|html)/i.test(t)){ body = t; break; }
+      }catch(e){}
+    }
+  }
+  await importTextAsBook((it.title + "\n\n" + body), it.title.slice(0, 30));
+}
+
 /* ================= 漫画翻译（多语言 OCR + 可选目标语言） ================= */
 const MANGA_OCR_LANGS = [
   ["eng","English 英文"], ["chi_sim","简体中文"], ["chi_tra","繁體中文"], ["jpn","日本語"],
@@ -3584,6 +3777,16 @@ async function serialNewChapter(){
   _serial.summary = out.slice(0, 400);
   renderSerialControls();
   if(tip) tip.textContent = "已生成 " + _serial.chapters.length + " 章";
+}
+function serialToBook(){
+  if(!_serial.chapters.length){ toast("先生成一章"); return; }
+  const t = _serial.chapters[_serial.chapters.length - 1];
+  importTextAsBook(t, _serial.genre + " · 第 " + _serial.chapters.length + " 章");
+}
+function serialSpeak(){
+  if(!_serial.chapters.length){ toast("先生成一章"); return; }
+  const t = _serial.chapters[_serial.chapters.length - 1];
+  try{ speakText(t.slice(0, 1200)); }catch(e){ toast("朗读不可用"); }
 }
 function serialReset(){ _serial = { genre:_serial.genre, level:_serial.level, chapters:[], summary:"" }; renderSerialControls(); }
 
@@ -3977,6 +4180,42 @@ function wordSpansGloss(s, i){
     }
     return html;
   });
+}
+
+/* 在线字幕：粘贴 SRT/VTT 直链，自动拉取 */
+function openSubUrlImport(){
+  let el = document.getElementById("subUrlSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "subUrlSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px"><div style="font:600 16px var(--serif)">粘贴字幕链接</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('subUrlSheet').style.display='none'">✕</button></div>
+    <p class="sub" style="margin:8px 0">支持 .srt / .vtt 直链（例如你自己网盘里的字幕文件）。</p>
+    <input class="ai-input" id="subUrlInput" placeholder="https://…/subtitle.srt" style="width:100%">
+    <div class="lang-row" style="margin-top:10px">
+      <button class="btn small" onclick="fetchSubUrl()">拉取字幕</button>
+      <button class="btn ghost small" onclick="document.getElementById('subUrlSheet').style.display='none'">取消</button>
+    </div>
+  </div>`;
+}
+async function fetchSubUrl(){
+  const url = (document.getElementById("subUrlInput")?.value || "").trim();
+  if(!/^https?:\/\//.test(url)){ toast("请输入 http(s) 链接"); return; }
+  try{
+    const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const t = await r.text();
+    _videoSubs = parseSubtitles(t);
+    if(!_videoSubs.length) throw new Error("没解析出字幕");
+    renderSubList();
+    document.getElementById("subUrlSheet").style.display = "none";
+    const tip = document.getElementById("vidTip");
+    if(tip) tip.textContent = "已载入在线字幕 " + _videoSubs.length + " 句";
+    setVideoTab("dict");
+  }catch(e){
+    toast("字幕拉取失败（可能是跨域限制）：" + (e.message || e));
+  }
 }
 
 /* ================= 逐句听写 ================= */
@@ -5099,6 +5338,7 @@ function go(name){
   if(name==="tutor"){ renderTutorScenes(); if(!_tuHistory.length) tuStart(); }
   if(name==="serial") renderSerialControls();
   if(name==="manga") mangaFillSelects();
+  if(name==="rss"){ rssFill(); if(!_rssItems.length) rssLoad(); }
   if(name==="browser"){
     const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
     /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
@@ -10204,6 +10444,20 @@ function asmSubmit(){
   十一·C 个性化设置
 ===================================================== */
 function renderSettings(){
+  setTimeout(()=>{ try{
+    const host = document.getElementById("view-settings");
+    if(!host || document.getElementById("clipWatchCard")) return;
+    const card = document.createElement("div");
+    card.id = "clipWatchCard";
+    card.className = "settings-card";
+    card.innerHTML = `<b>📋 剪贴板监听查词</b>
+      <div class="sub">在任意 App 里复制一个词或一句话，切回 LIZZREAD 就会自动弹词卡/整句翻译。（浏览器不允许后台读剪贴板，所以是回到页面时检测，首次会请求权限）</div>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn small ${clipboardWatchOn()?'':'ghost'}" onclick="setClipboardWatch(true)">开启</button>
+        <button class="btn ghost small ${clipboardWatchOn()?'':'on'}" onclick="setClipboardWatch(false)">关闭</button>
+      </div>`;
+    host.appendChild(card);
+  }catch(e){} }, 0);
   const body = document.getElementById("settingsBody");
   const bg = getPref("bg"), accent = getPref("accent"), fs = getPref("fontsize");
   const serif = getPref("serif"), width = getPref("width"), motion = getPref("motion");
@@ -11728,6 +11982,14 @@ document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState 
 const APP_VERSION = (window.LZ_BUILD && window.LZ_BUILD.version) || "2.1.0";
 const SW_BUILD = (window.LZ_BUILD && window.LZ_BUILD.build) || "";
 async function fetchVersionInfo(){
+  /* 静态站没有后端时不要让 api/version 先打一个 404（某些浏览器会误判成"站点异常"）：
+     先探静态 JSON，成功就不碰 api/version */
+  if(!window.__LZ_NATIVE){
+    try{
+      const r0 = await fetch("data/app-version.json?v=" + Date.now(), { signal: AbortSignal.timeout(6000) });
+      if(r0.ok) return await r0.json();
+    }catch(e){}
+  }
   /* 依次尝试：原生 public/api/version → 后端 /api/version → 静态 data/app-version.json */
   const urls = window.__LZ_NATIVE
     ? ["public/api/version", "public/data/app-version.json"]
