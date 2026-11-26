@@ -35,9 +35,59 @@
 <script src="data/vocab-books-ext.js?v=2" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
+<script src="ai.js?v=1"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
-<style>html.lz-mini .lz-no-mini{display:none !important}</style>
+<style>html.lz-mini .lz-no-mini{display:none !important}/* 底部章导航 / 收藏 / 筛选 */
+.rd-endnav{display:flex;gap:10px;justify-content:center;margin:30px 0 18px;flex-wrap:wrap}
+.chap-bar{position:fixed;left:0;right:0;bottom:0;z-index:9000;display:none;align-items:center;justify-content:center;gap:10px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -6px 20px rgba(0,0,0,.06)}
+.chap-mid{background:none;border:none;color:var(--brand-deep);font:600 13px var(--font);cursor:pointer;padding:0 6px}
+.chap-list{display:grid;gap:4px;margin-top:10px}
+.chap-item{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:9px;font-size:13.5px;cursor:pointer}
+.chap-item:hover{background:var(--brand-soft)}
+.chap-item.on{background:var(--brand);color:#fff}
+.chap-no{min-width:26px;color:var(--muted);font-size:12px}
+.chap-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.page-chap-title{text-align:center;font:600 17px var(--serif);color:var(--brand-deep);margin:6px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.fav-strip{margin:0 0 14px}
+.fav-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13.5px}
+.fav-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+.fav-card{flex:0 0 auto;width:92px;cursor:pointer}
+.fav-card img{width:92px;height:132px;object-fit:cover;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.fav-title{font-size:12px;margin-top:6px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lib-searchbar{display:flex;align-items:center;gap:8px;margin:10px 0 8px}
+.lib-searchbar .search{flex:1;min-height:42px}
+.lib-searchbar .btn{white-space:nowrap;min-height:42px}
+.filter-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand);margin-left:6px;vertical-align:middle}
+.filter-summary-inline{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+.hijack-bar{position:fixed;left:12px;right:12px;top:12px;z-index:9999;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#7A2E2E;color:#fff;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.hijack-bar .btn{background:#fff;color:#7A2E2E;border:none}
+
+/* AI 页面 */
+.ai-log{min-height:180px;max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface2)}
+.ai-msg{max-width:86%;padding:8px 12px;border-radius:12px;font-size:13.5px;line-height:1.75;white-space:pre-wrap}
+.ai-msg.me{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:4px}
+.ai-msg.ai{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px}
+.ai-input-row{display:flex;gap:8px;margin-top:10px}
+.ai-input{flex:1;min-height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:14px}
+.serial-box{display:grid;gap:12px}
+.serial-ch{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface)}
+.serial-h{font:600 13px var(--font);color:var(--brand-deep);margin-bottom:6px}
+.serial-t{font:15px/1.85 var(--read-font, Georgia, serif);white-space:pre-wrap}
+.rw-ai{background:var(--brand-soft);border-radius:10px;padding:10px;border-top:none}
+.rw-ai-body{font-size:13px;line-height:1.75;white-space:pre-wrap}
+/* 漫画翻译 */
+.manga-progress{padding:8px 12px;border-radius:10px;background:var(--brand-soft);color:var(--brand-deep);font-size:13px;margin:8px 0}
+.manga-pages{display:grid;gap:16px;margin-top:12px}
+.manga-page{border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface)}
+.manga-imgwrap{position:relative;line-height:0}
+.manga-imgwrap img{width:100%;border-radius:8px;display:block}
+.manga-bubble{position:absolute;background:rgba(255,255,255,.94);color:#111;border:1px solid rgba(0,0,0,.12);border-radius:6px;padding:2px 4px;line-height:1.25;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.manga-tr{font-weight:600}
+.manga-orig{display:none;font-size:.8em;color:#666;margin-top:2px;cursor:pointer}
+.manga-orig.show{display:block}
+.manga-meta{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
 <script src="shared/assembly-core.js?v=14" defer></script>
@@ -750,6 +800,10 @@ body.no-zh .sent .zh{display:none}
         <button onclick="go('collections')">📚 书单</button>
         <button id="nav-press" onclick="go('press')">📰 外刊</button>
         <button id="nav-notes" onclick="go('notes')">📝 笔记</button>
+        <button id="nav-bookchat" onclick="go('bookchat')">💬 与书对话</button>
+        <button id="nav-tutor" onclick="go('tutor')">🗣️ AI 陪读</button>
+        <button id="nav-serial" onclick="go('serial')">📖 AI 连载</button>
+        <button id="nav-manga" onclick="go('manga')">🖼️ 漫画翻译</button>
         <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
         <button id="nav-video" onclick="go('video')">🎬 看视频</button>
         <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
@@ -770,6 +824,7 @@ body.no-zh .sent .zh{display:none}
 <main>
   <!-- ============ 书城 ============ -->
   <section class="view on" id="view-library">
+    <div id="favStrip" class="fav-strip" style="display:none"></div>
     <!-- 一行：学习语言切换 + 更多（低频操作收进菜单） -->
     <div class="lib-topbar">
       <div class="lang-chips" id="langChips"></div>
@@ -786,14 +841,13 @@ body.no-zh .sent .zh{display:none}
     </div>
     <input type="file" id="importFile" accept=".txt,.md,.markdown,.html,.htm,.xhtml,.epub,.docx,.odt,.pdf,.fb2,.rtf,.srt,.vtt,.csv,.json,.zip,.mobi,.azw,.azw3,text/plain,application/epub+zip,application/pdf" multiple style="display:none" onchange="doImport(this)">
 
-    <!-- 一行：当前筛选摘要，点开抽屉再选 -->
-    <div class="filter-summary" id="filterSummary"></div>
-
-    <!-- 整行搜索框；按钮在输入后才出现 -->
-    <div class="search-row">
-      <input class="search" id="searchBox" placeholder="搜索书名 / 作者…" oninput="onSearchInput()">
+    <!-- 一行搞定：搜索 + 筛选（原筛选摘要收进抽屉） -->
+    <div class="lib-searchbar">
+      <input class="search" id="searchBox" placeholder="搜书名 / 作者，或点右侧筛选" oninput="onSearchInput()">
       <button class="icobtn" id="searchClear" onclick="clearSearch()" style="display:none" title="清除"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button class="btn ghost small" onclick="openFilterDrawer()">筛选<span class="filter-dot" id="filterDot" style="display:none"></span></button>
     </div>
+    <div id="filterSummary" class="filter-summary-inline" style="display:none"></div>
     <div class="search-actions" id="searchActions" style="display:none">
       <button class="btn ghost small" onclick="runFullTextSearch()">🔎 全文搜索</button>
       <button class="btn ghost small" onclick="clearFullTextSearch()">关闭结果</button>
@@ -857,6 +911,71 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="if(confirm('确定清空所有生词与熟练度？')){store.vocab=[];store.wstates={};try{localStorage.removeItem(pk(langKey('vocab')));localStorage.removeItem(pk(langKey('vocabsrs')));localStorage.removeItem(pk(langKey('wstates')));}catch(e){}renderVocab();toast('已清空本语言生词');}">♻️ 清空</button>
     </div>
     <div class="vlist" id="vocabList"></div>
+  </section>
+
+  <!-- ============ AI 与书对话 ============ -->
+  <section class="view" id="view-bookchat">
+    <h2 class="sec">💬 与书对话</h2>
+    <div class="sub">针对当前这本书提问，AI 只依据书里的片段回答。</div>
+    <div class="lang-row" style="margin:10px 0">
+      <span class="tip" style="margin:0" id="bcBook">当前书：—</span>
+      <button class="btn ghost small" style="margin-left:auto" onclick="bcClear()">清空对话</button>
+    </div>
+    <div id="bcLog" class="ai-log"></div>
+    <div class="ai-input-row">
+      <input id="bcInput" class="ai-input" placeholder="例如：这本书的核心主题是什么？" onkeydown="if(event.key==='Enter')bcAsk()">
+      <button class="btn" onclick="bcAsk()">发送</button>
+    </div>
+    <div class="lang-row" style="margin-top:8px;flex-wrap:wrap">
+      <button class="chip" onclick="bcAsk('这本书讲了什么？用三点概括')">概括全书</button>
+      <button class="chip" onclick="bcAsk('这本书的写作风格有什么特点？')">写作风格</button>
+      <button class="chip" onclick="bcAsk('列出 5 个最值得记的句子')">金句推荐</button>
+    </div>
+  </section>
+
+  <!-- ============ AI 陪读 ============ -->
+  <section class="view" id="view-tutor">
+    <h2 class="sec">🗣️ AI 陪读</h2>
+    <div class="sub">选一个场景，用目标语言跟 AI 聊；每句带中文，错了给一句小提示。</div>
+    <div class="lang-row" style="margin:10px 0;flex-wrap:wrap" id="tutorScenes"></div>
+    <div id="tuLog" class="ai-log"></div>
+    <div class="ai-input-row">
+      <input id="tuInput" class="ai-input" placeholder="用英语说点什么…" onkeydown="if(event.key==='Enter')tuSend()">
+      <button class="btn" onclick="tuSend()">发送</button>
+    </div>
+  </section>
+
+  <!-- ============ AI 原创连载 ============ -->
+  <section class="view" id="view-serial">
+    <h2 class="sec">📖 AI 原创连载</h2>
+    <div class="sub">按题材和等级生成原创英文故事，读完接着下一章。</div>
+    <div class="lang-row" style="margin:10px 0;flex-wrap:wrap" id="serialGenres"></div>
+    <div class="lang-row" style="margin-bottom:10px;flex-wrap:wrap" id="serialLevels"></div>
+    <div class="lang-row" style="margin-bottom:12px">
+      <button class="btn" onclick="serialNewChapter()">写下一章</button>
+      <button class="btn ghost small" onclick="serialReset()">重新开始</button>
+      <span class="tip" style="margin:0" id="serialTip">—</span>
+    </div>
+    <div id="serialBox" class="serial-box"></div>
+  </section>
+
+  <!-- ============ 漫画翻译 ============ -->
+  <section class="view" id="view-manga">
+    <h2 class="sec">🖼️ 漫画翻译</h2>
+    <div class="sub">导入自己的漫画图片（可多张），自动识别文字并译成你选的语言。所有图片只在本机处理，不上传。</div>
+    <div class="lang-row" style="margin:10px 0;flex-wrap:wrap">
+      <button class="btn small" onclick="document.getElementById('mangaFile').click()">＋ 选择漫画图片</button>
+      <input type="file" id="mangaFile" accept="image/*" multiple style="display:none" onchange="mangaLoad(this)">
+      <span class="tip" style="margin:0">原作语言</span>
+      <select class="chip" id="mangaSrc" style="width:auto"></select>
+      <span class="tip" style="margin:0">译成</span>
+      <select class="chip" id="mangaDst" style="width:auto"></select>
+      <button class="btn ghost small" onclick="mangaRun()">开始识别与翻译</button>
+      <button class="btn ghost small" onclick="mangaClear()">清空</button>
+    </div>
+    <div class="tip" id="mangaTip">支持 15 种识别语言（英/中简体/中繁体/日/韩/德/法/意/西/荷/葡/希/芬/匈/瑞典）。第一次用某种语言会下载识别包（10–40MB），之后离线可用。</div>
+    <div id="mangaProgress" class="manga-progress" style="display:none"></div>
+    <div id="mangaPages" class="manga-pages"></div>
   </section>
 
   <!-- ============ 三栏笔记 ============ -->
@@ -2233,6 +2352,14 @@ function libSummaryText(){
   if(fGenre !== "all") gen = GENRES()[fGenre] || fGenre;
   return [L0.native, lv, gen];
 }
+function updateFilterDot(){
+  const dot = document.getElementById("filterDot");
+  const sum = document.getElementById("filterSummary");
+  if(!dot) return;
+  const active = (typeof fLv !== "undefined" && fLv !== "all") || (typeof fG !== "undefined" && fG !== "all") || (typeof fSort !== "undefined" && fSort !== "default");
+  dot.style.display = active ? "inline-block" : "none";
+  if(sum) sum.style.display = active ? "block" : "none";
+}
 function renderFilterSummary(){
   const el = document.getElementById("filterSummary");
   if(!el) return;
@@ -2646,6 +2773,33 @@ function findCollocations(word){
 }
 
 /* 把词卡渲染成富文本（替换原来的单行释义） */
+async function requestAiExplain(word){
+  const box = document.getElementById("rwAi");
+  if(!box) return;
+  const body = box.querySelector(".rw-ai-body");
+  const btn = box.querySelector("button");
+  if(!window.LZ_AI){ if(body) body.textContent = "AI 模块未加载"; return; }
+  if(body) body.textContent = "AI 正在解析…";
+  if(btn) btn.disabled = true;
+  let en = "", zh = "";
+  try{
+    const ls = (typeof lastSent !== "undefined" && lastSent) ? lastSent : null;
+    if(ls && ls.en){ en = ls.en; zh = ls.zh || ""; }
+    if(!en){
+      const vis = [...document.querySelectorAll("#view-reader .sent")].find(el => {
+        const r = el.getBoundingClientRect(); return r.top >= -60 && r.top < window.innerHeight * 0.7;
+      });
+      const st = curBook ? getSents(curBook.id)[Number(vis ? vis.dataset.si : 0)] : null;
+      if(st){ en = st.en || ""; zh = st.zh || ""; }
+    }
+  }catch(e){}
+  if(/\b(transcribed|copyright|project gutenberg|ebook|edition by|editorial)\b/i.test(en)){ en = ""; zh = ""; }
+  if(!en){ const ctx = document.getElementById("shCtx"); en = ctx ? ctx.textContent.replace("（本句暂无译文）","") : ""; }
+  const out = await window.LZ_AI.explainWord(word, en, zh);
+  if(out){ if(body) body.textContent = out; if(btn) btn.textContent = "✨ 重新解析"; }
+  else { if(body) body.innerHTML = "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY。本地助记与例句见上方。）"; if(btn) btn.textContent = "重试"; }
+  if(btn) btn.disabled = false;
+}
 function renderRichWordCard(word, low){
   const def = document.getElementById("shDef");
   if(!def) return;
@@ -2670,6 +2824,9 @@ function renderRichWordCard(word, low){
         <span class="rw-sense">${g.senses.map(x => escHtml(x)).join("；")}</span>
       </div>`).join("") : (cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "")}
     ${mnemo ? `<div class="rw-block"><b>助记</b><div>${escHtml(mnemo)}</div></div>` : ""}
+    <div class="rw-block rw-ai" id="rwAi"><b>AI 解析</b><div class="rw-ai-body">点下面按钮，让 AI 结合本句讲这个词</div>
+      <button class="btn ghost small" style="margin-top:6px" onclick="requestAiExplain('${escAttr(String(word))}')">✨ AI 解析这个词</button>
+    </div>
     ${exs.length ? `<div class="rw-block"><b>例句</b>${exs.map(x => `
       <div class="rw-ex"><div class="rw-ex-en">${escHtml(x.en)}</div><div class="rw-ex-zh">${escHtml(x.zh)}</div></div>`).join("")}</div>` : ""}
     ${(()=>{
@@ -2758,6 +2915,70 @@ async function applyUpdateNow(){
   try{ localStorage.setItem("lz_seen_version", (CHANGELOG[0] || {}).ver || ""); }catch(e){}
   location.reload(true);
 }
+
+/* ================= 收藏图书 ================= */
+function favorites(){ try{ return JSON.parse(localStorage.getItem(pk("fav")) || "[]"); }catch(e){ return []; } }
+function favSave(list){ try{ localStorage.setItem(pk("fav"), JSON.stringify(list.slice(0, 200))); }catch(e){} renderLibrary(); }
+function isFav(id){ return favorites().some(x => (x.id || x) === id); }
+function toggleFav(id){
+  id = id || (curBook && curBook.id);
+  if(!id) return;
+  const list = favorites();
+  const i = list.findIndex(x => (x.id || x) === id);
+  if(i >= 0){ list.splice(i, 1); toast("已取消收藏"); } else { list.unshift({ id, at: Date.now() }); toast("⭐ 已收藏"); }
+  favSave(list);
+  document.querySelectorAll("[data-favbtn]").forEach(b => { if(b.dataset.favbtn === id) b.textContent = isFav(id) ? "★ 已收藏" : "☆ 收藏"; });
+}
+function renderFavStrip(){
+  const host = document.getElementById("favStrip");
+  if(!host) return;
+  const list = favorites();
+  if(!list.length){ host.innerHTML = ""; host.style.display = "none"; return; }
+  host.style.display = "block";
+  const books = list.map(x => { const id = x.id || x; return BOOKS.find(b => b.id === id) || (store.imports || []).find(b => b.id === id) || null; }).filter(Boolean).slice(0, 12);
+  host.innerHTML = `<div class="fav-head"><b>⭐ 我的收藏</b><span class="tip" style="margin:0">${list.length} 本</span>
+      <button class="btn ghost small" style="margin-left:auto" onclick="go('collections')">看全部</button></div>
+    <div class="fav-scroll">${books.map(b => `
+      <div class="fav-card" onclick="openBook('${b.id}')">
+        <img loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
+        <div class="fav-title">${escHtml(dispTitle(b))}</div>
+      </div>`).join("")}</div>`;
+}
+
+/* ================= 恶意跳转防护 ================= */
+const OFFICIAL_HOSTS = ["hcc9886.github.io"];
+let _hijackReported = false;
+function detectHijack(){
+  try{
+    const h = location.hostname, p = location.pathname;
+    const okHost = OFFICIAL_HOSTS.includes(h) || h === "localhost" || h === "127.0.0.1" || h === "";
+    const okPath = okHost && (p.startsWith("/LIZZREAD") || h === "localhost" || h === "127.0.0.1");
+    if(!okHost || !okPath){ if(!_hijackReported){ _hijackReported = true; showHijackNotice(); } }
+  }catch(e){}
+}
+function showHijackNotice(){
+  let el = document.getElementById("hijackBar");
+  if(!el){ el = document.createElement("div"); el.id = "hijackBar"; el.className = "hijack-bar"; document.body.appendChild(el); }
+  el.innerHTML = `<span>⚠️ 当前页面地址异常，可能被浏览器劫持。官方地址是 hcc9886.github.io/LIZZREAD</span>
+    <button class="btn small" onclick="location.href='https://hcc9886.github.io/LIZZREAD/'">回到官方地址</button>
+    <button class="lz-update-x" onclick="this.parentNode.remove()">✕</button>`;
+  el.style.display = "flex";
+}
+(function hardenLinks(){
+  try{
+    document.addEventListener("click", e => {
+      const a = e.target && e.target.closest && e.target.closest("a[href]");
+      if(!a) return;
+      if(/^https?:/i.test(a.getAttribute("href") || "")){ a.setAttribute("rel","noopener noreferrer"); a.setAttribute("referrerpolicy","no-referrer"); }
+    }, true);
+    const _open = window.open;
+    window.open = function(url, name, feat){
+      try{ if(typeof url === "string" && /^https?:/i.test(url)) return _open.call(window, url, "_blank", "noopener,noreferrer"); }catch(e){}
+      return _open.apply(window, arguments);
+    };
+  }catch(e){}
+})();
+try{ setTimeout(detectHijack, 1200); }catch(e){}
 
 /* ================= 阅读进度 / 读毕统计 ================= */
 function rdStats(){
@@ -3059,6 +3280,7 @@ function readerToolExtras(){
     <span class="tip" style="margin:0">排版</span>
     ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
+    <button class="btn ghost small" data-favbtn="${(curBook&&curBook.id)||''}" onclick="toggleFav()">${(curBook&&isFav(curBook.id))?"★ 已收藏":"☆ 收藏"}</button>
     <button class="btn ghost small" onclick="noteFromSentence()">📝 记笔记</button>
     <button class="btn ghost small" onclick="startReadingAloud()">🔊 连读本章</button>
     <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
@@ -3155,6 +3377,215 @@ function longPressTranslate(si){
   mtFetch(text).then(t => { const e = document.getElementById("lpZh"); if(e) e.textContent = t || "（翻译暂不可用）"; })
     .catch(()=>{ const e = document.getElementById("lpZh"); if(e) e.textContent = "（翻译暂不可用，可联网后重试）"; });
 }
+
+/* ================= 漫画翻译（多语言 OCR + 可选目标语言） ================= */
+const MANGA_OCR_LANGS = [
+  ["eng","English 英文"], ["chi_sim","简体中文"], ["chi_tra","繁體中文"], ["jpn","日本語"],
+  ["kor","한국어"], ["deu","Deutsch"], ["fra","Français"], ["ita","Italiano"], ["spa","Español"],
+  ["nld","Nederlands"], ["por","Português"], ["ell","Ελληνικά"], ["fin","Suomi"], ["hun","Magyar"], ["swe","Svenska"]
+];
+/* 目标语言 = LIZZREAD 的 16 门学习语言 + 中文 */
+const MANGA_TARGETS = [
+  ["zh","中文"],["en","English"],["ja","日本語"],["ko","한국어"],["de","Deutsch"],["fr","Français"],
+  ["it","Italiano"],["es","Español"],["nl","Nederlands"],["pt","Português"],["el","Ελληνικά"],
+  ["fi","Suomi"],["hu","Magyar"],["sv","Svenska"],["la","Latina"],["eo","Esperanto"]
+];
+let _mangaFiles = [], _mangaResult = [];
+function mangaFillSelects(){
+  const s = document.getElementById("mangaSrc"), d = document.getElementById("mangaDst");
+  if(s && !s.options.length) s.innerHTML = MANGA_OCR_LANGS.map(([k, n]) => `<option value="${k}" ${k==="eng"?"selected":""}>${n}</option>`).join("");
+  if(d && !d.options.length) d.innerHTML = MANGA_TARGETS.map(([k, n]) => `<option value="${k}" ${k===(activeLang()||"zh")?"selected":""}>${n}</option>`).join("");
+}
+function mangaLoad(input){
+  _mangaFiles = [...(input.files || [])];
+  renderMangaPages();
+  const tip = document.getElementById("mangaTip");
+  if(tip) tip.textContent = "已选 " + _mangaFiles.length + " 张图，点「开始识别与翻译」";
+}
+function mangaClear(){
+  _mangaFiles = []; _mangaResult = [];
+  const p = document.getElementById("mangaPages"); if(p) p.innerHTML = "";
+  const pr = document.getElementById("mangaProgress"); if(pr) pr.style.display = "none";
+}
+function renderMangaPages(){
+  const host = document.getElementById("mangaPages"); if(!host) return;
+  host.innerHTML = _mangaFiles.map((f, i) => {
+    const r = _mangaResult[i];
+    const url = r ? r.url : URL.createObjectURL(f);
+    return `<div class="manga-page">
+      <div class="manga-imgwrap">
+        <img src="${url}" alt="第 ${i+1} 页">
+        ${r ? r.blocks.map((b, j) => `<div class="manga-bubble" style="left:${(b.x*100).toFixed(2)}%;top:${(b.y*100).toFixed(2)}%;width:${(b.w*100).toFixed(2)}%;font-size:${Math.max(10, Math.min(16, b.h * 260))}px">
+          <div class="manga-tr">${escHtml(b.zh || b.text)}</div>
+          <div class="manga-orig" onclick="event.stopPropagation();this.classList.toggle('show')">${escHtml(b.text)}</div>
+        </div>`).join("") : ""}
+      </div>
+      <div class="manga-meta">第 ${i+1} 页${r ? " · 识别 " + r.blocks.length + " 段" : ""}</div>
+    </div>`;
+  }).join("");
+}
+function mangaProgress(txt){
+  const el = document.getElementById("mangaProgress");
+  if(!el) return;
+  if(!txt){ el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.textContent = txt;
+}
+/** 懒加载 tesseract.js（CDN，首次 ~2MB，之后浏览器缓存） */
+function ensureTesseract(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload = () => res(window.Tesseract);
+    s.onerror = () => rej(new Error("识别引擎加载失败（网络受限）"));
+    document.head.appendChild(s);
+    setTimeout(() => { if(!window.Tesseract) rej(new Error("识别引擎加载超时")); }, 30000);
+  });
+}
+async function mangaTranslateTexts(texts, dst){
+  const out = [];
+  for(const t of texts){
+    let zh = "";
+    if(dst === "zh") zh = offlineTranslate(t, "zh") || await offlineWordHint(t, "zh") || "";
+    if(!zh){
+      try{ zh = await mtTo(t, dst); }catch(e){ zh = ""; }
+    }
+    if(!zh) zh = t;   /* 翻不出来就保留原文，不显示空白 */
+    out.push(zh);
+  }
+  return out;
+}
+async function mangaRun(){
+  if(!_mangaFiles.length){ toast("先选漫画图片"); return; }
+  const src = document.getElementById("mangaSrc")?.value || "eng";
+  const dst = document.getElementById("mangaDst")?.value || "zh";
+  mangaProgress("正在加载识别引擎…");
+  let T;
+  try{ T = await ensureTesseract(); }
+  catch(e){ mangaProgress(""); toast("识别引擎加载失败，请检查网络后重试"); return; }
+  _mangaResult = [];
+  for(let i = 0; i < _mangaFiles.length; i++){
+    mangaProgress(`识别第 ${i+1}/${_mangaFiles.length} 页…（首次用 ${src} 需下载语言包）`);
+    const url = URL.createObjectURL(_mangaFiles[i]);
+    try{
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = ()=>res(im); im.onerror = rej; im.src = url; });
+      const { data } = await T.recognize(img, src, { logger: m => { if(m.status === "recognizing text") mangaProgress(`第 ${i+1} 页识别中 ${Math.round(m.progress*100)}%`); } });
+      const W = img.naturalWidth, H = img.naturalHeight;
+      const blocks = (data.blocks || []).map(b => ({
+        text: (b.text || "").replace(/\s+/g, " ").trim(),
+        x: b.bbox.x0 / W, y: b.bbox.y0 / H,
+        w: Math.max(0.08, (b.bbox.x1 - b.bbox.x0) / W),
+        h: Math.max(0.02, (b.bbox.y1 - b.bbox.y0) / H)
+      })).filter(b => b.text.length > 0);
+      const texts = blocks.map(b => b.text);
+      mangaProgress(`翻译第 ${i+1} 页…`);
+      const tr = await mangaTranslateTexts(texts, dst);
+      blocks.forEach((b, k) => { b.zh = tr[k]; });
+      _mangaResult[i] = { url, blocks };
+    }catch(e){
+      _mangaResult[i] = { url, blocks: [] };
+      console.warn("识别失败", e);
+    }
+  }
+  mangaProgress("");
+  renderMangaPages();
+  const total = _mangaResult.reduce((a, r) => a + (r.blocks.length || 0), 0);
+  toast("完成：识别 " + total + " 段文字");
+}
+
+/* ================= AI 三个页面 ================= */
+function aiLogEl(id){ return document.getElementById(id); }
+function aiPush(logId, role, text){
+  const log = aiLogEl(logId); if(!log) return;
+  const d = document.createElement("div");
+  d.className = "ai-msg " + role;
+  d.textContent = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+function aiThinking(logId){
+  const log = aiLogEl(logId); if(!log) return null;
+  const d = document.createElement("div");
+  d.className = "ai-msg ai"; d.textContent = "思考中…";
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+  return d;
+}
+let _bcHistory = [];
+function bcBookName(){ const el = document.getElementById("bcBook"); if(el) el.textContent = "当前书：" + (curBook ? (curBook.t || curBook.id) : "（先打开一本书）"); }
+function bcClear(){ _bcHistory = []; const l = aiLogEl("bcLog"); if(l) l.innerHTML = ""; }
+async function bcAsk(q){
+  const question = q || (document.getElementById("bcInput")?.value || "").trim();
+  if(!question) return;
+  bcBookName();
+  aiPush("bcLog", "me", question);
+  const inp = document.getElementById("bcInput"); if(inp) inp.value = "";
+  const tip = aiThinking("bcLog");
+  let ctx = "";
+  try{
+    const sents = curBook ? getSents(curBook.id) : [];
+    const from = (fullMode && fullCache[curBook.id]) ? fullCache[curBook.id].chapters[fullMode.chap].start : 0;
+    ctx = sents.slice(from, from + 40).map(x => x.en).filter(Boolean).join(" ");
+  }catch(e){}
+  const out = window.LZ_AI ? await window.LZ_AI.chatAboutBook(question, ctx, _bcHistory) : null;
+  if(tip) tip.remove();
+  if(out){ aiPush("bcLog", "ai", out); _bcHistory.push({ role:"user", content: question }, { role:"assistant", content: out }); }
+  else aiPush("bcLog", "ai", "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY）");
+}
+const TUTOR_SCENES = [["点餐","咖啡馆点单"],["机场","机场值机"],["面试","求职面试"],["问路","街头问路"],["租房","看房租房"],["闲聊","日常闲聊"]];
+let _tuHistory = [], _tuScene = "点餐";
+function renderTutorScenes(){
+  const host = document.getElementById("tutorScenes"); if(!host) return;
+  host.innerHTML = TUTOR_SCENES.map(([k, d]) =>
+    `<button class="chip ${_tuScene===k?'on':''}" onclick="_tuScene='${k}';renderTutorScenes();tuStart()">${k}<span class="tip" style="margin-left:6px">${escHtml(d)}</span></button>`).join("");
+}
+async function tuStart(){
+  _tuHistory = [];
+  const l = aiLogEl("tuLog"); if(l) l.innerHTML = "";
+  aiPush("tuLog", "me", "（进入场景：" + _tuScene + "）");
+  const tip = aiThinking("tuLog");
+  const out = window.LZ_AI ? await window.LZ_AI.chatTutor(_tuScene, [{ role:"user", content:"我们开始" }], activeLang()) : null;
+  if(tip) tip.remove();
+  if(out){ aiPush("tuLog", "ai", out); _tuHistory.push({ role:"assistant", content: out }); }
+  else aiPush("tuLog", "ai", "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY）");
+}
+async function tuSend(){
+  const inp = document.getElementById("tuInput");
+  const text = (inp?.value || "").trim();
+  if(!text) return;
+  aiPush("tuLog", "me", text);
+  if(inp) inp.value = "";
+  _tuHistory.push({ role:"user", content: text });
+  const tip = aiThinking("tuLog");
+  const out = window.LZ_AI ? await window.LZ_AI.chatTutor(_tuScene, _tuHistory, activeLang()) : null;
+  if(tip) tip.remove();
+  if(out){ aiPush("tuLog", "ai", out); _tuHistory.push({ role:"assistant", content: out }); }
+  else aiPush("tuLog", "ai", "（AI 未启用）");
+}
+const SERIAL_GENRES = ["悬疑","奇幻","冒险","科幻","爱情","校园"];
+const SERIAL_LEVELS = ["A2","B1","B2","C1","C2"];
+let _serial = { genre:"悬疑", level:"B1", chapters:[], summary:"" };
+function renderSerialControls(){
+  const g = document.getElementById("serialGenres");
+  const lv = document.getElementById("serialLevels");
+  if(g) g.innerHTML = SERIAL_GENRES.map(k => `<button class="chip ${_serial.genre===k?'on':''}" onclick="_serial.genre='${k}';renderSerialControls()">${k}</button>`).join("");
+  if(lv) lv.innerHTML = SERIAL_LEVELS.map(k => `<button class="chip ${_serial.level===k?'on':''}" onclick="_serial.level='${k}';renderSerialControls()">${k}</button>`).join("");
+  const box = document.getElementById("serialBox");
+  if(box) box.innerHTML = _serial.chapters.map((c, i) =>
+    `<div class="serial-ch"><div class="serial-h">第 ${i+1} 章</div><div class="serial-t">${escHtml(c)}</div></div>`).join("") || `<div class="empty-notes">还没有章节，点「写下一章」开始。</div>`;
+  const tip = document.getElementById("serialTip");
+  if(tip) tip.textContent = _serial.chapters.length ? ("已生成 " + _serial.chapters.length + " 章") : "—";
+}
+async function serialNewChapter(){
+  const tip = document.getElementById("serialTip");
+  if(tip) tip.textContent = "正在写…";
+  const out = window.LZ_AI ? await window.LZ_AI.writeChapter(_serial.genre, _serial.level, _serial.summary, _serial.chapters.length + 1) : null;
+  if(!out){ if(tip) tip.textContent = "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY）"; return; }
+  _serial.chapters.push(out);
+  _serial.summary = out.slice(0, 400);
+  renderSerialControls();
+  if(tip) tip.textContent = "已生成 " + _serial.chapters.length + " 章";
+}
+function serialReset(){ _serial = { genre:_serial.genre, level:_serial.level, chapters:[], summary:"" }; renderSerialControls(); }
 
 /* ================= 三栏笔记（A1） ================= */
 function notesAll(){
@@ -4664,6 +5095,10 @@ function go(name){
   if(name==="video") renderSubList();
   if(name==="wordquest"){ renderWqWrong(); wqHud(); }
   if(name==="notes") renderNotes();
+  if(name==="bookchat") bcBookName();
+  if(name==="tutor"){ renderTutorScenes(); if(!_tuHistory.length) tuStart(); }
+  if(name==="serial") renderSerialControls();
+  if(name==="manga") mangaFillSelects();
   if(name==="browser"){
     const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
     /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
@@ -5195,6 +5630,7 @@ function renderRecs(){
   }).join("");
 }
 function renderLibrary(){
+  setTimeout(()=>{ try{ renderFavStrip(); }catch(e){} try{ updateFilterDot(); }catch(e){} }, 0);
   renderLangChips();
   renderFilterSummary();
   if(document.getElementById("filterDrawer") && document.getElementById("filterDrawer").style.display !== "none"){
@@ -5973,6 +6409,26 @@ function scrollToSent(sentIdx){
   const node = document.querySelector(`#view-reader .sent[data-si="${sentIdx}"]`);
   if(node){ node.scrollIntoView({block:"center", behavior:"smooth"}); }
 }
+/* 章节目录弹层 */
+function openChapPicker(){
+  if(!curBook || !fullCache[curBook.id]) return;
+  const chs = fullCache[curBook.id].chapters;
+  let el = document.getElementById("chapPicker");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "chapPicker"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box" style="max-height:76vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font:600 16px var(--serif)">目录 · 共 ${chs.length} 章</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('chapPicker').style.display='none'">✕</button>
+    </div>
+    <div class="chap-list">
+      ${chs.map((c, i) => `<div class="chap-item ${i===fullMode.chap?'on':''}" onclick="document.getElementById('chapPicker').style.display='none';jumpChapter(${i})">
+        <span class="chap-no">${i+1}</span><span class="chap-name">${escHtml(c.t || ("第 " + (i+1) + " 章"))}</span>
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
 function jumpChapter(n){
   if(!fullMode) return;
   saveProgressNow();
@@ -6182,7 +6638,7 @@ function openReader(id){
         <span class="tip" id="mtQuota" style="display:inline;margin:0">${isPro()?"会员 · 不限量":"免费版今日剩 "+freeQuotaLeft()+" 句"}</span>`}
         <span class="tip" id="mtChapStat" style="display:inline;margin:0">${translated}/${total} 句已有译文</span>
         <button class="btn ghost small" id="zhToggle" onclick="toggleZh()">${store.showzh?"中文对照：开":"中文对照：关"}</button>
-        <button class="btn ghost small" onclick="toggleMode()">${store.mode==="para"?"整段排版":store.mode==="page"?"翻页书":"逐句对照"}</button>
+        <button class="btn ghost small" onclick="toggleMode()">阅读方式：${store.mode==="para"?"整段":store.mode==="page"?"翻页书":"逐句"} ▾</button>
         <button class="btn ghost small" onclick="toggleDecompose()">${decomposeOn?"🧩 拆解当前句：开":"🧩 拆解当前句：关"}</button>
         <button class="btn ghost small" id="listenBtn" onclick="listenToggle()">🎧 听书</button>
         <button class="btn ghost small" onclick="downloadBook('${id}')">📶 离线本书</button>
@@ -6217,6 +6673,10 @@ function openReader(id){
         <span class="tip" style="display:inline;margin:0;margin-left:8px">背景：</span>${bgDots}</div>
       <p class="tip">点击任意英文单词：立即弹出「本句语境义 + 平时常用义 + 英英释义」，可朗读、标记颜色、收入生词本、直接练句子拼装。</p>`}
       ${html}
+      ${isFull ? `<div class="rd-endnav">
+        <button class="btn ghost" onclick="jumpChapter(${fullMode.chap-1})" ${fullMode.chap===0?"disabled":""}>← 上一章</button>
+        <button class="btn" onclick="jumpChapter(${fullMode.chap+1})" ${fullMode.chap===fullCache[id].chapters.length-1?"disabled":""}>下一章 →</button>
+      </div>` : ""}
       ${isFull ? `<div class="rd-foot" id="rdFoot">
         <span id="rdFootLeft">—</span>
         <div class="prog"><i id="rdFootBar" style="width:0%"></i></div>
@@ -6224,6 +6684,18 @@ function openReader(id){
       </div>` : ""}
     </div>`;
   go("reader");
+  /* 底部固定章导航：随时能翻下一章 */
+  try{
+    let bar = document.getElementById("chapBar");
+    if(isFull){
+      if(!bar){ bar = document.createElement("div"); bar.id = "chapBar"; bar.className = "chap-bar"; document.body.appendChild(bar); }
+      const total = fullCache[id].chapters.length;
+      bar.innerHTML = `<button class="btn ghost small" onclick="jumpChapter(${fullMode.chap-1})" ${fullMode.chap===0?"disabled":""}>← 上一章</button>
+        <button class="chap-mid" onclick="openChapPicker()">第 ${fullMode.chap+1} / ${total} 章 ▾</button>
+        <button class="btn small" onclick="jumpChapter(${fullMode.chap+1})" ${fullMode.chap===total-1?"disabled":""}>下一章 →</button>`;
+      bar.style.display = "flex";
+    } else if(bar){ bar.style.display = "none"; }
+  }catch(e){}
   setTimeout(()=>{ try{ bindLongPressTranslate(); }catch(e){} }, 0);
   if(isFull){
     try{
@@ -6561,7 +7033,11 @@ function renderPageMode(sents, rng, wordSpans, zhBlock){
     return `<div class="sent" data-si="${i}" id="sent-${i}"><div class="en" onclick="wordClick(event)">${wordSpans(s, i)}</div>
       ${store.showzh !== false ? `<div class="zh">${zhBlock("i"+i, [s])}</div>` : ""}</div>`;
   }).join("");
+  const _cid = (curBook && curBook.id) || "";
+  const chapTitle = (fullMode && fullCache[_cid] && fullCache[_cid].chapters[fullMode.chap])
+    ? (fullCache[_cid].chapters[fullMode.chap].t || "") : "";
   return `<div class="page-mode">
+    ${(readLayout() === "original" && chapTitle) ? `<div class="page-chap-title">${escHtml(chapTitle)}</div>` : ""}
     ${body}
     <div class="page-nav">
       <button class="btn ghost small" onclick="gotoPage(${page-1})" ${page===0?"disabled":""}>← 上一页</button>

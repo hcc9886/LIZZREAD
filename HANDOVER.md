@@ -1,6 +1,6 @@
 # LIZZREAD 项目交接文档
 
-> 最后更新：2026-11-25（第 3 版）· 版本 2.1.0
+> 最后更新：2026-11-26（第 5 版）· 版本 2.1.0 · **AI 已接入**
 > 给下一个 AI / 开发者：先读这份，再动手。所有"已完成/未完成/要问用户"都在这里。
 
 ---
@@ -11,6 +11,19 @@
 线上地址：https://hcc9886.github.io/LIZZREAD/
 仓库：https://github.com/hcc9886/LIZZREAD（`main` 分支）
 本地路径：`/Users/hcc/Desktop/LIZZREAD`
+
+---
+
+## 0.1 🔑 AI 已接入
+
+| 项 | 值 |
+|---|---|
+| 服务商 | **智谱 GLM-4-Flash（完全免费）** |
+| Key 位置 | **只在服务端环境变量 `ZHIPU_API_KEY`**，前端拿不到 |
+| 代理接口 | `POST /api/ai/chat`（server.js） |
+| 前端能力 | `ai.js` → `window.LZ_AI`（9 个方法） |
+| 启动 | `ZHIPU_API_KEY="xxx" PORT=8765 node server.js` |
+| 静态站 | 探测失败自动回退本地生成，不报错 |
 
 ---
 
@@ -140,6 +153,14 @@ echo "$(wc -c < /tmp/l.html) vs $(wc -c < index.html)"   # 两个数字必须相
 - [x] 内置浏览器（Google/百度/Bing 搜索 + 网址 + 点词翻译开关 + **提取正文精读** + 可内嵌站点入口）
 - [x] **整页翻译**（同源 iframe 注入逐词标注 + 段落译文 + 页面内工具条；跨域走正文提取）
 - [x] 导航栏重构：6 个一级 + 「更多」折叠分组（解决会员菜单点不到）
+- [x] **AI 词卡解析 / 与书对话 / AI 陪读 / AI 原创连载**
+- [x] **章导航移到底部**（底部固定条 + 目录弹层）
+- [x] **收藏图书**（书架顶部收藏条 + 阅读器星标）
+- [x] **主界面瘦身** + **翻书/版式解耦**
+- [x] **恶意跳转防护**
+- [x] **生词三态筛选 / 朗读逐句高亮 / 同根词族**
+- [x] **整页翻译**（同源注入逐词 + 段落译文）
+- [x] **三栏笔记**
 - [x] **A6 生词复习三态筛选**（没练过 / 渐熟 / 记牢，点词直达词卡）
 - [x] **A3 朗读逐句高亮**（连读本章，当前句高亮 + 自动滚动 + 底部进度条）
 - [x] **A2 同根词族**（词根 + 前后缀推断 + 真实同族词，可点开）
@@ -180,13 +201,14 @@ echo "$(wc -c < /tmp/l.html) vs $(wc -c < index.html)"   # 两个数字必须相
 
 | # | 功能 | 备注 |
 |---|---|---|
-| B1 | 与书对话（AI 答整本书的问题） | |
-| B2 | AI 原创连载（悬疑/奇幻/冒险/科幻/爱情/校园） | 用户已确认题材 |
-| B3 | AI 陪读 + 情景对话 + 剧情对话 | 用户要语音 + 打字两种 |
-| B4 | 自定义 AI 老师人设（"培训自己的陪读朋友"） | |
-| B5 | AI 批改写作 | |
-| B6 | AI 定制新闻（选领域/长度/难度） | |
-| B7 | 点词卡里的「AI 解析」段 | 现在是本地生成 |
+| ~~B1~~ | ~~与书对话~~ | ✅ 已完成 `bcAsk()` |
+| ~~B2~~ | ~~AI 原创连载~~ | ✅ 已完成 `serialNewChapter()` |
+| ~~B3~~ | ~~AI 陪读（打字版）~~ | ✅ 已完成；**语音版未做** |
+| ~~B7~~ | ~~词卡 AI 解析~~ | ✅ 已完成 `requestAiExplain()` |
+| B4 | 自定义 AI 老师人设 | `ai.js` 改 system prompt，约 30 分钟 |
+| B5 | AI 批改写作 | `LZ_AI.reviewWriting()` 已写好，只差界面 |
+| B6 | AI 定制新闻 | `LZ_AI.makeNews()` 已写好，只差界面 |
+| B8 | AI 生词故事（替换模板版） | `LZ_AI.storyFromWords()` 已写好，接线即可 |
 
 **推荐服务**：智谱 GLM-4-Flash（完全免费无限量）> 硅基流动（送 ¥14）> DeepSeek（送试用金）
 **注册**：https://open.bigmodel.cn/ → 控制台 → API Key
@@ -306,6 +328,10 @@ echo "$(wc -c < /tmp/l.html) vs $(wc -c < index.html)"   # 两个数字必须相
 | **`offlineTranslate()` 只认整句** | 传一段话进去返回空 | 它只查 `LZ_OFFTR` 的整句键；短语要先 `offlineWordHint()` 或走 `mtTo()` |
 | **`dictEntry()` 依赖当前语言**（第二遍） | 打怪词书队列为空 | 直接查 `window.LIZ_DICT` |
 | **GitHub secret scanning** | HANDOVER 里写明文 token 推送被 422 拦 | 任何 tracked 文件都不能出现 `ghp_` 开头的串 |
+| **用 REST API 建 commit 导致分叉** | 本地 git fetch 拿不到 API 建的 commit，之后每次 push 都 rejected | **推送只能用 git 协议**。API 只能在 git 完全推不动时临时用，且之后要 `git reset --hard origin/main` |
+| **rebase 到 API 提交会全冲突** | 37 个 commit 全部冲突 | API 提交与本地提交没有共同祖先。正确做法：reset 到 origin/main，把改动重新应用一遍 |
+| **CSS 块混进 JS** | `node --check` 报 `Unexpected token '.'` | 用 python 插样式时误插到 `<script>` 里。改完必须跑语法检查 |
+| **`readerToolExtras()` 里写 `${id}`** | 阅读器全挂 `id is not defined` | 该函数无参数，只能用 `curBook`。**同类错误已发生 3 次** |
 | **`readerToolExtras()` 引用了 `openReader` 的局部变量** | 整个阅读器报 `isFull is not defined`，三种阅读模式全挂 | 已修：改用 `curBook` + `fullCache[curBook.id]`。**以后往阅读器模板里加东西，只能访问全局变量** |
 | **朗读高亮找不到句子** | 翻页模式下 DOM 里只有 20 句，但队列里是全书下标 | 已修：按 `[data-si]` 在当前 DOM 里就近定位 |
 
@@ -421,3 +447,49 @@ const PLAN_DEF = {
 ---
 
 **文档结束。有任何不确定的，先跑一遍第 7 节的测试，再动代码。**
+
+
+---
+
+## 12. 📌 2026-11-26 推送问题与解决方案（第 5 版补充）
+
+### 12.1 现象
+
+- 本地有 5 个 commit 推不到 GitHub
+- git 协议：`Permission to hcc9886/LIZZREAD.git denied to hcc9886` (403)
+- REST API：`Resource not accessible by personal access token` (403)
+- 用户新建的两个 fine-grained PAT 都是**只读**（`Contents: Read-only`），仓库级 `permissions.push:true` 只是账号身份，不代表 token 有写权限
+
+### 12.2 一次性解决方案（推荐给用户）
+
+```bash
+# 在一个空目录里，从本地 git daemon 取代码（本地已有 clean 历史）
+git clone git://127.0.0.1:9418/ lizzread-fix
+cd lizzread-fix
+git remote set-url origin https://github.com/hcc9886/LIZZREAD.git
+git push --force-with-lease origin main
+```
+
+取完后可以 `Ctrl+C` 停掉 daemon（`kill %1` 或 `pkill -f "git daemon"`）。
+
+### 12.3 如果要继续用 token
+
+fine-grained PAT 必须勾选：
+- **Repository permissions → Contents: Read and write**（不是 Read-only）
+- 可选：Workflow: Read and write（推 `.github/workflows` 需要）
+
+classic PAT 勾选 `repo` 即可（旧的那个就是 classic，但被用户吊销了）。
+
+### 12.4 之后所有改动都记在这里
+
+本轮（第 5 版）代码已全部在本地 `2520f6a8`，包含：
+- 新图标（黑底墨绿 `^^` + `v` 懵脸，含眨眼版）
+- 章导航移到底部 + 目录弹层
+- 收藏图书 + 书架收藏条
+- 主界面瘦身
+- 翻书/版式解耦
+- 恶意跳转防护
+- AI：词卡解析 / 与书对话 / AI 陪读 / AI 原创连载
+- 生词三态筛选 / 朗读逐句高亮 / 同根词族 / 整页翻译
+
+**下一个 AI 接手时，第一件事是确认这 5 个 commit 已经在远端。**

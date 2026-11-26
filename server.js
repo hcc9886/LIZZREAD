@@ -607,6 +607,44 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* /api/ai/chat —— AI 代理（智谱 GLM-4-Flash，免费）
+     Key 只放在服务端环境变量 ZHIPU_API_KEY，前端拿不到。 */
+  if(u.pathname === '/api/ai/chat' && req.method === 'POST'){
+    const key = process.env.ZHIPU_API_KEY || '';
+    if(!key){ sendJSON(res, 200, { ok:false, configured:false, message:'服务端未配置 ZHIPU_API_KEY' }); return; }
+    let body = '';
+    try{
+      body = await new Promise(resolve => {
+        let t = '';
+        req.on('data', c => { t += c; if(t.length > 2e5){ req.destroy(); resolve(t); } });
+        req.on('end', () => resolve(t));
+        req.on('error', () => resolve(t));
+      });
+      const j = JSON.parse(body || '{}');
+      const messages = Array.isArray(j.messages) ? j.messages.slice(-12) : [];
+      if(!messages.length) throw new Error('messages 为空');
+      const r = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: j.model || 'glm-4-flash',
+          messages,
+          temperature: typeof j.temperature === 'number' ? j.temperature : 0.7,
+          max_tokens: Math.min(Number(j.max_tokens) || 800, 2000)
+        }),
+        signal: AbortSignal.timeout(60000)
+      });
+      const t = await r.text();
+      let out = null; try{ out = JSON.parse(t); }catch(e){ out = null; }
+      if(!r.ok){ sendJSON(res, 200, { ok:false, configured:true, message:(out && out.error && out.error.message) || ('HTTP ' + r.status) }); return; }
+      const text = out && out.choices && out.choices[0] && out.choices[0].message ? out.choices[0].message.content : '';
+      sendJSON(res, 200, { ok:true, configured:true, text, usage:(out && out.usage) || null });
+    }catch(e){
+      sendJSON(res, 200, { ok:false, configured:true, message: e.message || String(e) });
+    }
+    return;
+  }
+
   /* /api/version —— 客户端版本与更新提示（App 内“检查更新”与强制升级用）
      版本信息来自 data/app-version.json（build-app.sh 每次构建自动写入） */
   if(u.pathname === '/api/version'){

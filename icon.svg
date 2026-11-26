@@ -1,38 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  
   <defs>
-    <radialGradient id="aur" cx="36%" cy="24%" r="86%">
-      <stop offset="0%"  stop-color="#8CFFCF"/>
-      <stop offset="38%" stop-color="#2ED695"/>
-      <stop offset="100%" stop-color="#0A6247"/>
-    </radialGradient>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#E7FFF4"/>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6FC49A"/>
+      <stop offset="100%" stop-color="#4E9E76"/>
     </linearGradient>
-    <radialGradient id="blush" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FF9FB8" stop-opacity=".75"/>
-      <stop offset="100%" stop-color="#FF9FB8" stop-opacity="0"/>
-    </radialGradient>
   </defs>
-  <rect x="0" y="0" width="512" height="512" rx="120.32" fill="url(#aur)"/>
-  
-    <ellipse cx="123.8528" cy="363.0848" rx="43.2896" ry="23.69536" fill="url(#blush)"/>
-    <ellipse cx="388.1472" cy="363.0848" rx="43.2896" ry="23.69536" fill="url(#blush)"/>
-  
-    <path d="M 112.46079999999999 260.5568
-            Q 135.427072 279.9232 176.256 283.3408
-            Q 217.084928 279.9232 240.0512 260.5568
-            L 183.273472 173.9776
-            Q 176.256 169.7056 169.238528 173.9776
-            Z" fill="url(#face)"/>
-    <path d="M 271.9488 260.5568
-            Q 294.915072 279.9232 335.744 283.3408
-            Q 376.57292800000005 279.9232 399.53920000000005 260.5568
-            L 342.761472 173.9776
-            Q 335.744 169.7056 328.72652800000003 173.9776
-            Z"  fill="url(#face)"/>
-  <path d="M 212.16358400000001 326.6304 L 212.16358400000001 415.488 L 296.464384 415.488"
-               stroke="#F4FFFA" stroke-width="32.80896" fill="none"
-               stroke-linecap="round" stroke-linejoin="round" opacity=".96"/>
+  <rect x="0" y="0" width="512" height="512" rx="120.32" fill="#0B0B0B"/>
+  <path d="M 96.42240000000001 256 L 155.8272 193.1008 L 215.232 256" stroke="url(#ink)" stroke-width="45.660160000000005" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 296.768 256 L 356.1728 193.1008 L 415.5776 256"  stroke="url(#ink)" stroke-width="45.660160000000005" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 196.5952 318.8992 L 256 377.1392 L 315.4048 318.8992" stroke="url(#ink)" stroke-width="39.267737600000004" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
