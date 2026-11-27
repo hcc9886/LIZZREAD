@@ -33,3 +33,11 @@ dict.js.v4.original
 .screenshots/
 store/screenshots/
 store/huawei/assets/
+
+
+# 环境变量与密钥（永不入库）
+.env
+.env.*
+!.env.example
+*.key
+secrets/

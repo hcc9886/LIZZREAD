@@ -3025,14 +3025,26 @@ async function requestAiExplain(word){
 function renderRichWordCard(word, low){
   const def = document.getElementById("shDef");
   if(!def) return;
-  const G = (typeof _getDictEntry === "function") ? _getDictEntry(low) : null;
+  const _lang = (typeof activeLang === "function") ? activeLang() : "en";
+  const _isEn = (_lang === "en");
+  /* 非英语：英文词典查不到，用「离线释义 / 已缓存机翻」当作释义行 */
+  const G = _isEn
+    ? ((typeof _getDictEntry === "function") ? _getDictEntry(low) : null)
+    : (function(){
+        const zh = (typeof _zhCache !== "undefined" && _zhCache[low]) || "";
+        const off = (()=>{ try{ return offlineWordHint(low, showLang()) || ""; }catch(e){ return ""; } })();
+        const txt = zh || off;
+        if(!txt) return null;
+        const pos = /^(n\.|v\.|adj\.|adv\.|prep\.|conj\.|pron\.|num\.)/.exec(txt);
+        return [pos ? pos[1] : "", pos ? txt.slice(pos[1].length).trim() : txt];
+      })();
   const groups = G ? parseSenses(G[1]) : [];
   const cached = _zhCache[low] || "";
   const exs = findExamples(low, 3);
   const cols = findCollocations(low);
-  const phon = (_dictCache[low] && _dictCache[low].phon) || approxPhonetic(low);
+  const phon = _isEn ? ((_dictCache[low] && _dictCache[low].phon) || approxPhonetic(low)) : "";
   const allSenses = groups.flatMap(g => g.senses);
-  const mnemo = mnemoOf(low, allSenses);
+  const mnemo = _isEn ? mnemoOf(low, allSenses) : "";
 
   const posTag = groups.length ? groups[0].pos : "";
   def.innerHTML = `
@@ -3042,7 +3054,7 @@ function renderRichWordCard(word, low){
     </div>
     ${groups.length ? groups.map(g => `
       <div class="rw-pos-row">
-        <span class="rw-pos">${escHtml(g.pos || posTag)}</span>
+        ${g.pos ? `<span class="rw-pos">${escHtml(g.pos)}</span>` : ""}
         <span class="rw-sense">${g.senses.map(x => escHtml(x)).join("；")}</span>
       </div>`).join("") : (cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "")}
     ${mnemo ? `<div class="rw-block"><b>助记</b><div>${escHtml(mnemo)}</div></div>` : ""}
@@ -3063,7 +3075,7 @@ function renderRichWordCard(word, low){
     })()}
     ${cols.length ? `<div class="rw-block"><b>词组</b>${cols.map(c => `
       <div class="rw-col"><span>${escHtml(c.phrase)}</span><span class="dim">${escHtml(c.zh)}</span></div>`).join("")}</div>` : ""}
-    ${!groups.length && !cached && !exs.length ? `<div class="rw-block dim">本地词典未收录，可在「更多释义」里机翻一次。</div>` : ""}
+    ${!groups.length && !cached && !exs.length ? `<div class="rw-block dim">这一步没取到释义，点下方「更多释义」可再翻一次。</div>` : ""}
   `;
 }
 
@@ -7364,8 +7376,15 @@ async function openFull(id){
       const t = document.getElementById("fullLoadTip");
       if(t) t.textContent = "正在下载完整全文… "+(total? Math.round(g/total*100)+"% ("+(g/1024).toFixed(0)+"KB / "+(total/1024).toFixed(0)+"KB）" : (g/1024).toFixed(0)+"KB");
     });
-    const parsed = parseFull(txt);
-    if(!parsed || parsed.sents.length < 20) throw new Error("正文解析异常（句子太少）");
+    let parsed = parseFull(txt);
+    /* 兜底：解析不出句子时，直接按行/段切分（日语、诗歌、剧本常见） */
+    if(!parsed || !parsed.sents || parsed.sents.length < 5){
+      const fallback = splitSentences(txt).filter(x => x.en && x.en.replace(/\s/g,"").length > 2);
+      if(fallback.length){
+        parsed = { sents: fallback, chapters: [{ t: curBook.t || "正文", start: 0, end: fallback.length }] };
+      }
+    }
+    if(!parsed || !parsed.sents || parsed.sents.length < 3) throw new Error("正文解析异常（句子太少）");
     fullCache[id] = parsed;
     await loadBookTranslations(id, parsed);
     /* 没有阅读记录时跳过只有书名页/目录的卷首，直接进正文第一章 */
@@ -7594,12 +7613,21 @@ function openReader(id){
     return words.some(w => { const f = ws[stemOf(w.toLowerCase())]; return f && (f.st === 0 || f.st === 1); });
   };
   const TOK = TOKEN_RE();
-  const wordSpans = (s,i)=> mixMode() !== "off" ? (s.en||"").replace(TOK, m => {
+  /* 当前语言分词器匹配不到时（例如韩语书里有英文段落），回退到拉丁分词，
+     保证"点词"在任何语言的任何句子里都可用 */
+  const LATIN_RE = /[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]+(?:-[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]+)*/g;
+  const TOK_FOR = (txt) => {
+    const re = new RegExp(TOK.source, "g");
+    re.lastIndex = 0;
+    const has = re.test(txt || "");
+    return has ? TOK : LATIN_RE;
+  };
+  const wordSpans = (s,i)=> mixMode() !== "off" ? (s.en||"").replace(TOK_FOR(s.en||""), m => {
       const g = mixGlossHtml(m);
       return g || `<span class="w" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
     })
     : grammarTagOn() ? grammarSpans(s)
-    : inlineGlossOn() ? wordSpansGloss(s, i) : (s.en||"").replace(TOK, m=>{
+    : inlineGlossOn() ? wordSpansGloss(s, i) : (s.en||"").replace(TOK_FOR(s.en||""), m=>{
     const low = m.toLowerCase();
     const mk = bm.w[i+":"+low];
     const fs = ws[stemOf(low)];
@@ -8274,12 +8302,11 @@ function wordClick(e){
   const localZhDef = d ? `${d[0]} ${d[1]}`
     : (_offHint ? `（离线例句）${_offHint}`
     : (lc === "en" ? "（本地词典未收录，以下为自动生成的参考信息）" : ""));
-  if(localZhDef){
-    /* 富词卡：音标 / 多义项 / 助记 / 例句 / 词组，全部本地生成 */
-    try{ renderRichWordCard(sheetWord, low); }catch(e){ zhEl.textContent = localZhDef; }
+  if(localZhDef || (zhCached && lc !== "en")){
+    /* 富词卡：任何语言都走这里——音标 / 多义项 / 助记 / 例句 / 词组 / 词族 / AI 解析 */
+    try{ renderRichWordCard(sheetWord, low); }
+    catch(e){ zhEl.textContent = localZhDef || zhCached || ""; }
     try{ renderVbButtons(low); }catch(e){}
-  } else if(zhCached && lc !== "en"){
-    zhEl.textContent = zhCached;
   } else {
     zhEl.textContent = "查询中…";
     /* 第一步：打包版先从本机服务取释义（词典 + 机翻一次到位） */
@@ -9172,7 +9199,11 @@ function splitSentences(text){
   const paras = String(text||"").replace(/\r/g,"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
   const out = [];
   for(const p of paras){
-    const parts = p.split(/(?<=[.!?…。！？])\s+/);
+    /* 中日韩：句末标点后直接切（原文没有空格）；
+       拉丁语言：句末标点 + 空白才切，避免把缩写拆开 */
+    const parts = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(p)
+      ? p.split(/(?<=[。！？…!?])\s*/).filter(Boolean)
+      : p.split(/(?<=[.!?…。！？])\s+/);
     for(const s of parts){
       const t = s.trim();
       if(t) out.push({en:t, zh:null});
