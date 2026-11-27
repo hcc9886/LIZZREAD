@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="1000" viewBox="0 0 560 1000">
+  <rect width="560" height="1000" fill="#F7F4EE"/>
+  <g>
+      <rect x="30" y="30" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="30" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#5C6670"/><g stroke="#AEBAC4" stroke-width="3" opacity=".7"><path d="M40 20 l-14 60 M110 10 l-14 60 M180 30 l-14 60 M250 10 l-14 60 M320 25 l-14 60 M390 15 l-14 60"/></g><path d="M0 270 Q120 250 240 270 T430 260 V330 H0Z" fill="#4A545E"/></svg>
+      <rect x="48" y="48" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="82" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">雨の日は</text><text x="280" y="112" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">図書館へ行く。</text>
+    </g>
+<g>
+      <rect x="30" y="270" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="270" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#3B3128"/><g fill="#8A6A44"><rect x="40" y="70" width="26" height="150"/><rect x="74" y="90" width="22" height="130"/><rect x="104" y="60" width="30" height="160"/><rect x="142" y="80" width="24" height="140"/><rect x="174" y="70" width="28" height="150"/><rect x="210" y="95" width="22" height="125"/><rect x="240" y="65" width="26" height="155"/></g></svg>
+      <rect x="48" y="288" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="322" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">古い本の</text><text x="280" y="352" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">匂いがする。</text>
+    </g>
+<g>
+      <rect x="30" y="510" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="510" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#EFE7D8"/><rect x="130" y="50" width="170" height="200" fill="#B8CBD8" stroke="#8A7A60" stroke-width="8"/><path d="M215 50 V250 M130 150 H300" stroke="#8A7A60" stroke-width="6"/></svg>
+      <rect x="48" y="528" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="562" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">窓の外は</text><text x="280" y="592" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">灰色だった。</text>
+    </g>
+<g>
+      <rect x="30" y="750" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="750" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#EEE6D6"/><rect x="130" y="90" width="180" height="150" rx="6" fill="#D8CDB6" stroke="#9A8A70" stroke-width="5"/><path d="M220 90 V240" stroke="#9A8A70" stroke-width="5"/></svg>
+      <rect x="48" y="768" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="802" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">一冊だけ、</text><text x="280" y="832" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">新しい本があった。</text>
+    </g>
+</svg>

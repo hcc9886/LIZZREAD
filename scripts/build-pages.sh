@@ -19,7 +19,7 @@ for f in index.html privacy.html manifest.json sw.js dict.js ai.js \
 done
 
 echo "== 2/5 data / books / sentences =="
-for d in data books sentences vendor; do
+for d in data books sentences vendor manga-samples; do
   [ -d "$d" ] && cp -a "$d" "$OUT"/
 done
 

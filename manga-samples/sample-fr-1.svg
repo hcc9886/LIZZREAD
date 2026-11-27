@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="1000" viewBox="0 0 560 1000">
+  <rect width="560" height="1000" fill="#F7F4EE"/>
+  <g>
+      <rect x="30" y="30" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="30" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#3A4A3A"/><rect x="90" y="60" width="250" height="220" fill="none" stroke="#CFCFCF" stroke-width="8"/><path d="M120 60 V280 M180 60 V280 M240 60 V280 M300 60 V280" stroke="#CFCFCF" stroke-width="5"/></svg>
+      <rect x="48" y="48" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="82" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">La grille etait</text><text x="280" y="112" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">toujours fermee.</text>
+    </g>
+<g>
+      <rect x="30" y="270" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="270" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#2E4A34"/><circle cx="120" cy="200" r="34" fill="#C9566E"/><circle cx="200" cy="160" r="28" fill="#D96A80"/><circle cx="290" cy="210" r="30" fill="#C9566E"/><path d="M0 290 Q120 260 240 290 T430 280 V330 H0Z" fill="#3B5C42"/></svg>
+      <rect x="48" y="288" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="322" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">Mais les roses</text><text x="280" y="352" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">fleurissaient.</text>
+    </g>
+<g>
+      <rect x="30" y="510" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="510" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#EFE7D8"/><rect x="130" y="50" width="170" height="200" fill="#B8CBD8" stroke="#8A7A60" stroke-width="8"/><path d="M215 50 V250 M130 150 H300" stroke="#8A7A60" stroke-width="6"/></svg>
+      <rect x="48" y="528" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="562" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">Elle regardait</text><text x="280" y="592" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">chaque matin.</text>
+    </g>
+<g>
+      <rect x="30" y="750" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="750" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#4A3B2E"/><circle cx="180" cy="170" r="24" fill="none" stroke="#E8C97A" stroke-width="10"/><path d="M204 170 H300 M280 170 V200 M300 170 V196" stroke="#E8C97A" stroke-width="10" fill="none"/></svg>
+      <rect x="48" y="768" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="802" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">Un jour, la cle</text><text x="280" y="832" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">etait sur le mur.</text>
+    </g>
+</svg>

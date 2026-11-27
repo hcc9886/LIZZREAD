@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="1000" viewBox="0 0 560 1000">
+  <rect width="560" height="1000" fill="#F7F4EE"/>
+  <g>
+      <rect x="30" y="30" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="30" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#1B2A3A"/><circle cx="340" cy="70" r="28" fill="#E8E2C8"/><path d="M0 260 Q110 210 220 250 T430 230 V330 H0Z" fill="#25384C"/></svg>
+      <rect x="48" y="48" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="82" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">The wind rose</text><text x="280" y="112" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">over the harbor.</text>
+    </g>
+<g>
+      <rect x="30" y="270" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="270" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#2A2118"/><rect x="190" y="120" width="50" height="120" fill="#3A2E20"/><circle cx="215" cy="105" r="34" fill="#FFD37A"/><circle cx="215" cy="105" r="52" fill="#FFD37A" opacity=".25"/></svg>
+      <rect x="48" y="288" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="322" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">She lit the lamp</text><text x="280" y="352" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">every evening.</text>
+    </g>
+<g>
+      <rect x="30" y="510" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="510" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#20303F"/><path d="M0 250 Q100 230 200 250 T430 240 V330 H0Z" fill="#2C4256"/><path d="M200 90 L200 240 L320 240 Z" fill="#E8E2C8"/></svg>
+      <rect x="48" y="528" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="562" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">No ship passed</text><text x="280" y="592" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">for three days.</text>
+    </g>
+<g>
+      <rect x="30" y="750" width="500" height="220" fill="#fff" stroke="#222" stroke-width="4"/>
+      <svg x="30" y="750" width="500" height="220" viewBox="0 0 430 330" preserveAspectRatio="xMidYMid slice"><rect width="430" height="330" fill="#F3D9B8"/><circle cx="215" cy="250" r="70" fill="#F7B26A"/><path d="M0 270 Q120 250 240 270 T430 260 V330 H0Z" fill="#D9A87C"/></svg>
+      <rect x="48" y="768" width="464" height="84" rx="14" fill="#fff" stroke="#222" stroke-width="3"/>
+      <text x="280" y="802" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">Then, at dawn,</text><text x="280" y="832" text-anchor="middle" font-family="Georgia, 'Hiragino Sans', 'Noto Sans JP', serif" font-size="22" fill="#1A1A1A">a sail appeared.</text>
+    </g>
+</svg>

@@ -36,6 +36,7 @@
 <script src="data/books-pg-multi.js?v=1" defer></script>
 <script src="data/books-pg-multi2.js?v=1" defer></script>
 <script src="data/books-zh-classics.js?v=1" defer></script>
+<script src="data/wq-common.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=1"></script>
@@ -219,6 +220,35 @@
 /* 书签小工具 */
 .bm-row{display:flex;justify-content:center;margin:14px 0}
 .bm-link{display:inline-block;padding:12px 22px;border:2px dashed var(--brand);border-radius:10px;color:var(--brand-deep);font-weight:600;text-decoration:none;background:var(--brand-soft);cursor:grab}
+/* 单词打怪重做 */
+.wq-howto{border:1px dashed var(--border);border-radius:12px;padding:14px 16px;background:var(--surface2);margin:12px 0}
+.wq-howto-h{font:600 14px var(--font);margin-bottom:8px}
+.wq-howto-list{margin:0 0 10px 18px;padding:0;font-size:13px;line-height:1.9;color:var(--text)}
+.wq-howto-list b{color:var(--brand-deep)}
+.wq-src{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.wq-hearts{font-size:15px;letter-spacing:2px;color:#C0392B}
+.wq-monster-box{text-align:center;margin-bottom:10px}
+.wq-monster{font-size:52px;line-height:1;transition:transform .15s}
+.wq-monster.hit{transform:scale(1.35) rotate(-8deg)}
+.wq-hpbar{height:10px;background:var(--surface2);border-radius:99px;overflow:hidden;max-width:280px;margin:8px auto 4px}
+.wq-hpbar i{display:block;height:100%;background:var(--brand);border-radius:99px;transition:width .25s, background .25s}
+.wq-hptext{font-size:11.5px;color:var(--muted)}
+.wq-ask{text-align:center;margin:14px 0 10px}
+.wq-ask-label{font-size:11.5px;color:var(--muted);letter-spacing:.1em}
+.wq-ask-word{font:600 24px/1.3 var(--font);margin:4px 0 2px;word-break:break-word}
+.wq-ask-pos{font-size:12px;color:var(--muted)}
+.wq-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.wq-feedback{text-align:center;font-size:13px;color:var(--muted);margin-top:10px;min-height:20px}
+.wq-reveal{color:var(--brand-deep);font-size:15px;letter-spacing:1px}
+/* 浏览器三条路径卡片 */
+.br-paths{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 14px}
+@media (max-width:700px){ .br-paths{grid-template-columns:1fr} }
+.br-path{border:1px dashed var(--border);border-radius:10px;padding:12px;cursor:pointer;background:var(--surface);transition:.15s}
+.br-path:hover{border-color:var(--brand)}
+.br-path.on{border-style:solid;border-color:var(--brand);background:var(--brand-soft)}
+.br-path-t{font:600 13.5px var(--font);margin-bottom:4px}
+.br-path-d{font-size:12px;color:var(--muted);line-height:1.6}
+.br-paste{margin:10px 0 14px}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1137,7 +1167,7 @@ body.no-zh .sent .zh{display:none}
       <button class="btn small" onclick="rssLoad()">刷新</button>
       <span class="tip" style="margin:0" id="rssStat">—</span>
     </div>
-    <div class="tip" id="rssTip">提示：RSS 需要后端代理（服务端 /api/feed）。静态站会提示"未配置"。也可以用「粘贴正文」把任意文章带进阅读器。</div>
+    <div class="tip" id="rssTip">点「刷新」即可抓取最新内容。抓不到时可以直接用「📖 阅读模式」看官网。</div>
     <div id="rssList" class="rss-list"></div>
   </section>
 
@@ -1157,8 +1187,13 @@ body.no-zh .sent .zh{display:none}
     </div>
     <div class="tip" id="mangaTip">支持 15 种识别语言（英/中简体/中繁体/日/韩/德/法/意/西/荷/葡/希/芬/匈/瑞典）。第一次用某种语言会下载识别包（10–40MB），之后离线可用。</div>
     <div class="vids-help" style="margin:8px 0">
-      <b>没有漫画图？</b> 直接用手机截图、拍的课本页、任何图片都行 —— 会自动识别里面的文字并翻译。
-      <div class="tip" style="margin-top:4px">目标语言可随时切换：中文、英、日、韩、德、法、意、西、荷、葡、希腊、芬、匈、瑞典、拉丁、世界语。</div>
+      <b>想先试试？</b> 点下面任意一页示例漫画（本站自绘，无版权），一秒看到识别 + 翻译效果：
+      <div class="lang-row" style="margin-top:8px;flex-wrap:wrap">
+        <button class="btn small" onclick="mangaSample('en')">🇬🇧 英文示例</button>
+        <button class="btn small" onclick="mangaSample('fr')">🇫🇷 法文示例</button>
+        <button class="btn small" onclick="mangaSample('ja')">🇯🇵 日文示例</button>
+      </div>
+      <div class="tip" style="margin-top:6px">也可以直接用手机截图、拍的课本页、任何图片 —— 会自动识别里面的文字并翻译。</div>
     </div>
     <div id="mangaProgress" class="manga-progress" style="display:none"></div>
     <div id="mangaPages" class="manga-pages"></div>
@@ -1215,34 +1250,66 @@ body.no-zh .sent .zh{display:none}
 
   <!-- ============ 单词打怪闯关 ============ -->
   <section class="view" id="view-wordquest">
-    <h2 class="sec">⚔️ 单词打怪闯关</h2>
-    <div class="sub">挑一组词，边打字边打怪。打对推进、打错扣血，闯关记录进错词本。</div>
-    <div class="lang-row" style="margin:10px 0">
-      <button class="chip on" id="wqSrcHigh" onclick="wqSetSrc('high')">高频词随机 100</button>
-      <button class="chip" id="wqSrcMine" onclick="wqSetSrc('mine')">我的错词本</button>
-      <button class="chip" id="wqSrcVocab" onclick="wqSetSrc('vocab')">我的生词本</button>
-      <button class="chip" id="wqSrcBook" onclick="wqSetSrc('book')">当前这本书</button>
-      <button class="chip" id="wqSrcCET" onclick="wqSetSrc('cet6')">六级词</button>
+    <h2 class="sec">⚔️ 单词打怪</h2>
+    <div class="sub">看到中文，打出对应的外语单词。打对，怪物掉血；打错，你掉血。</div>
+
+    <!-- 规则说明：第一次进来就看得懂 -->
+    <div class="wq-howto" id="wqHowto">
+      <div class="wq-howto-h">怎么玩</div>
+      <ol class="wq-howto-list">
+        <li>挑一组词（默认用你<b>生词本</b>里"学习中"的词，没有生词就自动用高频词）</li>
+        <li>屏幕出现一个<b>中文释义</b>和一只怪，你在输入框打<b>外语单词</b>，按回车</li>
+        <li>打对 → 怪物掉 <b>1 格血</b>，连击 +1；打错 → 你掉 <b>1 颗心</b></li>
+        <li>卡住了点 <b>💡 提示</b>（逐步给出首字母、词长、例句），不扣血</li>
+        <li>打错的词自动进下方<b>错词本</b>，也会回流到复习</li>
+      </ol>
+      <button class="btn ghost small" onclick="document.getElementById('wqHowto').style.display='none';localStorage.setItem('lz_wq_howto','1')">知道了，不再显示</button>
     </div>
+
+    <div class="wq-src">
+      <span class="tip" style="margin:0">词库来源</span>
+      <button class="chip on" data-wqsrc="vocab" onclick="wqSetSrc('vocab')">我的生词本</button>
+      <button class="chip" data-wqsrc="mine" onclick="wqSetSrc('mine')">我的错词本</button>
+      <button class="chip" data-wqsrc="high" onclick="wqSetSrc('high')">高频词（考试词书）</button>
+      <button class="chip" data-wqsrc="book" onclick="wqSetSrc('book')">当前这本书</button>
+      <span class="tip" style="margin:0" id="wqSrcStat"></span>
+    </div>
+
     <div class="wq-hud">
-      <span>❤️ <b id="wqHp">3</b></span>
+      <span class="wq-hearts" id="wqHp">❤❤❤</span>
       <span>🔥 连击 <b id="wqCombo">0</b></span>
-      <span>👾 第 <b id="wqRound">0</b> 波</span>
-      <span>✅ 正确 <b id="wqRight">0</b></span>
-      <button class="btn ghost small" style="margin-left:auto" onclick="wqStart()">开始 / 重开</button>
+      <span>✅ 打对 <b id="wqRight">0</b></span>
+      <span>🎯 第 <b id="wqRound">0</b> 题</span>
+      <button class="btn small" style="margin-left:auto" onclick="wqStart()">开始 / 重开</button>
     </div>
+
     <div id="wqStage" class="wq-stage">
-      <div class="wq-monster">👾</div>
-      <div class="wq-prompt" id="wqPrompt">点「开始」消灭第一只怪</div>
-      <input class="wq-input" id="wqInput" placeholder="在这里输入中文释义对应的英文单词…" onkeydown="if(event.key==='Enter')wqSubmit()" disabled>
-      <div class="lang-row" style="justify-content:center;margin-top:10px">
-        <button class="btn ghost small" onclick="wqHint()">💡 提示首字母</button>
-        <button class="btn ghost small" onclick="wqExample()">📖 看例句</button>
+      <div class="wq-monster-box">
+        <div class="wq-monster" id="wqMonster">👾</div>
+        <div class="wq-hpbar"><i id="wqHpBar" style="width:100%"></i></div>
+        <div class="wq-hptext" id="wqHpText">怪物血量 3/3</div>
       </div>
-      <div class="tip" id="wqTip" style="margin-top:8px">打字模式：看到中文，打出英文单词。错了扣血，连击加分。</div>
+
+      <div class="wq-ask" id="wqAsk">
+        <div class="wq-ask-label">中文释义</div>
+        <div class="wq-ask-word" id="wqPrompt">点右上角「开始」</div>
+        <div class="wq-ask-pos" id="wqPos"></div>
+      </div>
+
+      <input class="wq-input" id="wqInput" placeholder="输入对应的外语单词，按回车提交" onkeydown="if(event.key==='Enter')wqSubmit()" disabled autocomplete="off" autocapitalize="off" spellcheck="false">
+
+      <div class="wq-actions">
+        <button class="btn ghost small" onclick="wqHint()">💡 提示</button>
+        <button class="btn ghost small" onclick="wqExample()">📖 例句</button>
+        <button class="btn ghost small" onclick="wqSkip()">⏭ 跳过（算错）</button>
+      </div>
+
+      <div class="wq-feedback" id="wqTip">准备开始。</div>
     </div>
+
     <div class="settings-card" style="margin-top:14px">
-      <h3>我的错词本 <span class="tip" style="display:inline" id="wqWrongCount"></span></h3>
+      <h3>错词本 <span class="tip" style="display:inline" id="wqWrongCount"></span></h3>
+      <div class="sub">这里是你打错过的词，下次可以选「我的错词本」专门练。</div>
       <div id="wqWrongList" class="wq-wrong"></div>
     </div>
   </section>
@@ -1324,19 +1391,50 @@ body.no-zh .sent .zh{display:none}
       <input class="search br-url" id="brUrl" placeholder="输入网址或搜索内容…" onkeydown="if(event.key==='Enter')brGo()">
       <button class="btn small" onclick="brGo()">打开</button>
     </div>
+    <!-- 三条真正好用的路，按可靠程度排序 -->
+    <div class="br-paths">
+      <div class="br-path on" id="brPathRead" onclick="brPathPick('read')">
+        <div class="br-path-t">📖 阅读模式</div>
+        <div class="br-path-d">输入网址 → 抓正文 → 站内排版<br>点词、翻译、朗读全可用</div>
+      </div>
+      <div class="br-path" id="brPathPaste" onclick="brPathPick('paste')">
+        <div class="br-path-t">📋 粘贴正文</div>
+        <div class="br-path-d">任何文章复制进来就能读<br>最稳，永远不受限制</div>
+      </div>
+      <div class="br-path" id="brPathExt" onclick="brPathPick('ext')">
+        <div class="br-path-t">🔖 书签小工具</div>
+        <div class="br-path-d">在任意网页选中词<br>跳回本站查词</div>
+      </div>
+    </div>
+
+    <!-- 粘贴正文（选「粘贴」时出现） -->
+    <div id="brPasteBox" class="br-paste" style="display:none">
+      <textarea id="brPasteText" class="asm-type-input" placeholder="把网页正文粘贴到这里，然后点下面的按钮…"></textarea>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn small" onclick="brPasteImport()">导入阅读器精读</button>
+        <button class="btn ghost small" onclick="brPasteRead()">在站内排版阅读</button>
+      </div>
+    </div>
+
+    <!-- 书签小工具（选「书签」时出现） -->
+    <div id="brExtBox" class="br-paste" style="display:none">
+      <div class="sub" style="margin:0 0 8px">把下面这个按钮拖到浏览器书签栏。以后在任意网页选中词，点它就跳回这里查词。</div>
+      <div class="bm-row" id="brBmRow"></div>
+      <button class="btn ghost small" onclick="showBookmarklet()">看详细安装说明</button>
+    </div>
+
+    <div class="br-row" style="margin-top:10px">
+      <span class="tip" style="margin:0">快速打开</span>
+      <button class="chip" onclick="brOpenUrl('https://zh.wikipedia.org/wiki/Special:Random')">维基百科随机</button>
+      <button class="chip" onclick="brOpenUrl('https://zh.wikisource.org/wiki/Wikisource:%E9%A6%96%E9%A1%B5')">维基文库</button>
+      <button class="chip" onclick="brOpenUrl('https://www.aozora.gr.jp/')">青空文库</button>
+      <button class="chip" onclick="brOpenUrl('https://gutenberg.pglaf.org/')">Gutenberg</button>
+    </div>
     <div class="br-row">
-      <button class="chip" onclick="brSearch('google')" id="brG">Google</button>
-      <button class="chip" onclick="brSearch('baidu')" id="brB">百度</button>
-      <button class="chip" onclick="brSearch('bing')" id="brN">Bing</button>
+      <button class="btn small" onclick="brReadMode()">📖 用当前网址阅读</button>
+      <button class="btn ghost small" onclick="brOpenNewTab()">在新标签打开</button>
       <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
     </div>
-    <div class="br-row">
-      <button class="btn small" onclick="brReadMode()">📖 阅读模式（推荐）</button>
-      <button class="btn ghost small" onclick="brReadability()">📥 导入阅读器精读</button>
-      <button class="btn ghost small" onclick="brOpenNewTab()">在新标签打开</button>
-      <button class="btn ghost small" onclick="brToggleRaw()">原始网页视图</button>
-    </div>
-    <div class="tip" style="margin:-2px 0 10px">大多数网站禁止被内嵌（BBC/Google/知乎都会拒绝）。<b>阅读模式</b>会把正文抓下来在站内排版，点词、翻译、朗读全部可用。</div>
     <div id="brReadHost" class="br-read-host" style="display:none"></div>
     <div class="br-frame-wrap">
       <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
@@ -4081,17 +4179,55 @@ function rssFill(){
   }
 }
 async function rssFetch(url){
-  /* 先走服务端代理（静态站没有 → 返回未配置） */
+  /* 三条路，全部不依赖自建后端就能跑：
+     ① 同源后端（Cloudflare Worker / Vercel / 本地 server.js）
+     ② r.jina.ai 公开文本代理（浏览器里可直接 fetch，返回 Markdown）
+     ③ allorigins 公开 CORS 代理（返回原始 XML）
+     只有三条都失败才提示。 */
   for(const ep of ["api/feed?url=" + encodeURIComponent(url), "public/api/feed?url=" + encodeURIComponent(url)]){
     try{
-      const r = await fetch(ep, { signal: AbortSignal.timeout(30000) });
+      const r = await fetch(ep, { signal: AbortSignal.timeout(20000) });
       if(!r.ok) continue;
       const j = await r.json();
-      if(j && j.ok && j.xml) return { xml: j.xml };
-      if(j && j.message) return { error: j.message };
+      if(j && j.ok && j.xml) return { xml: j.xml, via: "后端" };
     }catch(e){}
   }
-  return { error: "需要部署后端才可用（静态站没有 RSS 代理）" };
+  /* ② r.jina.ai：返回 Markdown，转成可解析的条目 */
+  try{
+    const r = await fetch("https://r.jina.ai/" + url, { signal: AbortSignal.timeout(35000) });
+    if(r.ok){
+      const t = await r.text();
+      const items = rssFromMarkdown(t);
+      if(items.length) return { json: items, via: "在线代理" };
+    }
+  }catch(e){}
+  /* ③ allorigins：拿原始 XML */
+  try{
+    const r = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url), { signal: AbortSignal.timeout(30000) });
+    if(r.ok){
+      const xml = await r.text();
+      if(/<rss|<feed|<channel/i.test(xml)) return { xml, via: "在线代理" };
+    }
+  }catch(e){}
+  return { error: "这个源暂时抓不到（可能需要登录或被限流）。可以点「📖 阅读模式」直接看官网首页。" };
+}
+/* 从 r.jina.ai 的 Markdown 里抽标题列表 */
+function rssFromMarkdown(t){
+  let body = String(t || "");
+  const cut = body.indexOf("Markdown Content:");
+  if(cut >= 0) body = body.slice(cut + 17);
+  body = body.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+  const out = [];
+  const re = /\[([^\]\n]{20,140})\]\((https?:\/\/[^)\s]+)\)/g;
+  let m;
+  while((m = re.exec(body)) && out.length < 30){
+    const title = m[1].replace(/[*_`#!]/g, "").trim();
+    if(/^(Home|News|Subscribe|Sign in|Log in|Menu|Search|Skip|Image)/i.test(title)) continue;
+    if(title.length < 22) continue;
+    if(!/^[A-Z0-9"“'《]/.test(title)) continue;
+    out.push({ title, link: m[2], date: "", desc: "" });
+  }
+  return out;
 }
 function rssParse(xml){
   try{
@@ -4114,9 +4250,15 @@ async function rssLoad(){
   if(!url || !host) return;
   host.innerHTML = `<div class="sub">加载中…</div>`;
   const res = await rssFetch(url);
-  if(res.error){ host.innerHTML = `<div class="empty-notes">${escHtml(res.error)}</div>`; if(stat) stat.textContent = "失败"; return; }
-  _rssItems = rssParse(res.xml);
-  if(stat) stat.textContent = _rssItems.length + " 条";
+  if(res.error){
+    host.innerHTML = `<div class="empty-notes">${escHtml(res.error)}<br><br>
+      <button class="btn ghost small" onclick="pressReadMode('${escAttr(url)}','外刊')">📖 阅读模式</button>
+      <button class="btn ghost small" onclick="go('press')">← 换一个源</button></div>`;
+    if(stat) stat.textContent = "失败";
+    return;
+  }
+  _rssItems = res.json ? res.json : rssParse(res.xml);
+  if(stat) stat.textContent = _rssItems.length + " 条" + (res.via ? "（" + res.via + "）" : "");
   host.innerHTML = _rssItems.length ? _rssItems.map((it, i) => `
     <div class="rss-item">
       <div class="rss-t" onclick="rssRead(${i})">${escHtml(it.title)}</div>
@@ -4167,6 +4309,31 @@ function mangaFillSelects(){
   if(s && !s.options.length) s.innerHTML = MANGA_OCR_LANGS.map(([k, n]) => `<option value="${k}" ${k==="eng"?"selected":""}>${n}</option>`).join("");
   if(d && !d.options.length) d.innerHTML = MANGA_TARGETS.map(([k, n]) => `<option value="${k}" ${k===(activeLang()||"zh")?"selected":""}>${n}</option>`).join("");
 }
+/* 加载内置示例漫画（本站自绘、无版权） */
+async function mangaSample(lang){
+  const map = { en: "sample-en-1.png", fr: "sample-fr-1.png", ja: "sample-ja-1.png" };
+  const srcMap = { en: "eng", fr: "fra", ja: "jpn" };
+  const f = map[lang] || map.en;
+  try{
+    const r = await fetch("manga-samples/" + f + "?v=2", { signal: AbortSignal.timeout(20000), cache: "force-cache" });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    const file = new File([blob], f, { type: "image/png" });
+    _mangaFiles = [file];
+    const srcSel = document.getElementById("mangaSrc");
+    if(srcSel) srcSel.value = srcMap[lang] || "eng";
+    const dstSel = document.getElementById("mangaDst");
+    if(dstSel && lang !== "ja") dstSel.value = "zh";
+    if(dstSel && lang === "ja") dstSel.value = "zh";
+    renderMangaPages();
+    const tip = document.getElementById("mangaTip");
+    if(tip) tip.textContent = "已加载示例漫画，点「开始识别与翻译」看效果";
+    toast("示例漫画已加载");
+  }catch(e){
+    toast("示例图加载失败：" + (e.message || e));
+  }
+}
+
 function mangaLoad(input){
   _mangaFiles = [...(input.files || [])];
   renderMangaPages();
@@ -4243,12 +4410,44 @@ async function mangaRun(){
       const img = await new Promise((res, rej) => { const im = new Image(); im.onload = ()=>res(im); im.onerror = rej; im.src = url; });
       const { data } = await T.recognize(img, src, { logger: m => { if(m.status === "recognizing text") mangaProgress(`第 ${i+1} 页识别中 ${Math.round(m.progress*100)}%`); } });
       const W = img.naturalWidth, H = img.naturalHeight;
-      const blocks = (data.blocks || []).map(b => ({
-        text: (b.text || "").replace(/\s+/g, " ").trim(),
-        x: b.bbox.x0 / W, y: b.bbox.y0 / H,
-        w: Math.max(0.08, (b.bbox.x1 - b.bbox.x0) / W),
-        h: Math.max(0.02, (b.bbox.y1 - b.bbox.y0) / H)
-      })).filter(b => b.text.length > 0);
+      /* 按行识别 → 再按纵向间距聚成"对话气泡"。
+         直接用 paragraphs/blocks 会把相邻气泡粘成一段，按行聚类更准。 */
+      const lines = (data.lines || []).map(l => {
+        const t = (l.text || "").replace(/\s+/g, " ").trim();
+        const conf = typeof l.confidence === "number" ? l.confidence : 100;
+        return { t, conf, x0: l.bbox.x0, y0: l.bbox.y0, x1: l.bbox.x1, y1: l.bbox.y1 };
+      }).filter(l => {
+        if(!l.t) return false;
+        if(l.conf < 55) return false;                       /* 低置信度当噪声 */
+        const letters = (l.t.match(/[A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g) || []).length;
+        if(letters < 2) return false;                        /* "—_—" 这类装饰线丢掉 */
+        if(letters / l.t.length < 0.45) return false;
+        return true;
+      });
+      /* 纵向聚类：行间距 < 1.8 倍行高就算同一个气泡 */
+      const groups = [];
+      for(const l of lines){
+        const last = groups[groups.length - 1];
+        const lh = Math.max(10, l.y1 - l.y0);
+        if(last){
+          const prev = last[last.length - 1];
+          const gap = l.y0 - prev.y1;
+          if(gap < lh * 1.8 && Math.abs(l.x0 - prev.x0) < W * 0.35){
+            last.push(l); continue;
+          }
+        }
+        groups.push([l]);
+      }
+      const blocks = groups.map(g => {
+        const x0 = Math.min(...g.map(l => l.x0)), y0 = Math.min(...g.map(l => l.y0));
+        const x1 = Math.max(...g.map(l => l.x1)), y1 = Math.max(...g.map(l => l.y1));
+        return {
+          text: g.map(l => l.t).join(" "),
+          x: x0 / W, y: y0 / H,
+          w: Math.max(0.08, (x1 - x0) / W),
+          h: Math.max(0.02, (y1 - y0) / H)
+        };
+      }).filter(b => b.text.length > 0);
       const texts = blocks.map(b => b.text);
       mangaProgress(`翻译第 ${i+1} 页…`);
       const tr = await mangaTranslateTexts(texts, dst);
@@ -4590,14 +4789,13 @@ function noteEdit(i, field, val){ const list = notesAll(); if(list[i]){ list[i][
 function noteDel(i){ const list = notesAll(); list.splice(i, 1); notesSave(list); }
 
 /* ================= 单词打怪闯关 ================= */
-const WQ = { hp:3, combo:0, right:0, round:0, queue:[], cur:null, src:"high", running:false };
+const WQ = { hp:3, combo:0, right:0, round:0, queue:[], cur:null, src:"vocab", running:false };
 function wqSetSrc(src){
   WQ.src = src;
-  const map = { high:"High", mine:"Mine", vocab:"Vocab", book:"Book", cet6:"CET" };
-  for(const [k, id] of Object.entries(map)){
-    const el = document.getElementById("wqSrc" + id);
-    if(el) el.classList.toggle("on", k === src);
-  }
+  wqSyncSrcChips();
+  const n = wqPickQueue().length;
+  const st = document.getElementById("wqSrcStat");
+  if(st) st.textContent = n ? "这组有 " + n + " 个可练的词" : "这组暂时没有可练的词";
 }
 function wqWrongBook(){
   try{ return JSON.parse(localStorage.getItem(pk("wq_wrong")) || "[]"); }catch(e){ return []; }
@@ -4629,7 +4827,32 @@ function wqPracticeOne(w){
   const d = dictEntry(w);
   WQ.queue = [{ w, zh: d ? String(d[1]).split(/[,，;；]/)[0] : w }];
   WQ.hp = 3; WQ.combo = 0; WQ.right = 0; WQ.round = 0; WQ.running = true;
+  WQ.mMax = 3; WQ.mHp = 3; WQ.kills = 0;
   wqNext();
+}
+/* 是否是"适合出题"的词：纯字母 3-16 位、有干净中文释义、不是缩写/词缀 */
+/* 专名/学科/屈折形式的标记词：命中就排除。
+   注意要拿「原始释义」判断——像「阿拉德（罗马尼亚西部城市）」清洗掉括号后
+   只剩「阿拉德」，就看不出是地名了。 */
+const WQ_BAD_GLOSS = /城市|地名|人名|姓氏|地区|村落|州|省|郡|镇|村|岛|河|湖|山|港|共和国|王国|帝国|大学|公司|企业|集团|品牌|商标|电影|书名|歌曲|乐队|球队|缩写|简称|前缀|后缀|复数|过去式|过去分词|现在分词|比较级|最高级|化学|元素|矿物|植物|动物|科属|医学|解剖|药|军事|导弹|代码|货币|计|医|化|律|农|机|电/;
+function wqIsGoodWord(w, zh){
+  const word = String(w || "");
+  if(!/^[a-z]{3,16}$/.test(word)) return false;
+  const raw = String(zh || "");
+  if(WQ_BAD_GLOSS.test(raw)) return false;       /* 先看原始释义（能抓到括号里的线索） */
+  const g = wqCleanGloss(raw);
+  if(!g) return false;
+  if(!/[\u4e00-\u9fff]/.test(g)) return false;
+  if(/[a-zA-Z]{3,}/.test(g)) return false;      /* 释义里还有英文长串 */
+  if(g.length > 12) return false;                /* 释义太长不适合做题干 */
+  if(g.length < 1) return false;
+  if(/^(的|地|得|了|着)$/.test(g)) return false;
+  return true;
+}
+function wqSyncSrcChips(){
+  document.querySelectorAll("[data-wqsrc]").forEach(b => {
+    b.classList.toggle("on", b.dataset.wqsrc === WQ.src);
+  });
 }
 function wqPickQueue(){
   let pool = [];
@@ -4662,26 +4885,53 @@ function wqPickQueue(){
       if(zh && /[\u4e00-\u9fff]/.test(zh) && !/[a-zA-Z]{2,}/.test(zh)) pool.push({ w, zh });
     }
   } else if(WQ.src === "vocab"){
-    pool = (store.vocab || []).slice(0, 100).map(v => {
-      const d = dictEntry(String(v.w || "").toLowerCase());
-      return { w: v.w, zh: d ? String(d[1]).split(/[,，;；]/)[0] : (v.zh || "") };
-    });
+    pool = (store.vocab || []).slice(0, 200).map(v => {
+      const w = String(v.w || "").toLowerCase();
+      const d = dictEntry(w);
+      return { w, zh: d ? String(d[1]).split(/[,，;；]/)[0] : (v.zh || "") };
+    }).filter(x => wqIsGoodWord(x.w, x.zh));
   } else {
-    /* 高频词：从词库按词长 4–8 随机抽 100 个 */
-    const G = window.LIZ_DICT || {};
-    const keys = Object.keys(G).filter(k => /^[a-z]{4,8}$/.test(k));
-    for(let i = 0; i < 100 && keys.length; i++){
-      const k = keys.splice(Math.floor(Math.random() * keys.length), 1)[0];
-      const e = G[k] || [];
-      const zh = String(e[1] || "").split(/[,，;；]/)[0];
-      if(zh && !/[a-zA-Z]/.test(zh)) pool.push({ w: k, zh });
+    /* 高频词：用 data/wq-common.js —— 从内置英文书正文统计出来的 300 个真实高频词，
+       释义已清洗过（不会有 cogon / alco / arad 这种词）。 */
+    const common = window.LZ_WQ_COMMON || [];
+    for(const x of common){
+      if(!x || !x.w) continue;
+      if(wqIsGoodWord(x.w, x.zh)) pool.push({ w: x.w, zh: x.zh });
+    }
+    /* 词表没加载时的兜底：用考试词书（也过滤一遍） */
+    if(!pool.length){
+      const G = window.LIZ_DICT || {};
+      const books = VOCAB_BOOKS() || {};
+      const seenB = new Set();
+      for(const k of ["cet4","cet6","kaoyan","ielts","toefl"]){
+        for(const w of (books[k] || [])){
+          const low = String(w || "").toLowerCase();
+          if(seenB.has(low)) continue;
+          seenB.add(low);
+          const e = G[low]; if(!e) continue;
+          const rawZh = String(e[1] || "");
+          if(wqIsGoodWord(low, rawZh)) pool.push({ w: low, zh: rawZh.split(/[,，;；]/)[0] });
+          if(pool.length >= 300) break;
+        }
+        if(pool.length >= 300) break;
+      }
     }
   }
-  pool = pool.filter(x => x.w && x.zh && /[\u4e00-\u9fff]/.test(x.zh));
+  /* 统一过滤：只留真实可出题的词 */
+  pool = pool.filter(x => x.w && wqIsGoodWord(x.w, x.zh));
+  /* 去重（同一来源可能重复） */
+  const seenW = new Set();
+  pool = pool.filter(x => { const k = String(x.w).toLowerCase(); if(seenW.has(k)) return false; seenW.add(k); return true; });
   return pool.sort(() => Math.random() - 0.5).slice(0, 100);
 }
 function wqStart(){
   WQ.queue = wqPickQueue();
+  /* 生词本空 → 自动回退到考试词书，并明确告诉用户 */
+  if(!WQ.queue.length && WQ.src === "vocab"){
+    WQ.src = "high"; wqSyncSrcChips();
+    WQ.queue = wqPickQueue();
+    toast("生词本还没词，已自动切到「高频词（考试词书）」");
+  }
   if(!WQ.queue.length){ toast("这一组没有可练的词，换个来源试试"); return; }
   WQ.hp = 3; WQ.combo = 0; WQ.right = 0; WQ.round = 0; WQ.running = true;
   wqHud(); wqNext();
@@ -4689,10 +4939,13 @@ function wqStart(){
 }
 function wqHud(){
   const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
-  set("wqHp", "❤️".repeat(Math.max(0, WQ.hp)) || "0");
+  const hp = Math.max(0, WQ.hp);
+  set("wqHp", "❤".repeat(hp) + "♡".repeat(Math.max(0, 3 - hp)));
   set("wqCombo", WQ.combo);
   set("wqRound", WQ.round);
   set("wqRight", WQ.right);
+  const st = document.getElementById("wqSrcStat");
+  if(st) st.textContent = WQ.queue.length ? "还剩 " + WQ.queue.length + " 个词" : "";
 }
 function wqNext(){
   if(WQ.hp <= 0){
@@ -4709,18 +4962,70 @@ function wqNext(){
     return;
   }
   WQ.cur = WQ.queue.shift();
-  WQ.round++;
+  WQ.round++; WQ.hintLv = 0;
   const p = document.getElementById("wqPrompt");
-  if(p) p.innerHTML = `<span class="wq-zh">${escHtml(WQ.cur.zh)}</span>`;
+  if(p) p.textContent = wqCleanGloss(WQ.cur.zh) || "（无释义）";
+  const pos = document.getElementById("wqPos");
+  if(pos){
+    const d = (typeof _getDictEntry === "function") ? _getDictEntry(String(WQ.cur.w).toLowerCase()) : null;
+    pos.textContent = (d && d[0]) ? String(d[0]) : "";
+  }
   const inp = document.getElementById("wqInput");
   if(inp){ inp.disabled = false; inp.value = ""; inp.focus(); }
+  wqMood("👾");
   wqHud();
+  wqMonsterHp();
+  const tip = document.getElementById("wqTip");
+  if(tip) tip.textContent = "打出对应的单词，按回车。卡住就点「💡 提示」。";
+}
+/* 清洗释义：去掉 [计] [医] [法] 之类学科标记与多余括号 */
+function wqCleanGloss(zh){
+  let t = String(zh || "");
+  /* 去掉词性前缀（词性已经单独显示在题干了） */
+  t = t.replace(/^\s*(n|v|vt|vi|adj|adv|prep|conj|pron|num|art|int|aux|abbr)\.\s*/i, "");
+  t = t.replace(/\[[^\]]{1,4}\]/g, "").replace(/【[^】]{1,6}】/g, "");
+  t = t.replace(/\([^)]{0,6}\)/g, "").replace(/（[^）]{0,6}）/g, "");
+  t = t.replace(/^[\s:：\-—·]+/, "").replace(/[\s:：\-—·]+$/, "");
+  return t.trim();
+}
+/* 更新怪物血条 */
+function wqMonsterHp(){
+  const bar = document.getElementById("wqHpBar");
+  const txt = document.getElementById("wqHpText");
+  const max = WQ.mMax || 3;
+  const left = Math.max(0, WQ.mHp == null ? max : WQ.mHp);
+  if(bar) bar.style.width = (left / max * 100) + "%";
+  if(bar) bar.style.background = left <= 1 ? "#C0392B" : left === 2 ? "#E0A100" : "var(--brand)";
+  if(txt) txt.textContent = "本只怪物 " + left + "/" + max + " 血 · 你的心 " + Math.max(0, WQ.hp) + "/3";
+}
+/* 怪物表情随状态变化 */
+function wqMood(face){
+  const m = document.getElementById("wqMonster");
+  if(!m) return;
+  m.textContent = face;
+  m.classList.remove("hit","heal");
+  if(face === "💥") m.classList.add("hit");
 }
 function wqHint(){
   if(!WQ.cur) return;
   const tip = document.getElementById("wqTip");
-  const w = WQ.cur.w;
-  if(tip) tip.innerHTML = `首字母：<b>${escHtml(w[0])}</b>… 共 ${w.length} 个字母`;
+  const w = String(WQ.cur.w);
+  WQ.hintLv = (WQ.hintLv || 0) + 1;
+  if(WQ.hintLv === 1){
+    if(tip) tip.innerHTML = `💡 首字母 <b>${escHtml(w[0].toUpperCase())}</b>，共 <b>${w.length}</b> 个字母`;
+  } else if(WQ.hintLv === 2){
+    const shown = w.slice(0, Math.max(2, Math.ceil(w.length / 2)));
+    const rest = w.length - shown.length;
+    if(tip) tip.innerHTML = `💡 <b>${escHtml(shown)}</b>${"·".repeat(rest)}（还剩 ${rest} 个字母）`;
+  } else {
+    if(tip) tip.innerHTML = `💡 完整答案：<b class="wq-reveal">${escHtml(w)}</b>（这一次不算打对，下次再来）`;
+  }
+}
+function wqSkip(){
+  if(!WQ.cur || !WQ.running) return;
+  const inp = document.getElementById("wqInput");
+  if(inp) inp.value = "__skip__";
+  wqSubmit();
 }
 function wqExample(){
   if(!WQ.cur) return;
@@ -4737,10 +5042,19 @@ function wqSubmit(){
   if(!inp || !WQ.cur) return;
   const got = inp.value.trim().toLowerCase();
   if(!got) return;
-  const want = WQ.cur.w.toLowerCase();
-  const monster = document.querySelector(".wq-monster");
+  const want = String(WQ.cur.w).toLowerCase();
+  const monster = document.getElementById("wqMonster");
   if(got === want){
     WQ.right++; WQ.combo++;
+    WQ.mHp = (WQ.mHp == null ? 3 : WQ.mHp) - 1;
+    if(WQ.mHp <= 0){
+      WQ.kills = (WQ.kills || 0) + 1;
+      wqMood("💀");
+      const tipK = document.getElementById("wqTip");
+      if(tipK) tipK.innerHTML = `🎉 <b>击杀！</b>第 ${WQ.kills} 只怪倒下。下一只上场。`;
+      setTimeout(()=>{ WQ.mHp = WQ.mMax = 3; wqMonsterHp(); }, 420);
+    }
+    wqMonsterHp();
     if(monster){ monster.textContent = "💥"; monster.classList.add("hit"); setTimeout(()=>{ monster.textContent = "👾"; monster.classList.remove("hit"); }, 260); }
     toast("✅ 打中！" + want + " +" + WQ.combo + (WQ.combo >= 5 ? " 🔥连击加成" : ""));
     const st = document.getElementById("wqStage");
@@ -5322,6 +5636,56 @@ function brLoad(url){
     }
   }, 6000);
 }
+/* ================= 浏览器三条路径 ================= */
+let _brPathMode = "read";
+function brPathPick(m){
+  _brPathMode = m;
+  ["read","paste","ext"].forEach(k => {
+    const el = document.getElementById("brPath" + k[0].toUpperCase() + k.slice(1));
+    if(el) el.classList.toggle("on", k === m);
+  });
+  const pb = document.getElementById("brPasteBox");
+  const eb = document.getElementById("brExtBox");
+  if(pb) pb.style.display = m === "paste" ? "block" : "none";
+  if(eb) eb.style.display = m === "ext" ? "block" : "none";
+  if(m === "ext") brFillBookmarklet();
+  if(m === "paste"){
+    const ta = document.getElementById("brPasteText");
+    if(ta){ ta.focus(); brTryClipboard(); }
+  }
+}
+async function brTryClipboard(){
+  try{
+    if(!navigator.clipboard || !navigator.clipboard.readText) return;
+    const t = (await navigator.clipboard.readText() || "").trim();
+    const ta = document.getElementById("brPasteText");
+    if(ta && t.length > 40 && !ta.value) ta.value = t;
+  }catch(e){ /* 用户没授权就手动粘贴 */ }
+}
+function brFillBookmarklet(){
+  const row = document.getElementById("brBmRow");
+  if(!row || row.dataset.done) return;
+  const code = bookmarkletCode();
+  row.innerHTML = `<a class="bm-link" href="${escAttr(code)}" onclick="event.preventDefault();toast('请把这个按钮拖到书签栏')">📖 查词 LIZZREAD</a>`;
+  row.dataset.done = "1";
+}
+function brPasteImport(){
+  const t = (document.getElementById("brPasteText")?.value || "").trim();
+  if(t.length < 20){ toast("先粘贴一段正文"); return; }
+  const title = t.split(/\n/).map(x => x.trim()).filter(Boolean)[0].slice(0, 30) || "粘贴的网页";
+  importTextAsBook(t, title);
+}
+function brPasteRead(){
+  const t = (document.getElementById("brPasteText")?.value || "").trim();
+  if(t.length < 20){ toast("先粘贴一段正文"); return; }
+  _brText = t;
+  _brTitle = "粘贴的网页";
+  const frame = document.getElementById("brFrame");
+  if(frame) frame.style.display = "none";
+  renderBrRead();
+  toast("已排版，点任意词可查义");
+}
+
 /* 统一入口：任何地方想"在站内看一个网址"都走这里 → 阅读模式，绝不塞 iframe */
 function brOpenUrl(url){
   go('browser');
