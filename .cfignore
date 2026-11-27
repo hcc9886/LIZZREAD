@@ -1,0 +1,8 @@
+# Cloudflare Pages 构建时排除的大文件（保持站点体积可控）
+android/
+.sdk/
+dist-web/
+node_modules/
+www/
+*.apk
+*.aab
