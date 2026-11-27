@@ -199,6 +199,17 @@
 .sub-overlay{position:absolute;left:0;right:0;bottom:8px;padding:8px 12px;pointer-events:none;text-align:center}
 .sub-line{display:inline-block;padding:3px 10px;border-radius:5px;background:rgba(0,0,0,.72);color:#fff;font-size:15px;line-height:1.5;margin:2px auto;max-width:96%}
 .sub-line.trans{color:#B9F3D6}
+.degrade-card{border:1px dashed var(--border);border-radius:12px;padding:18px 16px;text-align:center;background:var(--surface2);margin:12px 0}
+.dg-icon{font-size:22px;margin-bottom:6px}
+.dg-title{font:600 14.5px var(--font);margin-bottom:6px}
+.dg-desc{font-size:13px;color:var(--muted);line-height:1.7;max-width:520px;margin:0 auto 14px}
+.dg-acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+/* 阅读器三视图 */
+.rd-view{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.sent-tr{font-size:.82em;color:var(--muted);line-height:1.7;margin-top:2px;padding-left:2px;border-left:2px solid var(--border)}
+.rv-immersive .zh{display:none}
+.rv-bilingual .zh{display:none}
+.rv-wordwise .igl{display:inline-flex !important;font-size:.62em;vertical-align:super;color:var(--brand-deep);margin:0 2px 0 0}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -3196,6 +3207,28 @@ try{
   }
 }catch(e){}
 
+/* ================= 统一降级卡片（不暴露技术报错） ================= */
+function degradeCard(opts){
+  const o = Object.assign({ icon:"", title:"", desc:"", main:{label:"", fn:""}, sub:{label:"", fn:""} }, opts || {});
+  return `<div class="degrade-card">
+    <div class="dg-icon">${o.icon || "⚡"}</div>
+    <div class="dg-title">${escHtml(o.title)}</div>
+    <div class="dg-desc">${escHtml(o.desc)}</div>
+    <div class="dg-acts">
+      ${o.main && o.main.label ? `<button class="btn small" onclick="${o.main.fn || 'void 0'}">${escHtml(o.main.label)}</button>` : ""}
+      ${o.sub && o.sub.label ? `<button class="btn ghost small" onclick="${o.sub.fn || 'void 0'}">${escHtml(o.sub.label)}</button>` : ""}
+    </div>
+  </div>`;
+}
+function degradeNet(){
+  return degradeCard({
+    icon:"📡", title:"网络暂时不通",
+    desc:"已内置全文、本地词典与离线翻译包，断网也能读书和查词。需要联网的部分会自动跳过。",
+    main:{ label:"继续离线阅读", fn:"void 0" }, sub:{ label:"" }
+  });
+}
+function closeDepDegrade(){ document.querySelectorAll(".degrade-card-wrap").forEach(n => n.remove()); }
+
 /* ================= 收藏系统（内置 + 导入，ID 命名空间隔离） =================
    存储：localStorage["lz_fav_v2"] = [{ id, type:"builtin"|"import", at }]
    - 内置书 id 用 book.id（如 pg84 / pg343）
@@ -3653,14 +3686,22 @@ function readLayout(){ try{ return localStorage.getItem(pk("read_layout")) || "o
 function setReadLayout(v){
   try{ localStorage.setItem(pk("read_layout"), v); }catch(e){}
   applyReadLayout();
+  /* 只重绘正文，不重建整个阅读器（重建会丢滚动位置与展开状态） */
+  try{
+    if(curBook){
+      const wrap = document.querySelector("#view-reader .rd-body") || document.querySelector("#view-reader .reader");
+      if(wrap) openReader(curBook.id);
+    }
+  }catch(e){}
   toast("排版：" + ((READ_LAYOUTS[v] || {}).name || v));
-  try{ if(curBook) openReader(curBook.id); }catch(e){}
 }
 function applyReadLayout(){
   const v = readLayout();
   const root = document.documentElement;
-  root.classList.remove("rl-original","rl-simple","rl-compact","rl-wide");
+  /* 先清掉所有可能的 rl-* 类，避免 rl-paper rl-ebook rl-doc 叠加 */
+  [...root.classList].forEach(c => { if(/^rl-/.test(c)) root.classList.remove(c); });
   root.classList.add("rl-" + v);
+  root.setAttribute("data-layout", v);
 }
 
 /* ================= 长难句精讲（本地规则拆解） ================= */
@@ -3734,7 +3775,7 @@ function openGrammarSheet(){
 }
 /* 阅读器工具栏加入排版与精讲入口 */
 function readerToolExtras(){
-  return `<div class="rd-layout">
+  return `${viewSwitcherHTML()}<div class="rd-layout">
     <span class="tip" style="margin:0">排版</span>
     ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
@@ -3749,6 +3790,37 @@ function readerToolExtras(){
     <button class="btn ghost small" onclick="webSearch(prompt('搜索什么？')||'')">🔍 网页搜索</button>
     <button class="btn ghost small" onclick="webSearch(sheetWord||'')">🔍 搜索</button>
     <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
+  </div>`;
+}
+
+/* ================= 阅读器三视图：沉浸 / 双语对照 / Word Wise ================= */
+function readView(){
+  try{ return localStorage.getItem(pk("read_view")) || "immersive"; }catch(e){ return "immersive"; }
+}
+function setReadView(v){
+  try{ localStorage.setItem(pk("read_view"), v); }catch(e){}
+  applyReadView();
+  if(curBook){ try{ openReader(curBook.id); }catch(e){} }
+  const names = { immersive:"沉浸模式", bilingual:"双语对照", wordwise:"Word Wise 行间释义" };
+  toast("视图：" + (names[v] || v));
+}
+function applyReadView(){
+  const v = readView();
+  const root = document.documentElement;
+  [...root.classList].forEach(c => { if(/^rv-/.test(c)) root.classList.remove(c); });
+  root.classList.add("rv-" + v);
+  /* 视图与既有开关联动，避免两套逻辑打架 */
+  try{
+    /* Word Wise 视图 = 行间释义开；其它视图关（写 pref，不调用换状态的 toggle） */
+    setPref("inline_gloss", v === "wordwise" ? "1" : "0");
+  }catch(e){}
+}
+function viewSwitcherHTML(){
+  const v = readView();
+  return `<div class="rd-view">
+    <span class="tip" style="margin:0">视图</span>
+    ${[["immersive","沉浸"],["bilingual","双语对照"],["wordwise","Word Wise"]].map(([k,n]) =>
+      `<button class="chip ${v===k?'on':''}" onclick="setReadView('${k}')">${n}</button>`).join("")}
   </div>`;
 }
 
@@ -4279,7 +4351,7 @@ async function tuStart(){
   const out = window.LZ_AI ? await window.LZ_AI.chatTutor(_tuScene, [{ role:"user", content:"我们开始" }], activeLang()) : null;
   if(tip) tip.remove();
   if(out){ aiPush("tuLog", "ai", out); _tuHistory.push({ role:"assistant", content: out }); }
-  else aiPush("tuLog", "ai", "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY）");
+  else aiPush("tuLog", "ai", "本地陪读：先把你想说的句子打出来，我会用本地词典给你逐词解析。\n（要开启 AI 对话，在设置里填入自己的 Key）");
 }
 async function tuSend(){
   const inp = document.getElementById("tuInput");
@@ -4292,7 +4364,7 @@ async function tuSend(){
   const out = window.LZ_AI ? await window.LZ_AI.chatTutor(_tuScene, _tuHistory, activeLang()) : null;
   if(tip) tip.remove();
   if(out){ aiPush("tuLog", "ai", out); _tuHistory.push({ role:"assistant", content: out }); }
-  else aiPush("tuLog", "ai", "（AI 未启用）");
+  else aiPush("tuLog", "ai", "本地解析：这句话里的每个词都能点开词卡看释义与例句。");
 }
 const SERIAL_GENRES = ["悬疑","奇幻","冒险","科幻","爱情","校园"];
 const SERIAL_LEVELS = ["A2","B1","B2","C1","C2"];
@@ -4312,7 +4384,7 @@ async function serialNewChapter(){
   const tip = document.getElementById("serialTip");
   if(tip) tip.textContent = "正在写…";
   const out = window.LZ_AI ? await window.LZ_AI.writeChapter(_serial.genre, _serial.level, _serial.summary, _serial.chapters.length + 1) : null;
-  if(!out){ if(tip) tip.textContent = "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY）"; return; }
+  if(!out){ serialLocalChapter(); return; }
   _serial.chapters.push(out);
   _serial.summary = out.slice(0, 400);
   renderSerialControls();
@@ -4328,6 +4400,29 @@ function serialSpeak(){
   const t = _serial.chapters[_serial.chapters.length - 1];
   try{ speakText(t.slice(0, 1200)); }catch(e){ toast("朗读不可用"); }
 }
+/* 无 API 时的本地模板连载 */
+function serialLocalChapter(){
+  const words = [...new Set((store.vocab||[]).map(v=>String(v.w||"").toLowerCase()).filter(w=>w.length>2))].slice(0,8);
+  const T = {
+    "悬疑":"那天晚上，书店关门后，他在最里层的书架上发现了一本没有作者的书。",
+    "奇幻":"城门外的雾一直没散。传说雾里有一座只在雨天出现的城。",
+    "冒险":"地图上的最后一个标记，是一片没有人回来的海域。",
+    "科幻":"第七次醒来时，他发现自己还记得前六次。",
+    "爱情":"她每周三都坐在同一个位置，点同一杯咖啡，看同一本书。",
+    "校园":"新学期的第一节课，教室后排多了一张没人见过的桌子。"
+  };
+  const head = T[_serial.genre] || T["悬疑"];
+  const woven = words.length ? words.join("、") : "几个还没学会的词";
+  const body = head + "\n\n（本地模板 · 第 " + (_serial.chapters.length + 1) + " 章）\n\n这一章会带你把 " + woven +
+    " 这些词用起来。先把它们各造一句：\n\n" + words.map((w,i) => (i+1) + ". " + w + " —— __________").join("\n") +
+    "\n\n把写好的句子贴进「三栏笔记」的「我的产出」，就能变成复习卡。\n\n（要生成真正的原创故事，在设置里填入 AI Key 即可。）";
+  _serial.chapters.push(body);
+  _serial.summary = body.slice(0, 300);
+  renderSerialControls();
+  const tip = document.getElementById("serialTip");
+  if(tip) tip.textContent = "本地模板已生成 " + _serial.chapters.length + " 章";
+}
+
 function serialReset(){ _serial = { genre:_serial.genre, level:_serial.level, chapters:[], summary:"" }; renderSerialControls(); }
 
 /* ================= 三栏笔记（A1） ================= */
@@ -7582,6 +7677,8 @@ function getBookMarks(id){
 function saveMarks(m){ store.marks = m; }
 
 function openReader(id){
+  try{ applyReadLayout(); }catch(e){}
+  try{ applyReadView(); }catch(e){}
   if(!fullCache[id] && store.imports.some(x=>x.id===id)){
     document.getElementById("view-reader").innerHTML = `<div class="reader"><p class="tip">正在从 IndexedDB 载入导入书…</p></div>`;
     ensureImportLoaded(id).then(ok=>{ if(ok) openReader(id); else alert("导入书数据丢失，请重新导入。"); });
@@ -7622,7 +7719,9 @@ function openReader(id){
     const has = re.test(txt || "");
     return has ? TOK : LATIN_RE;
   };
-  const wordSpans = (s,i)=> mixMode() !== "off" ? (s.en||"").replace(TOK_FOR(s.en||""), m => {
+  const _ww = (typeof readView === "function" && readView() === "wordwise");
+  const wordSpans = (s,i)=> (_ww || inlineGlossOn()) ? wordSpansGloss(s, i)
+    : mixMode() !== "off" ? (s.en||"").replace(TOK_FOR(s.en||""), m => {
       const g = mixGlossHtml(m);
       return g || `<span class="w" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`;
     })
@@ -7665,7 +7764,9 @@ function openReader(id){
       const sm = bm.s[i] ? (" sm"+bm.s[i]) : "";
       return `<div class="sent${sm}${rawFormatOn() ? " rawfmt" : ""}" data-si="${i}" id="sent-${i}">
         <div class="en" onclick="wordClick(event)">${en}</div>
-        <div class="zh">${zhBlock("i"+i, [s])}</div>
+        ${readView() === "bilingual"
+          ? `<div class="sent-tr" onclick="event.stopPropagation()">${s.zh ? escHtml(s.zh) : `<button class="btn ghost small" onclick="mtOnce('i${i}')">🌐 翻译这句</button><span id="mtout-i${i}"></span>`}</div>`
+          : `<div class="zh">${zhBlock("i"+i, [s])}</div>`}
         <div class="tools">
           <button class="btn ghost small" onclick="speak(${i})">🔊 读这句</button>
           ${needsPractice(s, i) ? `<button class="btn ghost small" onclick="practiceSentence('${id}',${i})">🧩 拆解本句</button>` : ""}
