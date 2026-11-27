@@ -123,6 +123,76 @@
 .press-head:hover{border-color:var(--brand);background:var(--brand-soft)}
 .press-head-t{font:600 14px var(--font);line-height:1.5}
 .press-head-a{font-size:12px;color:var(--brand-deep);margin-top:4px}
+/* ============ 极简设计系统（主页重构） ============ */
+:root{--accent:#1F6F4A;--line:#E6E8E6}
+.home-hero{padding:34px 0 22px;border-bottom:1px dashed var(--line)}
+.home-hero-kicker{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.home-hero-title{font:600 30px/1.25 var(--serif);margin:0 0 8px;letter-spacing:-.01em}
+.home-hero-sub{font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.7}
+.home-hero-cta{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn-hero{min-height:48px;padding:0 26px;font-size:15px;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:8px}
+.btn-hero:hover{filter:brightness(1.08)}
+.home-sections{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:0 0 26px;border-bottom:1px dashed var(--line)}
+@media (max-width:760px){ .home-sections{grid-template-columns:1fr} }
+.home-sec{display:block;padding:20px 18px 20px 0;text-decoration:none;color:inherit;border-right:1px dashed var(--line);transition:opacity .15s}
+.home-sec:last-child{border-right:none}
+.home-sec:hover{opacity:.72}
+@media (max-width:760px){ .home-sec{border-right:none;border-bottom:1px dashed var(--line);padding:16px 0} }
+.home-sec-t{font:600 13px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.home-sec-d{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.home-sec-a{font-size:12.5px;color:var(--text)}
+
+/* 收藏按钮 */
+.book{position:relative}
+.book-fav{position:absolute;top:6px;right:6px;z-index:2;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:#8a8a8a;font-size:15px;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.book-fav.fav-on{color:#E0A100}
+.btn.fav-on{color:#E0A100;border-color:#E0A100}
+.nav-count{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;font-size:11px;border-radius:8px;background:var(--accent);color:#fff;text-align:center}
+
+/* 收藏页 */
+.fav-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0 16px;padding-bottom:12px;border-bottom:1px dashed var(--line)}
+.fav-tabs{display:flex;gap:6px}
+.seg{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer}
+.seg.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.seg-n{font-size:11.5px;color:var(--muted);margin-left:4px}
+.fav-search{flex:1;min-width:180px;min-height:36px;border:1px solid var(--line);border-radius:6px;padding:0 12px;background:transparent;color:var(--text);font-size:13.5px}
+.fav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.fav-item{display:flex;gap:12px;padding:12px;border:1px dashed var(--line);border-radius:10px}
+.fav-item-cover img{width:112px;height:160px;object-fit:cover;border-radius:6px;display:block;cursor:pointer}
+.fav-item-body{flex:1;min-width:0;display:flex;flex-direction:column}
+.fav-item-t{font:600 14px var(--font);line-height:1.4;cursor:pointer;margin-bottom:4px}
+.fav-item-src{font-size:11.5px;color:var(--muted);margin-bottom:auto}
+.fav-item-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+/* 我的导入 */
+.imp-list{display:grid;gap:10px}
+.imp-item{display:flex;gap:12px;align-items:center;padding:12px;border:1px dashed var(--line);border-radius:10px}
+.imp-item img{width:56px;height:80px;object-fit:cover;border-radius:5px}
+.imp-main{flex:1;min-width:0}
+.imp-t{font:600 14px var(--font)}
+.imp-s{font-size:12px;color:var(--muted);margin-top:3px}
+.imp-acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* 空状态（统一带动作） */
+.empty-state{grid-column:1/-1;text-align:center;padding:36px 16px;border:1px dashed var(--line);border-radius:12px}
+.empty-t{font:600 15px var(--font);margin-bottom:6px}
+.empty-s{font-size:13px;color:var(--muted);margin-bottom:16px}
+.empty-acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* 撤销提示 */
+.undo-toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:9500;
+  display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:10px;background:#222;color:#fff;font-size:13px;transition:.2s}
+.undo-toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.undo-btn{background:none;border:none;color:#7CF7C4;font-weight:600;cursor:pointer}
+
+/* 页面头 */
+.page-head{margin:6px 0 4px}
+.page-head .back{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;margin-bottom:8px}
+.page-head .sec{margin:0 0 4px}
+.sheet-h{font:600 16px var(--font)}
+.home-group-list{display:grid;gap:6px;margin-top:12px}
+.home-group-item{text-align:left;padding:12px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--text);font-size:14px;cursor:pointer}
+.home-group-item:hover{border-color:var(--accent);color:var(--accent)}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -828,12 +898,14 @@ body.no-zh .sent .zh{display:none}
       <button id="nav-library" class="on" onclick="go('library')">书城</button>
       <button id="nav-assembly" onclick="go('assembly')">🧩 拼装</button>
       <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
+      <button id="nav-favorites" onclick="go('favorites')">⭐ 收藏 <span class="nav-count" data-favcount>0</span></button>
       <button id="nav-plan" onclick="go('plan')">💎 会员</button>
       <button id="nav-account" onclick="go('account')">账号</button>
       <!-- 二级：其余收进「更多」，避免一行挤断 -->
       <div class="nav-grp" id="navGrpMore" hidden>
         <button onclick="go('collections')">📚 书单</button>
         <button id="nav-press" onclick="go('press')">📰 外刊</button>
+        <button id="nav-imports" onclick="go('imports')">📥 我的导入</button>
         <button id="nav-notes" onclick="go('notes')">📝 笔记</button>
         <button id="nav-bookchat" onclick="go('bookchat')">💬 与书对话</button>
         <button id="nav-tutor" onclick="go('tutor')">🗣️ AI 陪读</button>
@@ -862,6 +934,33 @@ body.no-zh .sent .zh{display:none}
 <main>
   <!-- ============ 书城 ============ -->
   <section class="view on" id="view-library">
+    <!-- 首屏：唯一主 CTA + 三个分区入口 -->
+    <div class="home-hero">
+      <div class="home-hero-kicker">LIZZREAD · 16 门语言经典阅读</div>
+      <h1 class="home-hero-title">今天读一本。</h1>
+      <div class="home-hero-sub">点词即释义，句子可拼装，读完自动记进度。</div>
+      <div class="home-hero-cta">
+        <button class="btn btn-hero" onclick="homeStartReading()">开始阅读</button>
+        <button class="btn ghost" onclick="go('favorites')">⭐ 收藏 <span data-favcount>0</span></button>
+      </div>
+    </div>
+    <div class="home-sections">
+      <a class="home-sec" href="#library" onclick="event.preventDefault();homeScrollToBooks()">
+        <div class="home-sec-t">阅读</div>
+        <div class="home-sec-d">全部书目、我的收藏、我的导入</div>
+        <div class="home-sec-a">去看看 →</div>
+      </a>
+      <a class="home-sec" href="#assembly" onclick="event.preventDefault();homeGo('practice')">
+        <div class="home-sec-t">练习</div>
+        <div class="home-sec-d">句子拼装、单词打怪、词汇测试、生词复习</div>
+        <div class="home-sec-a">去练习 →</div>
+      </a>
+      <a class="home-sec" href="#aitools" onclick="event.preventDefault();homeGo('tools')">
+        <div class="home-sec-t">工具</div>
+        <div class="home-sec-d">翻译、AI、漫画、视频、外刊、浏览器</div>
+        <div class="home-sec-a">去使用 →</div>
+      </a>
+    </div>
     <div id="favStrip" class="fav-strip" style="display:none"></div>
     <!-- 一行：学习语言切换 + 更多（低频操作收进菜单） -->
     <div class="lib-topbar">
@@ -896,7 +995,7 @@ body.no-zh .sent .zh{display:none}
     <div id="recSec"></div>
     <div id="ftResults" style="display:none;margin:12px 0"></div>
     <h2 class="sec" id="gridTitle">全部书目</h2>
-    <div class="grid" id="bookGrid"></div>
+    <div class="grid" id="bookGrid" style="min-height:520px"></div>
   </section>
 
   <!-- ============ 词汇测试 ============ -->
@@ -1049,6 +1148,31 @@ body.no-zh .sent .zh{display:none}
       <button class="chip" id="aitTabStory" onclick="aitTab('story')">📝 生词故事</button>
     </div>
     <div id="aitBody"></div>
+  </section>
+
+  <!-- ============ 收藏（独立页面） ============ -->
+  <section class="view" id="view-favorites">
+    <div class="page-head">
+      <button class="back" onclick="go('library')">← 返回主页</button>
+      <h2 class="sec">⭐ 我的收藏</h2>
+      <div class="sub">内置书目与你自己导入的书都在这里，按最近收藏排序。</div>
+    </div>
+    <div id="favBody"></div>
+  </section>
+
+  <!-- ============ 我的导入 ============ -->
+  <section class="view" id="view-imports">
+    <div class="page-head">
+      <button class="back" onclick="go('library')">← 返回主页</button>
+      <h2 class="sec">📥 我的导入</h2>
+      <div class="sub">支持 TXT / EPUB / PDF / DOCX 等格式。导入后可收藏、继续阅读、删除。</div>
+    </div>
+    <div class="lang-row" style="margin:10px 0">
+      <button class="btn small" onclick="document.getElementById('importFile').click()">＋ 导入文件</button>
+      <button class="btn ghost small" onclick="openUrlImport()">🔗 网址导入</button>
+      <button class="btn ghost small" onclick="go('favorites')">去看收藏</button>
+    </div>
+    <div id="impBody" style="min-height:200px"></div>
   </section>
 
   <!-- ============ 三栏笔记 ============ -->
@@ -3050,69 +3174,247 @@ try{
   }
 }catch(e){}
 
-/* ================= 收藏图书 ================= */
-function favorites(){ try{ return JSON.parse(localStorage.getItem(pk("fav")) || "[]"); }catch(e){ return []; } }
-function favSave(list){ try{ localStorage.setItem(pk("fav"), JSON.stringify(list.slice(0, 200))); }catch(e){} renderLibrary(); }
-function isFav(id){ return favorites().some(x => (x.id || x) === id); }
-function toggleFav(id){
+/* ================= 收藏系统（内置 + 导入，ID 命名空间隔离） =================
+   存储：localStorage["lz_fav_v2"] = [{ id, type:"builtin"|"import", at }]
+   - 内置书 id 用 book.id（如 pg84 / pg343）
+   - 导入书 id 以 "imp" 开头（saveImportedBook 生成），用 type 区分，避免撞 id
+   兼容旧格式：lz_fav 里的纯 id 数组会自动迁移 */
+function favList(){
+  try{
+    const v2 = JSON.parse(localStorage.getItem("lz_fav_v2") || "null");
+    if(Array.isArray(v2)) return v2;
+  }catch(e){}
+  /* 迁移旧格式 */
+  let old = [];
+  try{ old = JSON.parse(localStorage.getItem(pk("fav")) || "[]"); }catch(e){ old = []; }
+  const mig = old.map(x => {
+    const id = typeof x === "string" ? x : (x.id || "");
+    return { id, type: /^imp/.test(id) ? "import" : "builtin", at: (x && x.at) || Date.now() };
+  }).filter(x => x.id);
+  try{ localStorage.setItem("lz_fav_v2", JSON.stringify(mig)); }catch(e){}
+  return mig;
+}
+function favSaveList(list){
+  try{ localStorage.setItem("lz_fav_v2", JSON.stringify(list.slice(0, 500))); }catch(e){}
+  /* 同步旧键，避免其他老代码读不到 */
+  try{ localStorage.setItem(pk("fav"), JSON.stringify(list.map(x => x.id))); }catch(e){}
+  document.dispatchEvent(new CustomEvent("lz-fav-change", { detail: list.length }));
+}
+function isFav(id){ return favList().some(x => x.id === id); }
+function favCount(){ return favList().length; }
+function favAdd(id, type){
+  if(!id) return;
+  const list = favList();
+  if(list.some(x => x.id === id)) return;
+  list.unshift({ id, type: type || (/^imp/.test(id) ? "import" : "builtin"), at: Date.now() });
+  favSaveList(list);
+}
+function favRemove(id){
+  const list = favList().filter(x => x.id !== id);
+  favSaveList(list);
+}
+/* 带可撤销提示的取消收藏 */
+let _undoFav = null;
+function toggleFav(id, type){
   id = id || (curBook && curBook.id);
   if(!id) return;
-  const list = favorites();
-  const i = list.findIndex(x => (x.id || x) === id);
-  if(i >= 0){ list.splice(i, 1); toast("已取消收藏"); } else { list.unshift({ id, at: Date.now() }); toast("⭐ 已收藏"); }
-  favSave(list);
-  document.querySelectorAll("[data-favbtn]").forEach(b => { if(b.dataset.favbtn === id) b.textContent = isFav(id) ? "★ 已收藏" : "☆ 收藏"; });
+  if(isFav(id)){
+    _undoFav = { id, type: type || (/^imp/.test(id) ? "import" : "builtin"), at: Date.now() };
+    favRemove(id);
+    showUndoToast("已取消收藏", ()=>{ favAdd(_undoFav.id, _undoFav.type); toast("已恢复收藏"); });
+  } else {
+    favAdd(id, type);
+    toast("⭐ 已收藏");
+  }
+  syncFavButtons();
+  if(typeof renderFavorites === "function" && document.getElementById("view-favorites")?.classList.contains("on")) renderFavorites();
+  if(typeof renderFavStrip === "function") try{ renderFavStrip(); }catch(e){}
 }
+/* 全局同步按钮状态 */
+function syncFavButtons(){
+  document.querySelectorAll("[data-favbtn]").forEach(b => {
+    const id = b.dataset.favbtn;
+    const on = isFav(id);
+    b.textContent = on ? "★ 已收藏" : "☆ 收藏";
+    b.classList.toggle("fav-on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  document.querySelectorAll("[data-favcount]").forEach(el => { el.textContent = favCount(); });
+}
+/* 可撤销提示条 */
+function showUndoToast(msg, onUndo){
+  let el = document.getElementById("undoToast");
+  if(!el){ el = document.createElement("div"); el.id = "undoToast"; el.className = "undo-toast"; document.body.appendChild(el); }
+  el.innerHTML = `<span>${escHtml(msg)}</span><button class="undo-btn">撤销</button>`;
+  el.querySelector(".undo-btn").onclick = () => { onUndo(); el.classList.remove("on"); };
+  el.classList.add("on");
+  clearTimeout(el.__t);
+  el.__t = setTimeout(()=>el.classList.remove("on"), 5000);
+}
+/* 书架横向收藏条（保留） */
 function renderFavStrip(){
   const host = document.getElementById("favStrip");
   if(!host) return;
-  const list = favorites();
+  const list = favList();
   if(!list.length){ host.innerHTML = ""; host.style.display = "none"; return; }
+  const books = list.map(x => favResolve(x)).filter(Boolean).slice(0, 12);
   host.style.display = "block";
-  const books = list.map(x => { const id = x.id || x; return BOOKS.find(b => b.id === id) || (store.imports || []).find(b => b.id === id) || null; }).filter(Boolean).slice(0, 12);
   host.innerHTML = `<div class="fav-head"><b>⭐ 我的收藏</b><span class="tip" style="margin:0">${list.length} 本</span>
-      <button class="btn ghost small" style="margin-left:auto" onclick="go('collections')">看全部</button></div>
+      <button class="btn ghost small" style="margin-left:auto" onclick="go('favorites')">看全部</button></div>
     <div class="fav-scroll">${books.map(b => `
       <div class="fav-card" onclick="openBook('${b.id}')">
-        <img loading="lazy" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
+        <img loading="lazy" width="92" height="132" src="${coverSrc(b)}" alt="${escHtml(dispTitle(b))}" onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:b.gb||0,t:b.t,zh:b.zh||"",a:b.a||"",g:b.g||"lit",id:b.id||""}))})">
         <div class="fav-title">${escHtml(dispTitle(b))}</div>
       </div>`).join("")}</div>`;
 }
+/* 把收藏记录还原成书对象 */
+function favResolve(rec){
+  const id = rec.id;
+  if(rec.type === "import" || /^imp/.test(id)){
+    const imp = (store.imports || []).find(x => x.id === id);
+    if(!imp) return null;
+    return { id, t: imp.t, g: "imp", imp: true, lv: "·" };
+  }
+  return BOOKS.find(b => b.id === id) || (window.__LZ_PG_BY_LANG ? Object.values(window.__LZ_PG_BY_LANG).flat().find(b => b.id === id) : null) || null;
+}
 
-/* ================= 恶意跳转防护 ================= */
-const OFFICIAL_HOSTS = ["hcc9886.github.io"];
-let _hijackReported = false;
-function detectHijack(){
-  try{
-    const h = location.hostname, p = location.pathname;
-    const okHost = OFFICIAL_HOSTS.includes(h) || h === "localhost" || h === "127.0.0.1" || h === "";
-    const okPath = okHost && (p.startsWith("/LIZZREAD") || h === "localhost" || h === "127.0.0.1");
-    if(!okHost || !okPath){ if(!_hijackReported){ _hijackReported = true; showHijackNotice(); } }
-  }catch(e){}
+/* ================= 收藏独立页面 ================= */
+let _favTab = "all", _favKw = "";
+function renderFavorites(){
+  const host = document.getElementById("favBody");
+  if(!host) return;
+  const all = favList();
+  const cnt = { all: all.length, builtin: 0, import: 0 };
+  all.forEach(x => { if(x.type === "import" || /^imp/.test(x.id)) cnt.import++; else cnt.builtin++; });
+  const kw = _favKw.trim().toLowerCase();
+  let list = all
+    .map(x => ({ rec: x, book: favResolve(x) }))
+    .filter(x => x.book)
+    .filter(x => _favTab === "all" || ((x.rec.type === "import" || /^imp/.test(x.rec.id)) ? _favTab === "import" : _favTab === "builtin"))
+    .filter(x => !kw || (dispTitle(x.book) + " " + (x.book.a || "")).toLowerCase().includes(kw))
+    .sort((a, b) => (b.rec.at || 0) - (a.rec.at || 0));
+
+  host.innerHTML = `
+    <div class="fav-toolbar">
+      <div class="fav-tabs">
+        ${[["all","全部",""],["builtin","内置书目",""],["import","我的导入",""]].map(([k,n]) =>
+          `<button class="seg ${_favTab===k?'on':''}" onclick="_favTab='${k}';renderFavorites()">${n} <span class="seg-n">${cnt[k]}</span></button>`).join("")}
+      </div>
+      <input class="fav-search" id="favSearch" placeholder="搜索收藏的书名 / 作者" value="${escAttr(_favKw)}" oninput="_favKw=this.value;renderFavorites()">
+    </div>
+    <div class="fav-grid" id="favGrid" style="min-height:220px">
+      ${list.length ? list.map(({rec, book}) => `
+        <div class="fav-item">
+          <div class="fav-item-cover" onclick="openBook('${book.id}')">
+            <img loading="lazy" width="112" height="160" src="${coverSrc(book)}" alt="${escHtml(dispTitle(book))}"
+              onerror="coverFallback(this, ${escAttr(JSON.stringify({gb:book.gb||0,t:book.t,zh:book.zh||"",a:book.a||"",g:book.g||"lit",id:book.id||""}))})">
+          </div>
+          <div class="fav-item-body">
+            <div class="fav-item-t" onclick="openBook('${book.id}')">${escHtml(dispTitle(book))}</div>
+            <div class="fav-item-src">${(/^imp/.test(book.id)||rec.type==="import") ? "我的导入" : "内置书目"}</div>
+            <div class="fav-item-acts">
+              <button class="btn small" onclick="favContinue('${book.id}')">继续阅读</button>
+              <button class="btn ghost small" data-favbtn="${book.id}" onclick="toggleFav('${book.id}')">★ 已收藏</button>
+            </div>
+          </div>
+        </div>`).join("") : `
+        <div class="empty-state">
+          <div class="empty-t">${all.length ? "这个筛选下没有收藏" : "还没有收藏"}</div>
+          <div class="empty-s">${all.length ? "换个筛选条件试试。" : "去全部书目或我的导入里收藏一本书。"}</div>
+          <div class="empty-acts">
+            <button class="btn" onclick="go('library')">去选书</button>
+            <button class="btn ghost" onclick="go('imports')">去导入</button>
+          </div>
+        </div>`}
+    </div>`;
+  syncFavButtons();
 }
-function showHijackNotice(){
-  let el = document.getElementById("hijackBar");
-  if(!el){ el = document.createElement("div"); el.id = "hijackBar"; el.className = "hijack-bar"; document.body.appendChild(el); }
-  el.innerHTML = `<span>⚠️ 当前页面地址异常，可能被浏览器劫持。官方地址是 hcc9886.github.io/LIZZREAD</span>
-    <button class="btn small" onclick="location.href='https://hcc9886.github.io/LIZZREAD/'">回到官方地址</button>
-    <button class="lz-update-x" onclick="this.parentNode.remove()">✕</button>`;
+/* ================= 我的导入 页面渲染 ================= */
+/* ================= 主页极简：主 CTA 与分区跳转 ================= */
+function homeStartReading(){
+  /* 优先：上次读的书 → 收藏的第一本 → 书库第一本 */
+  try{
+    const last = store.lastBook;
+    if(last && BOOKS.some(b => b.id === last)){ openFull(last); return; }
+    const fav = favList().map(x => favResolve(x)).filter(Boolean);
+    if(fav.length){ favContinue(fav[0].id); return; }
+    const first = BOOKS.find(b => hasLocalText(b)) || BOOKS[0];
+    if(first) openBook(first.id);
+  }catch(e){ toast("去下面的书库挑一本吧"); }
+}
+function homeScrollToBooks(){
+  const el = document.getElementById("bookGrid");
+  if(el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+function homeGo(kind){
+  if(kind === "practice"){
+    /* 练习分区：给一个折叠面板，列出入口 */
+    showHomeGroup("练习", [["🧩 句子拼装","assembly"],["⚔️ 单词打怪","wordquest"],["📝 词汇测试","test"],["🔁 生词模式","sreview"],["📚 生词本","vocab"]]);
+  } else {
+    showHomeGroup("工具", [["🖼️ 漫画翻译","manga"],["🎬 看视频学","video"],["📰 外刊","press"],["🌐 浏览器","browser"],["📰 RSS 外刊","rss"],["🤖 AI 工具","aitools"],["📝 三栏笔记","notes"]]);
+  }
+}
+function showHomeGroup(title, items){
+  let el = document.getElementById("homeGroupSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "homeGroupSheet"; document.body.appendChild(el); }
   el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px"><div class="sheet-h">${escHtml(title)}</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('homeGroupSheet').style.display='none'">✕</button></div>
+    <div class="home-group-list">${items.map(([n, v]) =>
+      `<button class="home-group-item" onclick="document.getElementById('homeGroupSheet').style.display='none';go('${v}')">${n}</button>`).join("")}</div>
+  </div>`;
 }
-(function hardenLinks(){
+
+function renderImports(){
+  const host = document.getElementById("impBody");
+  if(!host) return;
+  const list = store.imports || [];
+  if(!list.length){
+    host.innerHTML = `<div class="empty-state">
+      <div class="empty-t">还没有导入任何书</div>
+      <div class="empty-s">把 TXT / EPUB / PDF 拖进来，或点上面的「导入文件」。</div>
+      <div class="empty-acts">
+        <button class="btn" onclick="document.getElementById('importFile').click()">去导入</button>
+        <button class="btn ghost" onclick="go('library')">去选书</button>
+      </div></div>`;
+    return;
+  }
+  host.innerHTML = `<div class="imp-list">${list.map(x => {
+    const b = { id: x.id, t: x.t, g: "imp", imp: true, lv: "·" };
+    const on = isFav(x.id);
+    return `<div class="imp-item">
+      <img loading="lazy" width="56" height="80" src="${coverSrc(b)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="imp-main">
+        <div class="imp-t">${escHtml(x.t || "导入书籍")}</div>
+        <div class="imp-s">${escHtml(String(x.format || "TXT").toUpperCase())} · ${x.sents || 0} 句 · ${x.chapters || 0} 章</div>
+      </div>
+      <div class="imp-acts">
+        <button class="btn small" onclick="importContinue('${x.id}')">继续阅读</button>
+        <button class="btn ghost small ${on?'fav-on':''}" data-favbtn="${x.id}" onclick="toggleFav('${x.id}','import')">${on?"★ 已收藏":"☆ 收藏"}</button>
+        <button class="btn ghost small" onclick="delImport('${x.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+  syncFavButtons();
+  /* 重新挂观察器：滚动到底自动加载下一批 */
   try{
-    document.addEventListener("click", e => {
-      const a = e.target && e.target.closest && e.target.closest("a[href]");
-      if(!a) return;
-      if(/^https?:/i.test(a.getAttribute("href") || "")){ a.setAttribute("rel","noopener noreferrer"); a.setAttribute("referrerpolicy","no-referrer"); }
-    }, true);
-    const _open = window.open;
-    window.open = function(url, name, feat){
-      try{ if(typeof url === "string" && /^https?:/i.test(url)) return _open.call(window, url, "_blank", "noopener,noreferrer"); }catch(e){}
-      return _open.apply(window, arguments);
-    };
+    const sen = document.getElementById("libSentinel");
+    if(sen && window.__libObs){ window.__libObs.observe(sen); }
   }catch(e){}
-})();
-try{ setTimeout(detectHijack, 1200); }catch(e){}
+}
+function importContinue(id){
+  try{ openFull(id); }catch(e){ openBook(id); }
+}
+
+function favContinue(id){
+  const sents = (function(){ try{ return getSents(id) || []; }catch(e){ return []; } })();
+  const prog = store.progress[id];
+  if(prog && prog.chap !== undefined) return openFull(id);
+  if(sents.length) return openFull(id);
+  return openBook(id);
+}
 
 /* ================= 阅读进度 / 读毕统计 ================= */
 function rdStats(){
@@ -4345,7 +4647,7 @@ function generateStoryFromVocab(){
 
 /* 任意文本 → 导入成书（供生词故事/粘贴用） */
 async function importTextAsBook(text, title){
-  const sents = splitIntoSentences(text);
+  const sents = splitSentences(text);
   if(!sents.length) return;
   const chapters = [{ t:title || "导入", start:0, end:sents.length }];
   try{
@@ -5777,6 +6079,8 @@ function go(name){
   if(name==="manga") mangaFillSelects();
   if(name==="rss"){ rssFill(); if(!_rssItems.length) rssLoad(); }
   if(name==="aitools") renderAitBody();
+  if(name==="favorites") renderFavorites();
+  if(name==="imports") renderImports();
   if(name==="browser"){
     const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
     /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
@@ -6353,12 +6657,26 @@ function renderLibrary(){
     tEl.innerHTML = escHtml(L("library.title", "全部书目") + `（${list.length} 本 · ${L0.native || activeLang()}）`) +
       (streak > 1 ? ` <span class="badge" style="background:var(--brand-soft);color:var(--brand-deep);font-size:11px">🔥 连签 ${streak} 天</span>` : "");
   }
+  /* 列表虚拟化：只渲染当前批次，滚动到底自动追加；批次上限 120 */
+  if(!window.__libObs){
+    try{
+      const sentinel = document.createElement("div");
+      sentinel.id = "libSentinel";
+      sentinel.style.cssText = "height:1px";
+      window.__libObs = new IntersectionObserver((ents)=>{
+        if(ents[0].isIntersecting){
+          const grid = document.getElementById("bookGrid");
+          if(grid && grid.dataset.more === "1"){ libLimit += 60; renderLibrary(); }
+        }
+      }, { rootMargin: "400px" });
+    }catch(e){ window.__libObs = null; }
+  }
   const shown = list.slice(0, libLimit);
   document.getElementById("bookGrid").innerHTML =
     shown.length ? shown.map(b=>bookCard(b,false)).join("") +
       (list.length > libLimit
-        ? `<div style="grid-column:1/-1;text-align:center;padding:18px 0">
-             <button class="btn ghost" onclick="moreBooks()">↓ 再显示 80 本（还有 ${list.length-libLimit} 本）</button>
+        ? `<div id="libSentinel" style="grid-column:1/-1;text-align:center;padding:18px 0" data-more="1">
+             <button class="btn ghost" onclick="moreBooks()">↓ 再显示 60 本（还有 ${list.length-libLimit} 本）</button>
            </div>`
         : "")
     : `<div class="empty">没有匹配的书，换个筛选条件试试～
@@ -6384,7 +6702,10 @@ function bookCard(b, rec){
        <span class="lv">${b.lv||"·"}</span>`;
   }
   const hasFull = typeof b.gb === "number";
+  const _fav = isFav(b.id);
   return `<div class="book" onclick="openBook('${b.id}')">
+    <button class="book-fav ${_fav?'fav-on':''}" data-favbtn="${b.id}" title="收藏"
+      onclick="event.stopPropagation();toggleFav('${b.id}','${isImp?'import':'builtin'}')">${_fav?"★":"☆"}</button>
     <div class="cover ${isImp?"g-imp":"g-"+b.g}">${cov}<span class="ctag">${isImp?"MY IMPORT":escHtml(GENRES()[b.g]||"CLASSICS")}</span></div>
     <div class="meta"><b>${escHtml(dispTitle(b))}</b>${b.zh && b.t && b.zh!==b.t ? `<br><span class="muted" style="font-size:11px">${escHtml(b.t)}</span>`:""}
       ${(b.en && b.lang !== "en") ? `<div class="dim" style="font-size:12px;color:var(--muted);margin-top:2px">${escHtml(b.en)}</div>` : ""}
@@ -8786,6 +9107,8 @@ function getSents(id){
   return impCache[id];
 }
 /* 分句：按空行/换行分段，再按句号/问号/感叹号断句（不再截断整本书） */
+/* 兼容别名：早期代码里用过 splitIntoSentences */
+function splitIntoSentences(t){ try{ return splitSentences(t); }catch(e){ return []; } }
 function splitSentences(text){
   const paras = String(text||"").replace(/\r/g,"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
   const out = [];
