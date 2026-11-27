@@ -19,7 +19,7 @@ for f in index.html privacy.html manifest.json sw.js dict.js ai.js \
 done
 
 echo "== 2/5 data / books / sentences =="
-for d in data books sentences; do
+for d in data books sentences vendor; do
   [ -d "$d" ] && cp -a "$d" "$OUT"/
 done
 
@@ -79,6 +79,18 @@ for(const gb of ids){
 fs.writeFileSync(path.join(out, 'covers', 'index.js'), 'window.LZ_COVERS=' + JSON.stringify(list) + ';\n');
 console.log('  需要封面 ' + ids.size + ' 本 → 实际带上 ' + copied + ' 张，缺 ' + missing + ' 张');
 NODE
+
+# Wrangler 静态资源：排除源目录本身（只上传装配好的文件）
+cat > "$OUT/.assetsignore" <<'IGN'
+node_modules/
+android/
+.sdk/
+www/
+dist/
+dist-web/
+*.apk
+*.aab
+IGN
 
 echo "== 5/5 统计 =="
 FILES=$(find "$OUT" -type f | wc -l | tr -d ' ')
