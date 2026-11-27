@@ -144,6 +144,8 @@
 
 /* 收藏按钮 */
 .book{position:relative}
+/* 封面上的等级/分类标签：加深色底 + 白字，任何封面上都清晰 */
+.cover .lv,.cover .ctag{background:rgba(0,0,0,.72);color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .book-fav{position:absolute;top:6px;right:6px;z-index:2;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:#8a8a8a;font-size:15px;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .book-fav.fav-on{color:#E0A100}
 .btn.fav-on{color:#E0A100;border-color:#E0A100}
@@ -193,6 +195,10 @@
 .home-group-list{display:grid;gap:6px;margin-top:12px}
 .home-group-item{text-align:left;padding:12px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--text);font-size:14px;cursor:pointer}
 .home-group-item:hover{border-color:var(--accent);color:var(--accent)}
+/* 视频字幕覆盖层 */
+.sub-overlay{position:absolute;left:0;right:0;bottom:8px;padding:8px 12px;pointer-events:none;text-align:center}
+.sub-line{display:inline-block;padding:3px 10px;border-radius:5px;background:rgba(0,0,0,.72);color:#fff;font-size:15px;line-height:1.5;margin:2px auto;max-width:96%}
+.sub-line.trans{color:#B9F3D6}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -204,7 +210,7 @@
 /* ---------- 全局变量（默认 纯白 主题） ---------- */
 :root{
   --bg:#F6F7F5; --surface:#FFFFFF; --surface2:#EFEFEA;
-  --text:#1B1F1D; --muted:#6B7370; --border:#E2E5E0;
+  --text:#1B1F1D; --muted:#4A5350; --border:#E2E5E0;
   --brand:#0F8A4D; --brand-deep:#0B6B3C; --brand-soft:#E7F5EC;
   --gold:#B98A2F; --danger:#D34B3E;
   --radius:12px; --shadow:0 1px 3px rgba(20,30,25,.08),0 8px 24px rgba(20,30,25,.06);
@@ -212,16 +218,16 @@
   --serif:"Georgia","Songti SC",serif;
 }
 /* ---------- 阅读背景主题（全站生效） ---------- */
-body[data-bg="sepia"]{--bg:#F1E9D6;--surface:#FBF5E6;--surface2:#EFE4C9;--border:#E0D3B2;--muted:#8A7A55}
-body[data-bg="green"]{--bg:#E2EEE1;--surface:#EFF6EE;--surface2:#DFEBDD;--border:#C9DBC7;--muted:#5F7A60}
-body[data-bg="blue"]{--bg:#E3EDF4;--surface:#F0F6FA;--surface2:#DFEAF2;--border:#C9DCE8;--muted:#5A7386}
+body[data-bg="sepia"]{--bg:#F1E9D6;--surface:#FBF5E6;--surface2:#EFE4C9;--border:#E0D3B2;--muted:#6E5F3D}
+body[data-bg="green"]{--bg:#E2EEE1;--surface:#EFF6EE;--surface2:#DFEBDD;--border:#C9DBC7;--muted:#46634A}
+body[data-bg="blue"]{--bg:#E3EDF4;--surface:#F0F6FA;--surface2:#DFEAF2;--border:#C9DCE8;--muted:#4A6273}
 body[data-bg="rose"]{--bg:#F7E9EC;--surface:#FFF6F8;--surface2:#F1DEE3;--border:#E7CDD6;--muted:#8D6473}
 body[data-bg="lavender"]{--bg:#EDEAF7;--surface:#F7F4FF;--surface2:#E2DDF3;--border:#D6CEEE;--muted:#6F688D}
 body[data-bg="sand"]{--bg:#F4EEE2;--surface:#FFFBF3;--surface2:#EDE3D2;--border:#DFD1BB;--muted:#82735C}
 body[data-bg="forest"]{--bg:#E4EFE6;--surface:#F4FAF5;--surface2:#D8E8DB;--border:#C3D9C7;--muted:#5C7663}
-body[data-bg="midnight"]{--bg:#0E1420;--surface:#182233;--surface2:#223047;--text:#E3EAF6;--muted:#93A4C0;--border:#2C3C57;--brand:#6FA8FF;--brand-deep:#9CC4FF;--brand-soft:#1A2D4A;--shadow:0 1px 3px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.4)}
+body[data-bg="midnight"]{--bg:#0E1420;--surface:#182233;--surface2:#223047;--text:#E3EAF6;--muted:#A9BBD6;--border:#2C3C57;--brand:#6FA8FF;--brand-deep:#9CC4FF;--brand-soft:#1A2D4A;--shadow:0 1px 3px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.4)}
 body[data-bg="dark"]{--bg:#17191B;--surface:#212527;--surface2:#2C3134;--text:#E1E5E2;
-  --muted:#98A09B;--border:#383F41;--brand:#2FBF72;--brand-deep:#5CD594;--brand-soft:#1D3327;
+  --muted:#B4BDB8;--border:#383F41;--brand:#2FBF72;--brand-deep:#5CD594;--brand-soft:#1D3327;
   --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)}
 body[data-fontsize="s"]{--read-size:15px} body[data-fontsize="m"]{--read-size:17px} body[data-fontsize="l"]{--read-size:19px} body[data-fontsize="xl"]{--read-size:22px}
 body[data-serif="0"] .sent .en,body[data-serif="0"] .cover .t{font-family:var(--font)!important}
@@ -1246,12 +1252,16 @@ body.no-zh .sent .zh{display:none}
       <video id="lzVideo" class="lz-video" controls playsinline></video>
       <div id="subOverlay" class="sub-overlay"></div>
     </div>
-    <div class="lang-row" style="margin-top:10px">
-      <span class="tip" style="margin:0">字幕来源：</span>
-      <button class="chip" onclick="setSubMode('en')">只看原文</button>
-      <button class="chip on" onclick="setSubMode('both')">原文 + 中文</button>
+    <div class="lang-row" style="margin-top:10px;flex-wrap:wrap">
+      <span class="tip" style="margin:0">字幕显示：</span>
+      <button class="chip" onclick="setSubMode('orig')">只看原文</button>
+      <button class="chip" onclick="setSubMode('trans')">只看译文</button>
+      <button class="chip on" onclick="setSubMode('dual')">双语并排</button>
+      <button class="chip" onclick="setSubMode('none')">隐藏字幕</button>
       <label class="br-toggle"><input type="checkbox" id="vidWordClick" checked> 点词翻译</label>
+      <button class="btn ghost small" onclick="exportSrt()">导出 SRT</button>
     </div>
+    <div class="tip" id="subLangTip" style="display:none;background:#FFF4E5;color:#8A5200;padding:8px 12px;border-radius:8px;margin-top:10px"></div>
     <div class="lang-row" style="margin-top:10px">
       <button class="chip ${dictMode?'':'on'}" onclick="setVideoTab('sub')">字幕对照</button>
       <button class="chip ${dictMode?'on':''}" onclick="setVideoTab('dict')">逐句听写</button>
@@ -1311,8 +1321,8 @@ body.no-zh .sent .zh{display:none}
     <div class="br-frame-wrap">
       <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
       <div id="brBlocked" class="br-blocked" style="display:none">
-        <b>这个站点不允许被内嵌</b>
-        <div class="sub" id="brBlockedWhy">很多新闻站（BBC、Guardian、Economist、Google、Bing）设置了 X-Frame-Options，浏览器会拒绝在站内打开。这是浏览器的安全限制，任何工具都绕不过。</div>
+        <b>这个网站不允许被嵌入</b>
+        <div class="sub" id="brBlockedWhy">这个网站不允许被别的页面嵌入。用「阅读模式」可以在站内读它的正文，点词、翻译、朗读都可用。</div>
         <div class="lang-row" style="justify-content:center;margin-top:10px;flex-wrap:wrap">
           <button class="btn small" onclick="brOpenNewTab()">在新标签打开</button>
           <button class="btn ghost small" onclick="brReadability()">提取正文并精读</button>
@@ -1320,10 +1330,10 @@ body.no-zh .sent .zh{display:none}
         <div class="br-ok-list">
           <div class="tip" style="margin:10px 0 6px">这些站点可以站内打开：</div>
           <div class="lang-row" style="justify-content:center;flex-wrap:wrap">
-            <button class="btn ghost small" onclick="brLoad('https://zh.wikipedia.org/wiki/%E7%8C%AB')">维基百科</button>
-            <button class="btn ghost small" onclick="brLoad('https://zh.wikisource.org/wiki/Wikisource:%E9%A6%96%E9%A1%B5')">维基文库</button>
-            <button class="btn ghost small" onclick="brLoad('https://www.gutenberg.org/')">Gutenberg</button>
-            <button class="btn ghost small" onclick="brLoad('https://www.aozora.gr.jp/')">青空文库</button>
+            <button class="btn ghost small" onclick="brOpenUrl('https://zh.wikipedia.org/wiki/%E7%8C%AB')">维基百科</button>
+            <button class="btn ghost small" onclick="brOpenUrl('https://zh.wikisource.org/wiki/Wikisource:%E9%A6%96%E9%A1%B5')">维基文库</button>
+            <button class="btn ghost small" onclick="brOpenUrl('https://www.gutenberg.org/browse/recent/last1')">Gutenberg</button>
+            <button class="btn ghost small" onclick="brOpenUrl('https://www.aozora.gr.jp/')">青空文库</button>
           </div>
         </div>
       </div>
@@ -1341,7 +1351,7 @@ body.no-zh .sent .zh{display:none}
   <!-- ============ 外刊 / 新闻阅读 ============ -->
   <section class="view" id="view-press">
     <h2 class="sec">📰 外刊与新闻</h2>
-    <div class="sub">外刊网站禁止被内嵌，所以这里不假装能"打开"。每条有三个真能用的动作：<b>📖 阅读模式</b>（自动抓正文在站内排版，点词翻译可用）、<b>粘贴</b>（自己复制正文）、<b>官网</b>（新标签打开）。</div>
+    <div class="sub">按学习语言挑选的报纸与外刊。点「头条」看今日要闻，点标题直接在站内精读。</div>
     <div class="press-tabs" id="pressTabs"></div>
     <div class="press-list" id="pressList"></div>
   </section>
@@ -4727,6 +4737,7 @@ async function fetchSubUrl(){
     _videoSubs = parseSubtitles(t);
     if(!_videoSubs.length) throw new Error("没解析出字幕");
     renderSubList();
+    try{ checkSubLangMismatch(); }catch(e){}
     document.getElementById("subUrlSheet").style.display = "none";
     const tip = document.getElementById("vidTip");
     if(tip) tip.textContent = "已载入在线字幕 " + _videoSubs.length + " 句";
@@ -4845,7 +4856,7 @@ function dictShowAnswer(){
 
 /* ================= 看视频学：本地视频 + 字幕 ================= */
 let _videoSubs = [];      /* [{start,end,text}] */
-let _subMode = "both";
+let _subMode = "dual";
 function parseTimeTag(t){
   t = String(t).trim().replace(",", ".");
   const p = t.split(":").map(Number);
@@ -4926,6 +4937,7 @@ function loadSubtitleFile(input){
   rd.onload = () => {
     _videoSubs = parseSubtitles(rd.result);
     renderSubList();
+    try{ checkSubLangMismatch(); }catch(e){}
     toast("已载入字幕 " + _videoSubs.length + " 句");
   };
   rd.readAsText(f, "utf-8");
@@ -4933,9 +4945,40 @@ function loadSubtitleFile(input){
 function setSubMode(m){
   _subMode = m;
   document.querySelectorAll("#view-video .chip").forEach(c => c.classList.remove("on"));
-  const map = { en: 1, both: 2 };
+  const order = ["orig", "trans", "dual", "none"];
+  const idx = order.indexOf(m);
   const chips = [...document.querySelectorAll("#view-video .chip")];
-  if(map[m]) chips[map[m]-1] && chips[map[m]-1].classList.add("on");
+  if(idx >= 0 && chips[idx]) chips[idx].classList.add("on");
+  if(m === "none"){ const ov = document.getElementById("subOverlay"); if(ov) ov.innerHTML = ""; }
+}
+/* 字幕导出 SRT（用导入时的原时间轴） */
+function exportSrt(){
+  if(!_videoSubs.length){ toast("先导入字幕"); return; }
+  const pad = (n, w) => String(Math.floor(n)).padStart(w, "0");
+  const ts = t => `${pad(t/3600,2)}:${pad((t%3600)/60,2)}:${pad(t%60,2)},${pad((t%1)*1000,3)}`;
+  const body = _videoSubs.map((x, i) => `${i+1}\n${ts(x.start||0)} --> ${ts(x.end||(x.start||0)+3)}\n${x.text}\n`).join("\n");
+  try{
+    const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "lizzread-subtitles.srt";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+    toast("已导出 " + _videoSubs.length + " 条字幕");
+  }catch(e){ toast("导出失败：" + e.message); }
+}
+/* 字幕语言与学习语言一致性检查 */
+function checkSubLangMismatch(){
+  const lang = activeLang();
+  const sample = _videoSubs.slice(0, 30).map(x => x.text).join(" ");
+  const el = document.getElementById("subLangTip");
+  if(!el) return;
+  if(!sample){ el.style.display = "none"; return; }
+  const isCJK = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(sample);
+  const isLatin = /[A-Za-z]/.test(sample);
+  const mismatch = (["zh","ja","ko"].includes(lang) && !isCJK) || (!["zh","ja","ko"].includes(lang) && !isLatin);
+  el.style.display = mismatch ? "block" : "none";
+  if(mismatch) el.textContent = "注意：字幕语言与你的学习语言（" + ((LANG_INFO[lang] && LANG_INFO[lang].native) || lang) + "）不一致，可只做泛听，或在设置里切换学习语言。";
 }
 function toggleSubTitle(){
   const el = document.getElementById("subOverlay");
@@ -4981,7 +5024,14 @@ setInterval(() => {
   const cur = _videoSubs.find(s => t >= s.start && t <= s.end + 0.35);
   if(cur){
     const zh = document.getElementById("subzh-" + _videoSubs.indexOf(cur))?.textContent || "";
-    ov.innerHTML = `<div class="sub-cur">${escHtml(cur.text)}</div>${(_subMode === "both" && zh) ? `<div class="sub-cur-zh">${escHtml(zh)}</div>` : ""}`;
+    if(_subMode === "none"){ ov.innerHTML = ""; }
+    else{
+      const showOrig = (_subMode === "dual" || _subMode === "orig" || _subMode === "both");
+      const showZh = (_subMode === "dual" || _subMode === "trans" || _subMode === "both");
+      ov.innerHTML =
+        (showOrig ? `<div class="sub-cur">${escHtml(cur.text)}</div>` : "") +
+        (showZh ? `<div class="sub-cur-zh">${escHtml(zh || "…")}</div>` : "");
+    }
   }
 }, 300);
 
@@ -5017,6 +5067,15 @@ function brLoad(url){
       if(blocked) blocked.style.display = "flex";
     }
   }, 6000);
+}
+/* 统一入口：任何地方想"在站内看一个网址"都走这里 → 阅读模式，绝不塞 iframe */
+function brOpenUrl(url){
+  go('browser');
+  setTimeout(()=>{
+    const inp = document.getElementById('brUrl');
+    if(inp) inp.value = url;
+    brReadMode();
+  }, 260);
 }
 function brGo(){
   const raw = (document.getElementById("brUrl")?.value || "").trim();
@@ -5262,13 +5321,13 @@ async function brOpenSearch(q){
   if(!out.length){
     host.innerHTML = `<div class="empty-notes">开放搜索没有结果。<br><br>
       <button class="btn ghost small" onclick="openWordCard('${escAttr(q)}')">🔍 查这个词</button>
-      <button class="btn ghost small" onclick="brLoad('https://www.bing.com/search?q=' + encodeURIComponent('${escAttr(q)}'))">Bing 打开</button></div>`;
+      <button class="btn ghost small" onclick="window.open('https://www.bing.com/search?q=' + encodeURIComponent('${escAttr(q)}'),'_blank','noopener')">在站外搜索</button></div>`;
     return;
   }
   host.innerHTML = `<div class="br-read-head"><b>「${escHtml(q)}」的站内结果</b>
       <div class="lang-row" style="margin-top:8px">
         <button class="btn ghost small" onclick="openWordCard('${escAttr(q)}')">🔍 查这个词</button>
-        <button class="btn ghost small" onclick="brLoad('https://www.bing.com/search?q=' + encodeURIComponent('${escAttr(q)}'))">Bing 打开</button>
+        <button class="btn ghost small" onclick="window.open('https://www.bing.com/search?q=' + encodeURIComponent('${escAttr(q)}'),'_blank','noopener')">在站外搜索</button>
       </div></div>
     <div class="br-search-list">${out.map(x => `
       <div class="br-search-item" onclick="brOpenSearchResult('${escAttr(x.url)}')">
@@ -5610,7 +5669,7 @@ function openPress(url, name){
     <p class="sub" style="margin:8px 0 12px">这类新闻网站禁止被别的网页内嵌（X-Frame-Options），站内无法直接显示。两条可用路线：</p>
     <div style="display:grid;gap:8px">
       <button class="btn" onclick="document.getElementById('pressSheet').style.display='none';window.open('${escAttr(url)}','_blank','noopener')">在新标签打开官网</button>
-      <button class="btn ghost" onclick="document.getElementById('pressSheet').style.display='none';go('browser');setTimeout(()=>{document.getElementById('brUrl').value='${escAttr(url)}';brLoad('${escAttr(url)}')},300)">在站内浏览器试试</button>
+      <button class="btn ghost" onclick="document.getElementById('pressSheet').style.display='none';brOpenUrl('${escAttr(url)}')">在站内阅读</button>
       <button class="btn ghost" onclick="document.getElementById('pressSheet').style.display='none';go('import')">复制文章正文导入阅读器（推荐）</button>
     </div>
     <div class="tip" style="margin-top:10px">最优做法：把文章正文复制下来，用「网址导入 / 粘贴文本」进阅读器，点词、翻译、朗读全部可用。</div>
@@ -6085,7 +6144,7 @@ function go(name){
     const t = document.getElementById("brWordTr"); if(t) t.checked = localStorage.getItem("lz_br_wordtr") !== "0";
     /* 没输入过网址时，先给一个确定可内嵌的起点，避免一进来就是空白 */
     const bar = document.getElementById("brUrl");
-    if(bar && !bar.value && !window.__brLoaded){ window.__brLoaded = true; setTimeout(()=>brLoad("https://zh.wikipedia.org/wiki/%E7%8C%AB"), 120); }
+    if(bar && !bar.value && !window.__brLoaded){ window.__brLoaded = true; /* 不再自动加载，避免一进页面就弹"不允许被内嵌" */ }
   }
   if(name==="feedback"){ renderFbHistory(); }
   if(name==="remote"){ name = "library"; }
