@@ -37,6 +37,7 @@
 <script src="data/books-pg-multi2.js?v=1" defer></script>
 <script src="data/books-zh-classics.js?v=1" defer></script>
 <script src="data/wq-common.js?v=1" defer></script>
+<script src="data/comics-pd.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=1"></script>
@@ -249,6 +250,115 @@
 .br-path-t{font:600 13.5px var(--font);margin-bottom:4px}
 .br-path-d{font-size:12px;color:var(--muted);line-height:1.6}
 .br-paste{margin:10px 0 14px}
+/* ============ 四组导航 ============ */
+.nav4{display:flex;align-items:center;gap:2px;flex-wrap:nowrap}
+.nav4-btn{border:none;background:transparent;color:var(--text);font:500 14px var(--font);
+  padding:8px 14px;border-radius:8px;cursor:pointer;letter-spacing:.02em;transition:.15s}
+.nav4-btn:hover{background:var(--surface2)}
+.nav4-btn.on{background:var(--accent);color:#fff;font-weight:600}
+.nav4-fav{margin-left:8px;font-size:13px;color:var(--muted);cursor:pointer;padding:6px 8px;border-radius:8px;white-space:nowrap}
+.nav4-fav:hover{background:var(--surface2)}
+.nav4-fav b{color:var(--accent)}
+
+.nav-panel{position:absolute;left:0;right:0;top:100%;z-index:400;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  box-shadow:0 12px 28px rgba(0,0,0,.08);animation:navIn .16s ease-out}
+@keyframes navIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.np-inner{max-width:1080px;margin:0 auto;padding:16px 20px 20px}
+.np-head{display:flex;align-items:center;margin-bottom:12px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.np-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.np-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;
+  border:1px dashed var(--border);border-radius:10px;background:transparent;color:var(--text);cursor:pointer;transition:.15s}
+.np-item:hover{border-style:solid;border-color:var(--accent);background:var(--brand-soft)}
+.np-item.on{border-style:solid;border-color:var(--accent);background:var(--brand-soft);font-weight:600}
+.np-ic{font-size:20px;line-height:1}
+.np-lb{font-size:12.5px;text-align:center;line-height:1.3}
+header>.nav{position:relative}
+
+@media (max-width:760px){
+  .nav4{overflow-x:auto;scrollbar-width:none}
+  .nav4::-webkit-scrollbar{display:none}
+  .nav4-btn{padding:7px 11px;font-size:13px}
+  .nav-panel{position:fixed;top:auto;bottom:0;left:0;right:0;top:auto;
+    border-top:1px solid var(--border);border-bottom:none;border-radius:14px 14px 0 0;max-height:70vh;overflow-y:auto}
+  .np-grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+}
+/* ============ 学习游戏 ============ */
+.gm-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0;font-size:13px;color:var(--muted)}
+.gm-bar b{color:var(--text)}
+
+.gm-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:8px 0 14px}
+.gm-cell{padding:18px 10px;border:1px dashed var(--border);border-radius:12px;background:var(--surface);
+  font:600 15px var(--font);color:var(--text);cursor:pointer;transition:.15s;word-break:break-word;min-height:64px}
+.gm-cell:hover{border-color:var(--accent);transform:translateY(-1px)}
+.gm-cell.zh{font-weight:500;font-size:14px}
+.gm-cell.sel{border-style:solid;border-color:var(--accent);background:var(--brand-soft);box-shadow:0 0 0 2px var(--brand-soft)}
+.gm-cell.bad{border-color:#C0392B;background:#FDECEA;animation:gmShake .3s}
+.gm-cell.gone{opacity:0;transform:scale(.7);pointer-events:none;transition:.25s}
+@keyframes gmShake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+.mm-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:8px 0 14px}
+.mm-card{position:relative;height:92px;border:none;border-radius:12px;background:transparent;cursor:pointer;perspective:600px}
+.mm-back,.mm-face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  border-radius:12px;font:600 15px var(--font);backface-visibility:hidden;transition:transform .3s;padding:6px;text-align:center;word-break:break-word}
+.mm-back{background:var(--surface2);border:1px dashed var(--border);color:var(--muted);font-size:20px}
+.mm-face{background:var(--surface);border:1px solid var(--accent);color:var(--text);transform:rotateY(180deg);font-size:13.5px}
+.mm-card.open .mm-back{transform:rotateY(180deg)}
+.mm-card.open .mm-face{transform:rotateY(0)}
+.mm-card.done{pointer-events:none}
+.mm-card.done .mm-face{background:var(--brand-soft);border-color:var(--accent);opacity:.75}
+
+.sp-stage{max-width:520px;margin:0 auto;text-align:center}
+.sp-hint{font-size:13px;color:var(--muted);margin:10px 0}
+
+.gk-wrap{display:grid;grid-template-columns:1fr;gap:14px}
+.gk-answer{border:1px solid var(--accent);border-radius:12px;padding:14px;background:var(--brand-soft)}
+.gk-q{font:600 15px var(--font);margin-bottom:10px}
+.gk-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.gk-opt{padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--surface);
+  font:600 14px var(--font);cursor:pointer;color:var(--text)}
+.gk-opt:hover{border-color:var(--accent)}
+.gk-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;max-width:420px;margin:0 auto;
+  background:var(--border);padding:2px;border-radius:10px}
+.gk-cell{aspect-ratio:1;border:none;background:var(--surface);font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--text)}
+.gk-cell:hover{background:var(--brand-soft)}
+.gk-cell.me{color:var(--accent);font-size:18px}
+.gk-cell.ai{color:#C0392B;font-size:18px}
+/* 内置公版漫画 */
+.comics-sec{margin:10px 0 16px;border-bottom:1px dashed var(--line);padding-bottom:16px}
+.comics-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.comics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.comic-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.comic-thumb{cursor:pointer;background:var(--surface2);line-height:0}
+.comic-thumb img{width:100%;height:auto;display:block}
+.comic-meta{padding:8px 10px}
+.comic-t{font:600 13px var(--font);line-height:1.35}
+.comic-d{font-size:11px;color:var(--muted);margin-top:2px}
+.comic-lic{display:inline-block;font-size:10px;color:#0B6E4F;background:#E6F7EE;
+  border-radius:4px;padding:1px 5px;margin-top:4px}
+.comic-acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.comic-miss{padding:40px 10px;color:var(--muted);font-size:12px;text-align:center}
+
+.comic-viewer{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.85);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.cv-box{background:var(--surface);border-radius:12px;max-width:920px;width:100%;max-height:94vh;
+  display:flex;flex-direction:column;overflow:hidden}
+.cv-head{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.cv-body{overflow:auto;padding:0;background:#111}
+.cv-body img{width:100%;height:auto;display:block}
+.cv-foot{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+/* 框选识别 */
+.crop-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 8px;
+  padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--surface2)}
+.crop-stage{margin:8px 0 14px}
+.crop-imgwrap{position:relative;display:inline-block;max-width:100%;line-height:0;cursor:crosshair;user-select:none}
+.crop-imgwrap img{max-width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--border)}
+.crop-rect{position:absolute;border:2px solid var(--accent);background:rgba(34,201,138,.18);pointer-events:none}
+.crop-out{margin-top:10px}
+.crop-res{border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--surface)}
+.crop-orig{font:15px/1.7 var(--read-font, Georgia, serif)}
+.crop-zh{font-size:13.5px;color:var(--muted);margin-top:6px;line-height:1.7}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -949,42 +1059,15 @@ body.no-zh .sent .zh{display:none}
       <span id="langPillMain">🌐 英语</span><span id="langPillSub">中文</span>
     </button>
     <button class="nav-more" id="navMore" onclick="toggleNavMore()" aria-label="更多菜单">更多 ▾</button>
-    <nav id="mainNav">
-      <!-- 一级：最高频的 6 个 -->
-      <button id="nav-library" class="on" onclick="go('library')">书城</button>
-      <button id="nav-assembly" onclick="go('assembly')">🧩 拼装</button>
-      <button id="nav-vocabbooks" onclick="go('vocabbooks')">📚 词书</button>
-      <button id="nav-favorites" onclick="go('favorites')">⭐ 收藏 <span class="nav-count" data-favcount>0</span></button>
-      <button id="nav-plan" onclick="go('plan')">💎 会员</button>
-      <button id="nav-account" onclick="go('account')">账号</button>
-      <!-- 二级：其余收进「更多」，避免一行挤断 -->
-      <div class="nav-grp" id="navGrpMore" hidden>
-        <button onclick="go('collections')">📚 书单</button>
-        <button id="nav-press" onclick="go('press')">📰 外刊</button>
-        <button id="nav-imports" onclick="go('imports')">📥 我的导入</button>
-        <button id="nav-notes" onclick="go('notes')">📝 笔记</button>
-        <button id="nav-bookchat" onclick="go('bookchat')">💬 与书对话</button>
-        <button id="nav-tutor" onclick="go('tutor')">🗣️ AI 陪读</button>
-        <button id="nav-serial" onclick="go('serial')">📖 AI 连载</button>
-        <button id="nav-manga" onclick="go('manga')">🖼️ 漫画翻译</button>
-        <button id="nav-rss" onclick="go('rss')">📰 RSS 外刊</button>
-        <button id="nav-aitools" onclick="go('aitools')">🤖 AI 工具</button>
-        <button id="nav-browser" onclick="go('browser')">🌐 浏览器</button>
-        <button id="nav-video" onclick="go('video')">🎬 看视频</button>
-        <button id="nav-wordquest" onclick="go('wordquest')">⚔️ 打怪</button>
-        <button id="nav-test" onclick="go('test')">词汇测试</button>
-        <button id="nav-vocab" onclick="go('vocab')">生词本</button>
-        <button onclick="go('sentcol')">⭐ 金句</button>
-        <button id="nav-sreview" onclick="go('sreview')">生词模式</button>
-        <button onclick="go('review')" id="nav-review" style="display:none">📝 复习</button>
-        <button id="nav-report" onclick="go('report')">📊 报告</button>
-        <button id="nav-guide" onclick="go('guide')">🎓 教程</button>
-        <button id="nav-settings" onclick="go('settings')">🎨 个性化</button>
-        <button id="nav-changelog" onclick="go('changelog')">🆕 更新</button>
-        <button id="nav-feedback" onclick="go('feedback')">📮 反馈</button>
-      </div>
+    <nav id="mainNav" class="nav4">
+      <button class="nav4-btn on" data-grp="read" onclick="navGrp('read')">阅读</button>
+      <button class="nav4-btn" data-grp="learn" onclick="navGrp('learn')">学习</button>
+      <button class="nav4-btn" data-grp="play" onclick="navGrp('play')">游戏</button>
+      <button class="nav4-btn" data-grp="more" onclick="navGrp('more')">更多</button>
+      <span class="nav4-fav" onclick="go('favorites')" title="我的收藏">⭐ <b data-favcount>0</b></span>
     </nav>
   </div>
+  <div id="navPanel" class="nav-panel" hidden></div>
 </header>
 
 <main>
@@ -1185,7 +1268,16 @@ body.no-zh .sent .zh{display:none}
       <button class="btn ghost small" onclick="mangaRun()">开始识别与翻译</button>
       <button class="btn ghost small" onclick="mangaClear()">清空</button>
     </div>
-    <div class="tip" id="mangaTip">支持 15 种识别语言（英/中简体/中繁体/日/韩/德/法/意/西/荷/葡/希/芬/匈/瑞典）。第一次用某种语言会下载识别包（10–40MB），之后离线可用。</div>
+    <!-- 内置公有领域漫画（真实素材，非生成） -->
+    <div class="comics-sec">
+      <div class="comics-head">
+        <b>📚 内置公版漫画</b>
+        <span class="tip" style="margin:0">JPG 真实漫画页 · 公有领域 · 可离线</span>
+      </div>
+      <div id="comicsGrid" class="comics-grid" style="min-height:180px"></div>
+    </div>
+
+    <div class="tip" id="mangaTip"><b>识别率提示：</b>印刷体、现代漫画、截图、课本页识别率高；<b>老漫画的手写艺术字识别率低</b>（引擎限制），这种情况请用下方「框选识别」只框一个气泡。<br>支持 15 种识别语言（英/中简体/中繁体/日/韩/德/法/意/西/荷/葡/希/芬/匈/瑞典）。第一次用某种语言会下载识别包（10–40MB），之后离线可用。</div>
     <div class="vids-help" style="margin:8px 0">
       <b>想先试试？</b> 点下面任意一页示例漫画（本站自绘，无版权），一秒看到识别 + 翻译效果：
       <div class="lang-row" style="margin-top:8px;flex-wrap:wrap">
@@ -1195,6 +1287,28 @@ body.no-zh .sent .zh{display:none}
       </div>
       <div class="tip" style="margin-top:6px">也可以直接用手机截图、拍的课本页、任何图片 —— 会自动识别里面的文字并翻译。</div>
     </div>
+    <div class="crop-bar">
+      <b>✂️ 框选识别</b>
+      <span class="tip" style="margin:0">在下面的预览图上拖一个框，只识别框里那一块（对老漫画最有效）</span>
+      <select class="chip" id="cropLang" style="width:auto;margin-left:auto">
+        <option value="eng">英</option><option value="chi_sim">简中</option><option value="jpn">日</option>
+        <option value="kor">韩</option><option value="fra">法</option><option value="deu">德</option>
+        <option value="spa">西</option><option value="ita">意</option><option value="rus">俄</option>
+      </select>
+      <button class="btn ghost small" onclick="cropClear()">清除框</button>
+    </div>
+    <div id="cropStage" class="crop-stage" style="display:none">
+      <div class="crop-imgwrap" id="cropWrap">
+        <img id="cropImg" alt="框选预览">
+        <div id="cropRect" class="crop-rect" style="display:none"></div>
+      </div>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn small" onclick="cropRun()">识别框内文字</button>
+        <span class="tip" style="margin:0" id="cropTip">拖拽选择区域</span>
+      </div>
+      <div id="cropOut" class="crop-out"></div>
+    </div>
+
     <div id="mangaProgress" class="manga-progress" style="display:none"></div>
     <div id="mangaPages" class="manga-pages"></div>
   </section>
@@ -1312,6 +1426,89 @@ body.no-zh .sent .zh{display:none}
       <div class="sub">这里是你打错过的词，下次可以选「我的错词本」专门练。</div>
       <div id="wqWrongList" class="wq-wrong"></div>
     </div>
+  </section>
+
+  <!-- ============ 游戏一：单词消消乐 ============ -->
+  <section class="view" id="view-game-match">
+    <div class="page-head">
+      <button class="back" onclick="go('library')">← 返回主页</button>
+      <h2 class="sec">🫧 单词消消乐</h2>
+      <div class="sub">点一个英文气泡，再点对应的中文气泡，配对成功就消掉。</div>
+    </div>
+    <div class="gm-bar">
+      <span>✅ 已消 <b id="gmDone">0</b>/<b id="gmTotal">0</b></span>
+      <span>❌ 错配 <b id="gmMiss">0</b></span>
+      <span>⏱ <b id="gmTime">0:00</b></span>
+      <span class="tip" style="margin:0" id="gmSrc"></span>
+      <button class="btn small" style="margin-left:auto" onclick="gmNew()">换一局</button>
+    </div>
+    <div id="gmBoard" class="gm-board" style="min-height:360px"></div>
+    <div class="tip" id="gmTip">规则：点一个英文、再点一个中文。配对正确两个气泡消失；配错会闪一下并计一次错配。</div>
+  </section>
+
+  <!-- ============ 游戏二：记忆翻牌 ============ -->
+  <section class="view" id="view-game-memory">
+    <div class="page-head">
+      <button class="back" onclick="go('library')">← 返回主页</button>
+      <h2 class="sec">🃏 记忆翻牌</h2>
+      <div class="sub">翻开两张牌，英文和中文能对上就留下，对不上翻回去。用最少步数翻完。</div>
+    </div>
+    <div class="gm-bar">
+      <span>🔄 步数 <b id="mmMoves">0</b></span>
+      <span>✅ 配对 <b id="mmPairs">0</b>/<b id="mmTotal">0</b></span>
+      <span class="tip" style="margin:0" id="mmSrc"></span>
+      <button class="btn small" style="margin-left:auto" onclick="mmNew()">换一局</button>
+    </div>
+    <div id="mmBoard" class="mm-board" style="min-height:380px"></div>
+  </section>
+
+  <!-- ============ 游戏三：听音拼写 ============ -->
+  <section class="view" id="view-game-spell">
+    <div class="page-head">
+      <button class="back" onclick="go('library')">← 返回主页</button>
+      <h2 class="sec">🔊 听音拼写</h2>
+      <div class="sub">听一遍读音，把单词拼出来。拼错会告诉你差在哪。</div>
+    </div>
+    <div class="gm-bar">
+      <span>✅ 拼对 <b id="spRight">0</b></span>
+      <span>❌ 拼错 <b id="spWrong">0</b></span>
+      <span>🎯 第 <b id="spRound">0</b> 题</span>
+      <button class="btn small" style="margin-left:auto" onclick="spNew()">换一局</button>
+    </div>
+    <div class="sp-stage">
+      <button class="btn ghost small" onclick="spPlay()">🔊 再听一遍</button>
+      <div class="sp-hint" id="spHint">点上面的按钮听读音</div>
+      <input class="wq-input" id="spInput" placeholder="把你听到的单词打出来，按回车" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')spSubmit()">
+      <div class="lang-row" style="justify-content:center">
+        <button class="btn small" onclick="spSubmit()">提交</button>
+        <button class="btn ghost small" onclick="spShowMeaning()">看释义</button>
+        <button class="btn ghost small" onclick="spSkip()">跳过</button>
+      </div>
+      <div class="wq-feedback" id="spFb">准备开始。</div>
+    </div>
+  </section>
+
+  <!-- ============ 游戏四：单词五子棋 ============ -->
+  <section class="view" id="view-game-gomoku">
+    <div class="page-head">
+      <button class="back" onclick="go('library')">← 返回主页</button>
+      <h2 class="sec">⚫ 单词五子棋</h2>
+      <div class="sub">每落一子要先答对一个单词。答对才能落子，答错轮到对手。先连成五个就赢。</div>
+    </div>
+    <div class="gm-bar">
+      <span>你 <b id="gkMe">0</b> 子</span>
+      <span>AI <b id="gkAi">0</b> 子</span>
+      <span class="tip" style="margin:0" id="gkTurn">轮到你落子</span>
+      <button class="btn small" style="margin-left:auto" onclick="gkNew()">重开</button>
+    </div>
+    <div class="gk-wrap">
+      <div id="gkAnswer" class="gk-answer" style="display:none">
+        <div class="gk-q" id="gkQ"></div>
+        <div class="gk-opts" id="gkOpts"></div>
+      </div>
+      <div id="gkBoard" class="gk-board" style="min-height:360px"></div>
+    </div>
+    <div class="tip" id="gkTip">点空格子 → 先答一道题 → 答对才会落子。</div>
   </section>
 
   <!-- ============ 看视频学（本地视频 + SRT/VTT 字幕） ============ -->
@@ -2528,21 +2725,40 @@ const store = {
   set level(v){ localStorage.setItem(pk(langKey("level")), v); },
   get vocab(){ try{ return JSON.parse(localStorage.getItem(pk(langKey("vocab")))||"[]"); }catch(e){ return []; } },
   set vocab(v){ localStorage.setItem(pk(langKey("vocab")), JSON.stringify(v)); },
+  /* 全部语言的导入书（写入时用，避免冲掉其他语言） */
+  get importsAll(){
+    try{ return JSON.parse(localStorage.getItem("lz_imports_meta")||"[]") || []; }catch(e){ return []; }
+  },
   /* 导入书籍：元数据存 localStorage，正文/分章存 IndexedDB（支持大文件） */
   get imports(){
     try{
       const meta = JSON.parse(localStorage.getItem("lz_imports_meta")||"null");
-      if(meta) return meta;
+      if(meta){
+        /* 按学习语言隔离：只返回当前语言的导入书；lang 为 null 的旧记录保留 */
+        const cur = curLangCode();
+        return meta.filter(x => x && (x.lang === undefined || x.lang === null || x.lang === cur));
+      }
       /* 兼容旧版：正文曾经整本塞在 localStorage */
       const old = JSON.parse(localStorage.getItem("lz_imports")||"[]");
       if(old.length && !window._lzMigratingImports) setTimeout(migrateImports, 0);
       return old;
     }catch(e){ return []; }
   },
-  set imports(v){ try{ localStorage.setItem("lz_imports_meta", JSON.stringify(v.map(x=>({
+  set imports(v){ try{
+      /* 只替换"当前语言"的那部分，别把其他语言的导入书冲掉 */
+      let others = [];
+      try{
+        const all = JSON.parse(localStorage.getItem("lz_imports_meta")||"[]");
+        const cur = curLangCode();
+        others = all.filter(x => x && x.lang != null && x.lang !== cur);
+      }catch(e){ others = []; }
+      const merged = v.map(x=>({
       id:x.id, t:x.t, format:x.format||"TXT", chars:x.chars||x.size||(x.text?x.text.length:0),
-      sents:x.sents||0, chapters:x.chapters||0, at:x.at||Date.now()
-    })))); }
+      sents:x.sents||0, chapters:x.chapters||0, at:x.at||Date.now(),
+      lang: x.lang == null ? curLangCode() : x.lang
+      })).concat(others);
+      localStorage.setItem("lz_imports_meta", JSON.stringify(merged));
+    }
     catch(e){ alert("浏览器存储空间不足，导入失败：请导入更小的文件。"); } },
   get marks(){ try{ return JSON.parse(localStorage.getItem(pk(langKey("marks")))||"{}"); }catch(e){ return {}; } },
   set marks(v){ localStorage.setItem(pk(langKey("marks")), JSON.stringify(v)); },
@@ -4309,6 +4525,182 @@ function mangaFillSelects(){
   if(s && !s.options.length) s.innerHTML = MANGA_OCR_LANGS.map(([k, n]) => `<option value="${k}" ${k==="eng"?"selected":""}>${n}</option>`).join("");
   if(d && !d.options.length) d.innerHTML = MANGA_TARGETS.map(([k, n]) => `<option value="${k}" ${k===(activeLang()||"zh")?"selected":""}>${n}</option>`).join("");
 }
+/* ================= 框选区域识别（老漫画救命功能） ================= */
+let _cropSel = null;
+function cropShow(file){
+  const stage = document.getElementById("cropStage");
+  const img = document.getElementById("cropImg");
+  if(!stage || !img) return;
+  img.src = file;
+  stage.style.display = "block";
+  _cropSel = null;
+  const rect = document.getElementById("cropRect");
+  if(rect) rect.style.display = "none";
+  const out = document.getElementById("cropOut"); if(out) out.innerHTML = "";
+  const tip = document.getElementById("cropTip"); if(tip) tip.textContent = "拖拽选择区域";
+  cropBind();
+}
+function cropBind(){
+  const wrap = document.getElementById("cropWrap");
+  const rect = document.getElementById("cropRect");
+  if(!wrap || !rect || wrap.dataset.bound) return;
+  wrap.dataset.bound = "1";
+  let sx = 0, sy = 0, dragging = false;
+  const pos = e => {
+    const r = wrap.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: Math.max(0, Math.min(r.width, t.clientX - r.left)),
+             y: Math.max(0, Math.min(r.height, t.clientY - r.top)) };
+  };
+  const start = e => { const p = pos(e); sx = p.x; sy = p.y; dragging = true;
+    rect.style.display = "block"; rect.style.left = p.x+"px"; rect.style.top = p.y+"px";
+    rect.style.width = "0px"; rect.style.height = "0px"; e.preventDefault(); };
+  const move = e => {
+    if(!dragging) return;
+    const p = pos(e);
+    const x = Math.min(sx,p.x), y = Math.min(sy,p.y);
+    rect.style.left = x+"px"; rect.style.top = y+"px";
+    rect.style.width = Math.abs(p.x-sx)+"px"; rect.style.height = Math.abs(p.y-sy)+"px";
+    e.preventDefault();
+  };
+  const end = e => {
+    if(!dragging) return;
+    dragging = false;
+    const w = parseFloat(rect.style.width), h = parseFloat(rect.style.height);
+    if(w < 24 || h < 16){ rect.style.display = "none"; _cropSel = null; return; }
+    _cropSel = { x: parseFloat(rect.style.left), y: parseFloat(rect.style.top), w, h };
+    const tip = document.getElementById("cropTip");
+    if(tip) tip.textContent = "已选中 " + Math.round(w) + "×" + Math.round(h) + "，点「识别框内文字」";
+    e.preventDefault();
+  };
+  wrap.addEventListener("mousedown", start);
+  wrap.addEventListener("mousemove", move);
+  wrap.addEventListener("mouseup", end);
+  wrap.addEventListener("mouseleave", end);
+  wrap.addEventListener("touchstart", start, { passive:false });
+  wrap.addEventListener("touchmove", move, { passive:false });
+  wrap.addEventListener("touchend", end, { passive:false });
+}
+function cropClear(){
+  _cropSel = null;
+  const rect = document.getElementById("cropRect"); if(rect) rect.style.display = "none";
+  const out = document.getElementById("cropOut"); if(out) out.innerHTML = "";
+  const tip = document.getElementById("cropTip"); if(tip) tip.textContent = "拖拽选择区域";
+}
+async function cropRun(){
+  const img = document.getElementById("cropImg");
+  const out = document.getElementById("cropOut");
+  if(!img || !img.naturalWidth){ toast("先选一张图"); return; }
+  if(!_cropSel){ toast("先在图上拖一个框"); return; }
+  if(out) out.innerHTML = `<div class="sub">识别中…</div>`;
+  let T;
+  try{ T = await ensureTesseract(); }catch(e){ if(out) out.textContent = "识别引擎加载失败，请检查网络"; return; }
+  /* 只裁框内区域，放大 3 倍再做灰度，单气泡识别率高很多 */
+  const scale = 3;
+  const dispW = img.clientWidth || img.naturalWidth;
+  const k = img.naturalWidth / dispW;
+  const sx = _cropSel.x * k, sy = _cropSel.y * k, sw = _cropSel.w * k, sh = _cropSel.h * k;
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(8, Math.round(sw * scale));
+  cv.height = Math.max(8, Math.round(sh * scale));
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+  try{
+    const d = ctx.getImageData(0,0,cv.width,cv.height); const px = d.data;
+    for(let i=0;i<px.length;i+=4){
+      let g = 0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+      g = (g-128)*1.5+128;
+      px[i]=px[i+1]=px[i+2]=g;
+    }
+    ctx.putImageData(d,0,0);
+  }catch(e){}
+  const lang = document.getElementById("cropLang")?.value || "eng";
+  let text = "";
+  try{
+    const { data } = await T.recognize(cv, lang, { logger: ()=>{} });
+    text = (data.text || "").replace(/\s+/g, " ").trim();
+  }catch(e){ text = ""; }
+  if(!text){
+    if(out) out.innerHTML = `<div class="empty-notes">这一块没识别出文字。换个语言、框小一点再试。</div>`;
+    return;
+  }
+  let zh = "";
+  try{ zh = await mtTo(text, showLang()); }catch(e){}
+  if(out) out.innerHTML = `<div class="crop-res">
+    <div class="crop-orig">${escHtml(text)}</div>
+    <div class="crop-zh">${escHtml(zh || "（翻译暂不可用，原文见上）")}</div>
+    <div class="lang-row" style="margin-top:8px">
+      <button class="btn ghost small" onclick="importTextAsBook('${escAttr(text)}','漫画选区')">导入阅读器精读</button>
+      <button class="btn ghost small" onclick="gameSpeak('${escAttr(text)}')">🔊 朗读</button>
+    </div></div>`;
+}
+
+/* ================= 内置公有领域漫画 ================= */
+function renderComics(){
+  const host = document.getElementById("comicsGrid");
+  if(!host) return;
+  const list = window.LZ_COMICS_PD || [];
+  if(!list.length){ host.innerHTML = `<div class="empty-state"><div class="empty-t">内置漫画未加载</div></div>`; return; }
+  host.innerHTML = list.map(c => `
+    <div class="comic-card">
+      <div class="comic-thumb" onclick="comicOpen('${escAttr(c.id)}')">
+        <img loading="lazy" width="200" height="270" src="${escAttr(c.file)}" alt="${escAttr(c.t)}"
+          onerror="this.parentElement.innerHTML='<div class=&quot;comic-miss&quot;>图片载入失败</div>'">
+      </div>
+      <div class="comic-meta">
+        <div class="comic-t">${escHtml(c.tzh || c.t)}</div>
+        <div class="comic-d">${escHtml(c.date)} · ${escHtml(c.author)}</div>
+        <div class="comic-lic">${escHtml(c.license)}</div>
+        <div class="comic-acts">
+          <button class="btn small" onclick="comicTranslate('${escAttr(c.id)}')">翻译这一页</button>
+          <button class="btn ghost small" onclick="comicRead('${escAttr(c.id)}')">看图读</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+/* 看图读：全屏看图，点图放大 */
+function comicRead(id){
+  const c = (window.LZ_COMICS_PD || []).find(x => x.id === id);
+  if(!c) return;
+  let el = document.getElementById("comicViewer");
+  if(!el){ el = document.createElement("div"); el.id = "comicViewer"; el.className = "comic-viewer"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el || e.target.classList.contains("cv-close")) el.style.display = "none"; };
+  el.innerHTML = `<div class="cv-box">
+    <div class="cv-head"><b>${escHtml(c.tzh || c.t)}</b>
+      <span class="tip" style="margin-left:8px">${escHtml(c.date)} · ${escHtml(c.author)} · ${escHtml(c.license)}</span>
+      <button class="icobtn cv-close" style="margin-left:auto">✕</button></div>
+    <div class="cv-body"><img src="${escAttr(c.file)}" alt="${escAttr(c.t)}"></div>
+    <div class="cv-foot">
+      <button class="btn small" onclick="document.getElementById('comicViewer').style.display='none';comicTranslate('${escAttr(c.id)}')">翻译这一页</button>
+      <a class="btn ghost small" href="${escAttr(c.src)}" target="_blank" rel="noopener">原始来源</a>
+    </div>
+  </div>`;
+}
+/* 把内置漫画送进翻译流程 */
+async function comicTranslate(id){
+  const c = (window.LZ_COMICS_PD || []).find(x => x.id === id);
+  if(!c){ toast("漫画不存在"); return; }
+  const viewer = document.getElementById("comicViewer");
+  if(viewer) viewer.style.display = "none";
+  go("manga");
+  try{
+    const r = await fetch(c.file, { signal: AbortSignal.timeout(30000) });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    const fname = c.file.split("/").pop();
+    _mangaFiles = [new File([blob], fname, { type: "image/jpeg" })];
+    const srcSel = document.getElementById("mangaSrc"); if(srcSel) srcSel.value = "eng";
+    const dstSel = document.getElementById("mangaDst"); if(dstSel) dstSel.value = "zh";
+    renderMangaPages();
+    cropShow(c.file);
+    const tip = document.getElementById("mangaTip");
+    if(tip) tip.textContent = "已载入「" + (c.tzh || c.t) + "」。老漫画建议用下面的「框选识别」；也可以用「开始识别与翻译」整页识别。";
+    toast("已载入这一页漫画");
+  }catch(e){ toast("漫画载入失败：" + (e.message || e)); }
+}
+
 /* 加载内置示例漫画（本站自绘、无版权） */
 async function mangaSample(lang){
   const map = { en: "sample-en-1.png", fr: "sample-fr-1.png", ja: "sample-ja-1.png" };
@@ -4326,6 +4718,7 @@ async function mangaSample(lang){
     if(dstSel && lang !== "ja") dstSel.value = "zh";
     if(dstSel && lang === "ja") dstSel.value = "zh";
     renderMangaPages();
+    cropShow("manga-samples/" + f + "?v=2");
     const tip = document.getElementById("mangaTip");
     if(tip) tip.textContent = "已加载示例漫画，点「开始识别与翻译」看效果";
     toast("示例漫画已加载");
@@ -6669,6 +7062,387 @@ function shareLangLink(){
   copyText(u);
   toast("已复制直达链接：" + u);
 }
+/* ================= 学习游戏（消消乐 / 翻牌 / 拼写 / 五子棋） ================= */
+/* 游戏词库：优先当前语言生词本 → 生词本为空用高频词表 */
+function gameWords(n){
+  const out = [];
+  const seen = new Set();
+  try{
+    for(const v of (store.vocab || [])){
+      const w = String(v.w || "").toLowerCase();
+      if(!w || seen.has(w)) continue;
+      const d = (typeof dictEntry === "function") ? dictEntry(w) : null;
+      const zh = d ? String(d[1]).split(/[,，;；]/)[0] : (v.zh || "");
+      const g = wqCleanGloss(zh);
+      if(!g || !/[\u4e00-\u9fff]/.test(g)) continue;
+      seen.add(w);
+      out.push({ w, zh: g });
+      if(out.length >= n) return out;
+    }
+  }catch(e){}
+  const common = window.LZ_WQ_COMMON || [];
+  for(const x of common){
+    if(!x || !x.w || seen.has(x.w)) continue;
+    seen.add(x.w);
+    out.push({ w: x.w, zh: wqCleanGloss(x.zh) });
+    if(out.length >= n) break;
+  }
+  return out;
+}
+function gameSourceLabel(){
+  const n = (store.vocab || []).length;
+  return n ? "词库：我的生词本（" + n + " 词）" : "词库：高频词（生词本为空）";
+}
+function gameSpeak(word){
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(word));
+    u.lang = ({en:"en-US",zh:"zh-CN",de:"de-DE",fr:"fr-FR",it:"it-IT",es:"es-ES",ja:"ja-JP",ko:"ko-KR",nl:"nl-NL",pt:"pt-PT",la:"it-IT",el:"el-GR",fi:"fi-FI",hu:"hu-HU",sv:"sv-SE",eo:"eo"})[activeLang()] || "en-US";
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---------- ① 消消乐 ---------- */
+let GM = { pairs: [], picked: [], done: 0, miss: 0, t0: 0, timer: null };
+function gmNew(){
+  const words = gameWords(8);
+  if(words.length < 4){ toast("词库太小，先去阅读器点几个词"); return; }
+  GM.pairs = words;
+  GM.picked = []; GM.done = 0; GM.miss = 0;
+  const cells = [];
+  words.forEach((x, i) => {
+    cells.push({ key: i, side: "en", text: x.w });
+    cells.push({ key: i, side: "zh", text: x.zh });
+  });
+  cells.sort(() => Math.random() - 0.5);
+  const src = document.getElementById("gmSrc"); if(src) src.textContent = gameSourceLabel();
+  const total = document.getElementById("gmTotal"); if(total) total.textContent = words.length;
+  const board = document.getElementById("gmBoard");
+  if(!board) return;
+  board.innerHTML = cells.map((c, i) =>
+    `<button class="gm-cell ${c.side}" data-key="${c.key}" data-i="${i}" onclick="gmPick(${i})">${escHtml(c.text)}</button>`).join("");
+  GM.cells = cells;
+  gmHud();
+  clearInterval(GM.timer);
+  GM.t0 = Date.now();
+  GM.timer = setInterval(() => {
+    const el = document.getElementById("gmTime");
+    if(!el) return;
+    const s = Math.floor((Date.now() - GM.t0) / 1000);
+    el.textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+  }, 500);
+}
+function gmHud(){
+  const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
+  set("gmDone", GM.done); set("gmMiss", GM.miss);
+}
+function gmPick(i){
+  const cells = GM.cells || [];
+  const c = cells[i];
+  const el = document.querySelector(`.gm-cell[data-i="${i}"]`);
+  if(!c || !el || el.classList.contains("gone")) return;
+  if(GM.picked.length === 1 && GM.picked[0].i === i) return;    /* 同一个不重复选 */
+  if(!el.classList.contains("sel")){ el.classList.add("sel"); GM.picked.push({ i, c, el }); }
+  else { el.classList.remove("sel"); GM.picked = GM.picked.filter(x => x.i !== i); return; }
+  if(GM.picked.length < 2) return;
+  const [a, b] = GM.picked;
+  GM.picked = [];
+  const ok = a.c.key === b.c.key && a.c.side !== b.c.side;
+  if(ok){
+    a.el.classList.add("gone"); b.el.classList.add("gone");
+    a.el.classList.remove("sel"); b.el.classList.remove("sel");
+    GM.done++; gmHud();
+    toast("✅ " + (a.c.side === "en" ? a.c.text : b.c.text));
+    if(GM.done === GM.pairs.length){
+      clearInterval(GM.timer);
+      const tip = document.getElementById("gmTip");
+      const s = Math.floor((Date.now() - GM.t0) / 1000);
+      if(tip) tip.innerHTML = `🎉 <b>全部消完！</b>用时 ${s} 秒，错配 ${GM.miss} 次。${GM.miss===0?"零失误，太强了。":""}`;
+    }
+  } else {
+    GM.miss++; gmHud();
+    a.el.classList.add("bad"); b.el.classList.add("bad");
+    setTimeout(() => {
+      a.el.classList.remove("sel","bad"); b.el.classList.remove("sel","bad");
+    }, 420);
+    /* 错配的词回流生词本（提高复习优先级） */
+    try{
+      const wrongC = a.c.side === "en" ? a.c : b.c;
+      const lc = wrongC.text.toLowerCase();
+      if(typeof recordLookup === "function") recordLookup(lc);
+    }catch(e){}
+  }
+}
+
+/* ---------- ② 记忆翻牌 ---------- */
+let MM = { cards: [], open: [], moves: 0, pairs: 0, total: 0, lock: false };
+function mmNew(){
+  const words = gameWords(6);
+  if(words.length < 4){ toast("词库太小"); return; }
+  MM.cards = [];
+  MM.open = []; MM.moves = 0; MM.pairs = 0; MM.total = words.length; MM.lock = false;
+  words.forEach((x, i) => {
+    MM.cards.push({ key: i, side: "en", text: x.w });
+    MM.cards.push({ key: i, side: "zh", text: x.zh });
+  });
+  MM.cards.sort(() => Math.random() - 0.5);
+  const src = document.getElementById("mmSrc"); if(src) src.textContent = gameSourceLabel();
+  const t = document.getElementById("mmTotal"); if(t) t.textContent = words.length;
+  mmHud();
+  const board = document.getElementById("mmBoard");
+  if(!board) return;
+  board.innerHTML = MM.cards.map((c, i) =>
+    `<button class="mm-card" data-i="${i}" onclick="mmFlip(${i})">
+      <span class="mm-back">?</span>
+      <span class="mm-face ${c.side}">${escHtml(c.text)}</span>
+    </button>`).join("");
+}
+function mmHud(){
+  const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
+  set("mmMoves", MM.moves); set("mmPairs", MM.pairs);
+}
+function mmFlip(i){
+  if(MM.lock) return;
+  const el = document.querySelector(`.mm-card[data-i="${i}"]`);
+  if(!el || el.classList.contains("open") || el.classList.contains("done")) return;
+  el.classList.add("open");
+  MM.open.push({ i, c: MM.cards[i], el });
+  if(MM.open.length < 2) return;
+  MM.moves++; mmHud();
+  const [a, b] = MM.open;
+  MM.open = [];
+  if(a.c.key === b.c.key && a.c.side !== b.c.side){
+    a.el.classList.add("done"); b.el.classList.add("done");
+    MM.pairs++; mmHud();
+    if(MM.pairs === MM.total) toast("🎉 全部配对完成！用了 " + MM.moves + " 步");
+  } else {
+    MM.lock = true;
+    setTimeout(() => {
+      a.el.classList.remove("open"); b.el.classList.remove("open");
+      MM.lock = false;
+    }, 700);
+  }
+}
+
+/* ---------- ③ 听音拼写 ---------- */
+let SP = { queue: [], cur: null, right: 0, wrong: 0, round: 0 };
+function spNew(){
+  SP.queue = gameWords(20);
+  if(!SP.queue.length){ toast("词库为空"); return; }
+  SP.right = 0; SP.wrong = 0; SP.round = 0;
+  spNext();
+}
+function spNext(){
+  if(!SP.queue.length){
+    const fb = document.getElementById("spFb");
+    if(fb) fb.innerHTML = `🎉 <b>这一局结束</b> 拼对 ${SP.right} · 拼错 ${SP.wrong}`;
+    return;
+  }
+  SP.cur = SP.queue.shift();
+  SP.round++;
+  const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
+  set("spRight", SP.right); set("spWrong", SP.wrong); set("spRound", SP.round);
+  const hint = document.getElementById("spHint");
+  if(hint) hint.textContent = "共 " + SP.cur.w.length + " 个字母 · 首字母 " + SP.cur.w[0].toUpperCase();
+  const inp = document.getElementById("spInput");
+  if(inp){ inp.value = ""; inp.disabled = false; inp.focus(); }
+  const fb = document.getElementById("spFb");
+  if(fb) fb.textContent = "听读音，拼出来。";
+  spPlay();
+}
+function spPlay(){ if(SP.cur) gameSpeak(SP.cur.w); }
+function spShowMeaning(){
+  const fb = document.getElementById("spFb");
+  if(fb && SP.cur) fb.innerHTML = `释义：<b>${escHtml(SP.cur.zh)}</b> · 提示：${escHtml(SP.cur.w[0].toUpperCase())}${"·".repeat(Math.max(0, SP.cur.w.length-1))}`;
+}
+function spSubmit(){
+  if(!SP.cur) return;
+  const inp = document.getElementById("spInput");
+  const got = (inp?.value || "").trim().toLowerCase();
+  if(!got) return;
+  const want = SP.cur.w.toLowerCase();
+  const fb = document.getElementById("spFb");
+  if(got === want){
+    SP.right++;
+    if(fb) fb.innerHTML = `✅ 拼对了：<b>${escHtml(want)}</b>`;
+    gameSpeak(want);
+    setTimeout(spNext, 700);
+  } else {
+    SP.wrong++;
+    /* 指出第一个不同的位置 */
+    let k = 0; while(k < got.length && k < want.length && got[k] === want[k]) k++;
+    const mark = want.split("").map((ch, i) => i === k ? `<b style="color:#C0392B">${escHtml(ch)}</b>` : escHtml(ch)).join("");
+    if(fb) fb.innerHTML = `❌ 差一点。正确答案是：${mark}<br><span class="tip">你打的是 ${escHtml(got)}</span>`;
+    try{ if(typeof recordLookup === "function") recordLookup(want); }catch(e){}
+    const s = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+    s("spWrong", SP.wrong); s("spRight", SP.right);
+    setTimeout(spNext, 1600);
+    return;
+  }
+  const s = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  s("spRight", SP.right); s("spWrong", SP.wrong);
+}
+function spSkip(){ if(SP.cur){ SP.wrong++; spSubmit.call(null); } spNext(); }
+
+/* ---------- ④ 单词五子棋 ---------- */
+const GK_N = 9;
+let GK = { board: [], me: 0, ai: 0, turn: "me", pending: null, over: false };
+function gkNew(){
+  GK.board = Array.from({length: GK_N}, () => Array(GK_N).fill(0));   /* 0 空 1 我 2 AI */
+  GK.me = 0; GK.ai = 0; GK.turn = "me"; GK.pending = null; GK.over = false;
+  gkRender();
+  const turn = document.getElementById("gkTurn"); if(turn) turn.textContent = "轮到你落子";
+  const ans = document.getElementById("gkAnswer"); if(ans) ans.style.display = "none";
+}
+function gkRender(){
+  const board = document.getElementById("gkBoard");
+  if(!board) return;
+  const set = (id, v)=>{ const e = document.getElementById(id); if(e) e.textContent = v; };
+  set("gkMe", GK.me); set("gkAi", GK.ai);
+  board.innerHTML = `<div class="gk-grid">${GK.board.map((row, y) => row.map((v, x) =>
+    `<button class="gk-cell ${v===1?'me':v===2?'ai':''}" onclick="gkClick(${x},${y})">${v===1?'●':v===2?'○':''}</button>`).join("")).join("")}</div>`;
+}
+function gkClick(x, y){
+  if(GK.over || GK.turn !== "me") return;
+  if(GK.board[y][x] !== 0) return;
+  if(GK.pending){ toast("先答完这道题"); return; }
+  const words = gameWords(1);
+  const pool = gameWords(30);
+  if(!pool.length){ toast("词库为空"); return; }
+  const right = pool[Math.floor(Math.random()*pool.length)];
+  const distract = pool.filter(p => p.w !== right.w).sort(()=>Math.random()-0.5).slice(0,3);
+  const opts = [right, ...distract].sort(()=>Math.random()-0.5);
+  GK.pending = { x, y };
+  const ans = document.getElementById("gkAnswer");
+  if(ans) ans.style.display = "block";
+  const q = document.getElementById("gkQ");
+  if(q) q.innerHTML = `「<b>${escHtml(right.zh)}</b>」对应的词是？`;
+  const box = document.getElementById("gkOpts");
+  if(box) box.innerHTML = opts.map(o =>
+    `<button class="gk-opt" onclick="gkAnswer('${escAttr(o.w)}','${escAttr(right.w)}')">${escHtml(o.w)}</button>`).join("");
+}
+function gkAnswer(picked, correct){
+  const ans = document.getElementById("gkAnswer"); if(ans) ans.style.display = "none";
+  const p = GK.pending; GK.pending = null;
+  if(!p) return;
+  if(String(picked).toLowerCase() === String(correct).toLowerCase()){
+    GK.board[p.y][p.x] = 1; GK.me++;
+    gkRender();
+    if(gkWin(1)){ GK.over = true; toast("🎉 你赢了！"); return; }
+    GK.turn = "ai";
+    const turn = document.getElementById("gkTurn"); if(turn) turn.textContent = "AI 思考中…";
+    setTimeout(gkAiMove, 500);
+  } else {
+    toast("❌ 答错了，这步让给对手");
+    try{ if(typeof recordLookup === "function") recordLookup(String(correct).toLowerCase()); }catch(e){}
+    GK.turn = "ai";
+    setTimeout(gkAiMove, 400);
+  }
+}
+function gkAiMove(){
+  if(GK.over) return;
+  const empty = [];
+  for(let y=0;y<GK_N;y++) for(let x=0;x<GK_N;x++) if(GK.board[y][x]===0) empty.push([x,y]);
+  if(!empty.length){ GK.over = true; toast("平局"); return; }
+  /* 简单策略：优先堵/连 */
+  let pick = empty[Math.floor(Math.random()*empty.length)];
+  outer:
+  for(const [x,y] of empty){
+    for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+      let c1 = 0, c2 = 0;
+      for(let k=-2;k<=2;k++){
+        const v = GK.board[y+dy*k] && GK.board[y+dy*k][x+dx*k];
+        if(v === 2) c2++; else if(v === 1) c1++;
+      }
+      if(c2 >= 2){ pick = [x,y]; break outer; }
+      if(c1 >= 2 && Math.random() < 0.7){ pick = [x,y]; break outer; }
+    }
+  }
+  GK.board[pick[1]][pick[0]] = 2; GK.ai++;
+  gkRender();
+  if(gkWin(2)){ GK.over = true; toast("AI 赢了，再来一局？"); return; }
+  GK.turn = "me";
+  const turn = document.getElementById("gkTurn"); if(turn) turn.textContent = "轮到你落子";
+}
+function gkWin(who){
+  const B = GK.board;
+  for(let y=0;y<GK_N;y++) for(let x=0;x<GK_N;x++){
+    for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+      let n = 0;
+      for(let k=0;k<5;k++){
+        const yy = y+dy*k, xx = x+dx*k;
+        if(yy<0||yy>=GK_N||xx<0||xx>=GK_N) break;
+        if(B[yy][xx] === who) n++; else break;
+      }
+      if(n === 5) return true;
+    }
+  }
+  return false;
+}
+
+/* ================= 四组导航（16 项平铺 → 4 组下拉） ================= */
+const NAV_GROUPS = {
+  read: { name: "阅读", items: [
+    ["📖","书城","library"], ["📥","我的导入","imports"], ["⭐","我的收藏","favorites"],
+    ["📚","书单","collections"], ["📰","外刊","press"], ["📡","RSS 外刊","rss"]
+  ]},
+  learn: { name: "学习", items: [
+    ["🧩","句子拼装","assembly"], ["📚","考试词书","vocabbooks"], ["📝","生词本","vocab"],
+    ["🔁","复习","sreview"], ["🎯","词汇测试","test"], ["📓","三栏笔记","notes"],
+    ["⭐","金句","sentcol"], ["📊","学习报告","report"]
+  ]},
+  play: { name: "游戏", items: [
+    ["⚔️","单词打怪","wordquest"], ["🫧","消消乐","game-match"], ["🔊","听音拼写","game-spell"],
+    ["🃏","记忆翻牌","game-memory"], ["⚫","单词五子棋","game-gomoku"]
+  ]},
+  more: { name: "更多", items: [
+    ["🖼️","漫画阅读","manga"], ["🎬","看视频学","video"], ["🌐","站内浏览","browser"],
+    ["🤖","AI 工具","aitools"], ["💬","与书对话","bookchat"], ["🗣️","AI 陪读","tutor"],
+    ["📖","AI 连载","serial"], ["💎","会员","plan"], ["👤","账号","account"],
+    ["🎨","个性化","settings"], ["🎓","教程","guide"], ["🆕","更新记录","changelog"],
+    ["📮","反馈","feedback"]
+  ]}
+};
+const VIEW_TO_GROUP = {};
+for(const [g, cfg] of Object.entries(NAV_GROUPS)) for(const it of cfg.items) VIEW_TO_GROUP[it[2]] = g;
+VIEW_TO_GROUP.library = "read";
+
+let _navOpen = null;
+function navGrp(g){
+  const panel = document.getElementById("navPanel");
+  if(!panel) return;
+  if(_navOpen === g){ navClose(); return; }
+  _navOpen = g;
+  const cfg = NAV_GROUPS[g];
+  const cur = (document.querySelector(".view.on") || {}).id || "";
+  const curName = cur.replace(/^view-/, "");
+  panel.innerHTML = `<div class="np-inner">
+    <div class="np-head"><b>${escHtml(cfg.name)}</b>
+      <button class="icobtn" style="margin-left:auto" onclick="navClose()">✕</button></div>
+    <div class="np-grid">${cfg.items.map(([ic, label, view]) =>
+      `<button class="np-item ${curName===view?'on':''}" onclick="navClose();go('${view}')">
+        <span class="np-ic">${ic}</span><span class="np-lb">${escHtml(label)}</span></button>`).join("")}</div>
+  </div>`;
+  panel.hidden = false;
+  document.querySelectorAll(".nav4-btn").forEach(b => b.classList.toggle("on", b.dataset.grp === g));
+}
+function navClose(){
+  const panel = document.getElementById("navPanel");
+  if(panel) panel.hidden = true;
+  _navOpen = null;
+  const cur = ((document.querySelector(".view.on") || {}).id || "").replace(/^view-/, "");
+  const g = VIEW_TO_GROUP[cur] || null;
+  document.querySelectorAll(".nav4-btn").forEach(b => b.classList.toggle("on", b.dataset.grp === g));
+}
+document.addEventListener("click", e => {
+  const panel = document.getElementById("navPanel");
+  if(!panel || panel.hidden) return;
+  if(panel.contains(e.target)) return;
+  if(e.target.closest(".nav4-btn")) return;
+  navClose();
+});
+
 function toggleNavMore(){
   const grp = document.getElementById("navGrpMore");
   const btn = document.getElementById("navMore");
@@ -6679,15 +7453,12 @@ function toggleNavMore(){
 }
 /* 某视图属于「更多」分组时，展开分组以便看到高亮 */
 function revealNavFor(name){
-  const grp = document.getElementById("navGrpMore");
-  if(!grp) return;
-  const el = document.getElementById("nav-" + name);
-  const inGrp = el && grp.contains(el);
-  if(inGrp && grp.hidden){
-    grp.hidden = false;
-    const btn = document.getElementById("navMore");
-    if(btn) btn.textContent = "收起 ▴";
-  }
+  /* 新版四组导航：只同步分组高亮，不再需要"展开更多" */
+  try{
+    const cur = name || ((document.querySelector(".view.on") || {}).id || "").replace(/^view-/, "");
+    const g = VIEW_TO_GROUP[cur] || null;
+    document.querySelectorAll(".nav4-btn").forEach(b => b.classList.toggle("on", b.dataset.grp === g));
+  }catch(e){}
 }
 /* 语言相关的存储键：阅读进度 / 生词 / 词族状态 / 偏好都按学习语言隔离 */
 function langKey(base){ return base + "_" + activeLang(); }
@@ -6726,7 +7497,7 @@ function go(name){
   target.classList.add("on");
   /* 章导航条只在阅读器里显示，切到别的页面必须收起来 */
   try{ const cb = document.getElementById("chapBar"); if(cb && name !== "reader") cb.style.display = "none"; }catch(e){}
-  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));
+  try{ navClose(); }catch(e){}
   const nb = document.getElementById("nav-"+name);
   if(nb) nb.classList.add("on");
   applyLangUI();
@@ -6754,9 +7525,13 @@ function go(name){
   if(name==="bookchat") bcBookName();
   if(name==="tutor"){ renderTutorScenes(); if(!_tuHistory.length) tuStart(); }
   if(name==="serial") renderSerialControls();
-  if(name==="manga") mangaFillSelects();
+  if(name==="manga"){ mangaFillSelects(); renderComics(); }
   if(name==="rss"){ rssFill(); if(!_rssItems.length) rssLoad(); }
   if(name==="aitools") renderAitBody();
+  if(name==="game-match") gmNew();
+  if(name==="game-memory") mmNew();
+  if(name==="game-spell") spNew();
+  if(name==="game-gomoku") gkNew();
   if(name==="favorites") renderFavorites();
   if(name==="imports") renderImports();
   if(name==="browser"){
@@ -6812,19 +7587,25 @@ function dueVocabs(){
 }
 function updateNavRev(){
   const due = vocabDueList();
+  /* 新版四组导航没有 nav-sreview / nav-review 这些平铺按钮了，
+     到期词数改显示在「游戏」组里的「复习」项上，这里全部做空值保护 */
   const navS = document.getElementById("nav-sreview");
   if(navS) navS.textContent = due.length ? "生词模式 · " + due.length : "生词模式";
-  const btn = document.getElementById("nav-review");
   const tip = document.getElementById("revTip");
   const revBtn = document.getElementById("revBtn");
-  if(due.length > 0){
-    const lbl = `· 今日 ${due.length} 词`;
-    btn.textContent = "📝 复习 "+due.length; btn.style.display="inline-block";
-    tip.textContent = lbl; tip.style.display="inline";
-    revBtn.style.display="inline-block"; revBtn.textContent = "📝 今日复习 "+due.length;
-  } else {
-    btn.style.display="none"; tip.style.display="none"; revBtn.style.display="none";
+  if(tip){
+    if(due.length > 0){ tip.textContent = `· 今日 ${due.length} 词`; tip.style.display = "inline"; }
+    else tip.style.display = "none";
   }
+  if(revBtn){
+    if(due.length > 0){ revBtn.style.display = "inline-block"; revBtn.textContent = "📝 今日复习 " + due.length; }
+    else revBtn.style.display = "none";
+  }
+  /* 「学习」组里的复习项加角标 */
+  try{
+    const badge = document.getElementById("navDueBadge");
+    if(badge){ badge.textContent = due.length || ""; badge.style.display = due.length ? "inline-block" : "none"; }
+  }catch(e){}
 }
 function renderReview(){
   const body = document.getElementById("reviewBody");
@@ -6936,24 +7717,102 @@ let _idbPromise = null;
 function openIDB(){
   if(_idbPromise) return _idbPromise;
   _idbPromise = new Promise((resolve, reject)=>{
-    const r = indexedDB.open("lizzread_v1", 3);
+    /* v4：为学习数据加 lang 字段与索引，实现按学习语言隔离。
+       旧记录没有 lang → 迁移时打上 lang:null（表示"语言未知"），
+       读取时按 (lang === activeLang() || lang == null) 兼容，绝不丢用户数据。 */
+    const r = indexedDB.open("lizzread_v1", 4);
     r.onupgradeneeded = e=>{
       const db = e.target.result;
+      const oldV = e.oldVersion || 0;
       if(!db.objectStoreNames.contains("books")) db.createObjectStore("books", {keyPath:"gb"});
       if(!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", {keyPath:"key"});
       if(!db.objectStoreNames.contains("imports")) db.createObjectStore("imports", {keyPath:"id"});
       if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv", {keyPath:"key"});
+      if(!db.objectStoreNames.contains("games")) db.createObjectStore("games", {keyPath:"key"});
+
+      /* 用 versionchange 事务给已有表建 lang 索引 */
+      try{
+        const tx = e.target.transaction;
+        for(const name of ["books","imports","kv","games"]){
+          if(!db.objectStoreNames.contains(name)) continue;
+          const st = tx.objectStore(name);
+          if(!st.indexNames.contains("lang")) st.createIndex("lang", "lang", { unique: false });
+        }
+        /* imports / kv / books 里缺 lang 的旧记录补 null */
+        if(oldV > 0 && oldV < 4){
+          for(const name of ["books","imports","kv"]){
+            if(!db.objectStoreNames.contains(name)) continue;
+            const st = tx.objectStore(name);
+            const cur = st.openCursor();
+            cur.onsuccess = ev2 => {
+              const c = ev2.target.result;
+              if(!c) return;
+              if(c.value && c.value.lang === undefined){
+                c.value.lang = null;
+                try{ c.update(c.value); }catch(err){}
+              }
+              c.continue();
+            };
+          }
+        }
+      }catch(err){ /* 索引已存在等情况忽略 */ }
     };
     r.onsuccess = ()=>resolve(r.result);
     r.onerror = ()=>reject(r.error);
   });
   return _idbPromise;
 }
+/* ============ 按学习语言读写 IndexedDB ============ */
+function curLangCode(){ try{ return activeLang(); }catch(e){ return "en"; } }
+/* 读某表里属于当前语言的全部记录（lang 为 null 的旧数据也一并返回，避免丢书） */
+async function idbAllByLang(storeName){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction(storeName, "readonly");
+    const all = await new Promise((res, rej)=>{
+      const r = tx.objectStore(storeName).getAll();
+      r.onsuccess = ()=>res(r.result || []);
+      r.onerror = ()=>rej(r.error);
+    });
+    const lang = curLangCode();
+    return all.filter(x => x && (x.lang === undefined || x.lang === null || x.lang === lang));
+  }catch(e){ return []; }
+}
+/* 清空某语言的数据（不影响其他语言） */
+async function idbClearByLang(storeName, lang){
+  try{
+    const db = await openIDB();
+    const tx = db.transaction(storeName, "readwrite");
+    const st = tx.objectStore(storeName);
+    const keyPath = st.keyPath;
+    const all = await new Promise((res)=>{ const r = st.getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>res([]); });
+    const target = lang || curLangCode();
+    for(const rec of all){
+      if(rec && rec.lang === target){
+        try{ st.delete(rec[keyPath]); }catch(e){}
+      }
+    }
+    await new Promise((res)=>{ tx.oncomplete = res; tx.onerror = res; });
+    return true;
+  }catch(e){ return false; }
+}
+/* 统计某语言数据量（用于设置页展示） */
+async function idbLangStats(){
+  const out = {};
+  for(const name of ["imports","kv","games"]){
+    try{
+      const all = await idbAllByLang(name);
+      out[name] = all.length;
+    }catch(e){ out[name] = 0; }
+  }
+  return out;
+}
+
 async function idbPut(gb, txt, size, title){
   try{
     const db = await openIDB();
     const tx = db.transaction("books","readwrite");
-    tx.objectStore("books").put({ gb, txt, size, title, createdAt: Date.now(), lastReadAt: Date.now() });
+    tx.objectStore("books").put({ gb, txt, size, title, lang: curLangCode(), createdAt: Date.now(), lastReadAt: Date.now() });
     await new Promise((res, rej)=>{ tx.oncomplete=res; tx.onerror=rej; });
     /* 超 100MB 自动清理最久没读的 */
     idbGc();
@@ -10160,10 +11019,10 @@ async function saveImportedBook(res, srcName, sents, chapters){
   const id = "imp"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   const rec = { id, t: res.title || String(srcName||"").replace(/\.\w+$/,""), format: res.format || "TXT",
     author: res.author||"", source: res.source||"", sents, chapters, text: res.text,
-    chars: (res.text||"").length, at: Date.now() };
+    chars: (res.text||"").length, at: Date.now(), lang: curLangCode() };
   try{ await idbImportPut(rec); }catch(e){ localStorage.setItem("lz_imports", JSON.stringify([{id, t:rec.t, text:rec.text}])); }
-  const meta = store.imports;
-  meta.unshift({id, t:rec.t, format:rec.format, chars:rec.chars, sents:sents.length, chapters:chapters.length, at:Date.now(), source:res.source||""});
+  const meta = store.importsAll;
+  meta.unshift({id, t:rec.t, format:rec.format, chars:rec.chars, sents:sents.length, chapters:chapters.length, at:Date.now(), source:res.source||"", lang: rec.lang});
   localStorage.setItem("lz_imports_meta", JSON.stringify(meta));
   fullCache[id] = {sents, chapters, imported:true};
   fullMode = {id, chap:0};
@@ -10171,7 +11030,7 @@ async function saveImportedBook(res, srcName, sents, chapters){
 }
 async function delImport(id){
   if(!confirm("确定删除这本导入的书？")) return;
-  const meta = store.imports.filter(x=>x.id!==id);
+  const meta = store.importsAll.filter(x=>x.id!==id);
   localStorage.setItem("lz_imports_meta", JSON.stringify(meta));
   await idbImportDel(id).catch(()=>{});
   delete impCache[id]; delete fullCache[id];
