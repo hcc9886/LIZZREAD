@@ -7,6 +7,25 @@
    用法：node server.js [port]
    ===================================================================== */
 const http = require('http');
+/* 自动加载 .env.local（不需要 dotenv 依赖） */
+(function loadEnvFile(){
+  try{
+    const fs = require('fs'), path = require('path');
+    for(const f of ['.env.local', '.env']){
+      const p = path.join(__dirname, f);
+      if(!fs.existsSync(p)) continue;
+      for(const line of fs.readFileSync(p, 'utf8').split('\n')){
+        const t = line.trim();
+        if(!t || t.startsWith('#')) continue;
+        const i = t.indexOf('=');
+        if(i < 1) continue;
+        const k = t.slice(0, i).trim();
+        const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, '');
+        if(!process.env[k]) process.env[k] = v;
+      }
+    }
+  }catch(e){}
+})();
 const https = require('https');
 const fs = require('fs');
 const path = require('path');

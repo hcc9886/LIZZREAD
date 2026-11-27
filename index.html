@@ -35,6 +35,7 @@
 <script src="data/vocab-books-ext.js?v=2" defer></script>
 <script src="data/books-pg-multi.js?v=1" defer></script>
 <script src="data/books-pg-multi2.js?v=1" defer></script>
+<script src="data/books-zh-classics.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=1"></script>
@@ -210,6 +211,14 @@
 .rv-immersive .zh{display:none}
 .rv-bilingual .zh{display:none}
 .rv-wordwise .igl{display:inline-flex !important;font-size:.62em;vertical-align:super;color:var(--brand-deep);margin:0 2px 0 0}
+.shadow-result{margin:8px 0;font-size:13px;line-height:1.7}
+.shadow-score{font:600 15px var(--font);margin-bottom:4px}
+.shadow-said{color:var(--muted)}
+.shadow-miss{margin-top:4px}
+.shadow-miss b{color:#C0392B;font-weight:600}
+/* 书签小工具 */
+.bm-row{display:flex;justify-content:center;margin:14px 0}
+.bm-link{display:inline-block;padding:12px 22px;border:2px dashed var(--brand);border-radius:10px;color:var(--brand-deep);font-weight:600;text-decoration:none;background:var(--brand-soft);cursor:grab}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -2818,12 +2827,47 @@ function renderVbReview(){
 }
 /* 从任意地方打开一个词的词卡 */
 function openWordCard(word){
+  const w = String(word || "").trim();
+  if(!w) return;
+  /* 场景一：阅读器里——走完整流程（能拿到本句语境） */
+  const sents = (curBook && typeof getSents === "function") ? (getSents(curBook.id) || []) : [];
+  if(sents.length && document.querySelector("#view-reader .sent")){
+    try{
+      const idx = sents.findIndex(x => (x.en || "").toLowerCase().includes(w.toLowerCase()));
+      const i = idx >= 0 ? idx : 0;
+      sheetWord = w;
+      sheetSent = i;
+      curSentIdx = i;
+      renderStandaloneCard(w, sents[i] || { en: "", zh: "" });
+      openSheet();
+      return;
+    }catch(e){}
+  }
+  /* 场景二：没有书（收藏页、书签小工具、外刊阅读模式）——独立词卡 */
   try{
-    const el = document.createElement("span");
-    el.className = "w";
-    el.dataset.w = word;
-    wordClick({ target: el });
-  }catch(e){ toast("查词失败"); }
+    renderStandaloneCard(w, { en: "", zh: "" });
+    openSheet();
+  }catch(e){ toast("查词失败：" + (e.message || e)); }
+}
+/* 独立词卡：不依赖阅读器上下文 */
+function renderStandaloneCard(word, sent){
+  const low = String(word).toLowerCase();
+  try{
+    const zhEl = document.getElementById("shCtx");
+    if(zhEl) zhEl.textContent = (sent && sent.zh) || "（当前没有句子语境，以下是词本身的信息）";
+    const enEl = document.getElementById("shEn");
+    if(enEl) enEl.textContent = (sent && sent.en) || "";
+    const wEl = document.getElementById("shWord");
+    if(wEl) wEl.textContent = word;
+    renderRichWordCard(word, low);
+    try{ renderVbButtons(low); }catch(e){}
+  }catch(e){}
+}
+function openSheet(){
+  const sh = document.getElementById("sheet");
+  const mk = document.getElementById("mask");
+  if(sh) sh.classList.add("on");
+  if(mk) mk.classList.add("on");
 }
 function vbBulk(book, status){
   const list = VOCAB_BOOKS()[book] || [];
@@ -3165,7 +3209,8 @@ async function applyUpdateNow(){
 function pgMultiBooks(){
   const a = window.LZ_PG_MULTI || [];
   const b = window.LZ_PG_MULTI2 || [];
-  return [...a, ...b];
+  const c = window.LZ_ZH_CLASSICS || [];
+  return [...a, ...b, ...c];
 }
 /* 启动时把公版书挂进书库与全文缓存 */
 function installPgMulti(){
@@ -3420,6 +3465,49 @@ function showHomeGroup(title, items){
     <div class="home-group-list">${items.map(([n, v]) =>
       `<button class="home-group-item" onclick="document.getElementById('homeGroupSheet').style.display='none';go('${v}')">${n}</button>`).join("")}</div>
   </div>`;
+}
+
+/* ================= 书签小工具（任意网页查词） ================= */
+function bookmarkletCode(){
+  /* 生成一段 bookmarklet：在任意网页上点一下，选中文字就弹释义 */
+  const base = encodeURIComponent(location.origin + location.pathname);
+  return "javascript:(function(){var t=(getSelection()?getSelection().toString():'').trim()||prompt('要查的词或句子')||'';if(!t)return;window.open('" + location.origin + location.pathname + "#lookup='+encodeURIComponent(t),'_blank');})();";
+}
+function showBookmarklet(){
+  let el = document.getElementById("bmSheet");
+  if(!el){ el = document.createElement("div"); el.className = "lang-sheet"; el.id = "bmSheet"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  el.onclick = e => { if(e.target === el) el.style.display = "none"; };
+  const code = bookmarkletCode();
+  el.innerHTML = `<div class="box">
+    <div style="display:flex;align-items:center;gap:8px"><div class="sheet-h">🔖 书签小工具</div>
+      <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('bmSheet').style.display='none'">✕</button></div>
+    <div class="sub" style="margin:10px 0">把下面这个按钮拖到书签栏。以后在任意网页选中一个词或一句话，点它就会跳到 LIZZREAD 查词。</div>
+    <div class="bm-row"><a class="bm-link" href="${escAttr(code)}" onclick="event.preventDefault();toast('请把这个按钮拖到书签栏');">📖 查词 LIZZREAD</a></div>
+    <div class="tip" style="margin-top:10px">装不上？手动做法：新建一个书签，名称随意，网址粘贴下面这段：</div>
+    <textarea class="asm-type-input" readonly style="min-height:90px;font-family:monospace;font-size:11.5px">${escHtml(code)}</textarea>
+  </div>`;
+}
+/* 处理 #lookup=xxx 链接 */
+function handleLookupHash(){
+  try{
+    const m = location.hash.match(/^#lookup=(.+)$/);
+    if(!m) return false;
+    const q = decodeURIComponent(m[1]).trim();
+    if(!q) return false;
+    go("library");
+    setTimeout(()=>{
+      const words = q.match(/[A-Za-z'’-]+|[\u4e00-\u9fff]+/g) || [];
+      if(words.length === 1){
+        /* 查词卡需要词典：先确保词典加载 */
+        const run = ()=> { try{ openWordCard(words[0]); }catch(e){ toast("查词失败：" + (e.message||e)); } };
+        if(typeof loadBigDict === "function" && !dictReady()) loadBigDict().then(run).catch(run);
+        else run();
+      }
+      else importTextAsBook(q, "查词：" + q.slice(0, 16));
+    }, 600);
+    return true;
+  }catch(e){ return false; }
 }
 
 function renderImports(){
@@ -4800,6 +4888,14 @@ function grammarSpans(s){
 }
 function wordSpansGloss(s, i){
   const TOK = TOKEN_RE();
+  /* 当前语言分词器匹配不到（韩语书里的英文段落）→ 回退拉丁分词 */
+  try{
+    const probe = new RegExp(TOK.source);
+    if(!probe.test(s.en || "")) throw new Error("fallback");
+  }catch(e){
+    const LATIN = /[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]+(?:-[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]+)*/g;
+    return (s.en || "").replace(LATIN, m => `<span class="w" data-w="${m.replace(/[’]/g,"'")}">${m}</span>`);
+  }
   const on = inlineGlossOn();
   return (s.en || "").replace(TOK, m => {
     const low = m.toLowerCase();
@@ -4856,6 +4952,55 @@ async function fetchSubUrl(){
 
 /* ================= 播客影子跟读（音频 + 字幕逐句） ================= */
 let _shadowIdx = 0, _shadowOn = false;
+/* ================= 跟读录音评分（Web Speech API，零成本） ================= */
+let _shadowRecog = null, _shadowRecOn = false;
+function shadowRecSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+function shadowRecordStart(){
+  if(!shadowRecSupported()){
+    showShadowResult("这个浏览器不支持语音识别。用较新版本的 Chrome / Edge / Safari，或先点「▶ 跟读这一句」听原音对照朗读。");
+    return;
+  }
+  const s = _videoSubs[_shadowIdx];
+  if(!s){ showShadowResult("先导入字幕再跟读。"); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  try{
+    _shadowRecog = new SR();
+    _shadowRecog.lang = ({en:"en-US",zh:"zh-CN",de:"de-DE",fr:"fr-FR",it:"it-IT",es:"es-ES",ja:"ja-JP",ko:"ko-KR",nl:"nl-NL",pt:"pt-PT",la:"it-IT",el:"el-GR",fi:"fi-FI",hu:"hu-HU",sv:"sv-SE",eo:"eo"})[activeLang()] || "en-US";
+    _shadowRecog.interimResults = false;
+    _shadowRecog.maxAlternatives = 1;
+    _shadowRecog.onresult = ev => { const said = (ev.results[0][0].transcript || "").trim(); scoreShadow(s.text, said); _shadowRecOn = false; };
+    _shadowRecog.onerror = () => { _shadowRecOn = false; showShadowResult("没听清或没给麦克风权限。允许麦克风后重试，或先点「▶ 跟读这一句」听原音。"); };
+    _shadowRecog.onend = () => { _shadowRecOn = false; };
+    _shadowRecOn = true;
+    showShadowResult("🎤 正在听…请跟读这一句");
+    _shadowRecog.start();
+  }catch(e){ showShadowResult("录音启动失败：" + (e.message || e)); }
+}
+function shadowRecordStop(){ try{ if(_shadowRecog) _shadowRecog.stop(); }catch(e){} _shadowRecOn = false; }
+let _shadowLastResult = "";
+function showShadowResult(html){
+  _shadowLastResult = html;
+  const el = document.getElementById("shadowResult");
+  if(el) el.innerHTML = html;
+}
+function scoreShadow(target, said){
+  const norm = t => String(t || "").toLowerCase().replace(/[^\p{L}\p{N}\s'’-]/gu, " ").replace(/\s+/g, " ").trim();
+  const T = norm(target).split(" ").filter(Boolean);
+  const S = norm(said).split(" ").filter(Boolean);
+  if(!T.length){ showShadowResult("这一句没有可比较的文字。"); return; }
+  const pool = [...S];
+  const miss = [];
+  let hit = 0;
+  for(const w of T){ const i = pool.indexOf(w); if(i >= 0){ hit++; pool.splice(i, 1); } else miss.push(w); }
+  const extra = pool;
+  const pct = Math.round(hit / T.length * 100);
+  const color = pct >= 85 ? "#1F9D55" : pct >= 60 ? "#C08A00" : "#C0392B";
+  showShadowResult(`<div class="shadow-score" style="color:${color}">准确率 ${pct}%</div>
+    <div class="shadow-said">你说的：${escHtml(said || "（没听到）")}</div>
+    ${miss.length ? `<div class="shadow-miss">漏读：${miss.map(w => `<b>${escHtml(w)}</b>`).join(" ")}</div>` : `<div class="shadow-miss" style="color:var(--brand-deep)">全部读到了 👏</div>`}
+    ${extra.length ? `<div class="shadow-miss">多读：${extra.map(w => `<b>${escHtml(w)}</b>`).join(" ")}</div>` : ""}`);
+}
+
 function renderShadowPanel(){
   const host = document.getElementById("shadowBox");
   if(!host) return;
@@ -4866,7 +5011,9 @@ function renderShadowPanel(){
       <button class="btn small" onclick="shadowPlay()">▶ 跟读这一句</button>
       <button class="btn ghost small" onclick="shadowNext()">下一句 →</button>
       <button class="btn ghost small" onclick="shadowToggleLoop()">${_shadowOn ? "⏹ 停止循环" : "🔁 单句循环"}</button>
+      <button class="btn small" onclick="shadowRecordStart()">🎤 跟读打分</button>
     </div>
+    <div id="shadowResult" class="shadow-result">${_shadowLastResult || ""}</div>
     <div class="shadow-sent" id="shadowSent">${s ? escHtml(s.text) : "—"}</div>
     <div class="shadow-zh" id="shadowZh">${s && s.zh ? escHtml(s.zh) : ""}</div>
     <div class="tip" style="margin-top:6px">跟读法：先听一遍 → 模仿语调读一遍 → 再听一遍对照。</div>`;
@@ -5917,6 +6064,7 @@ function openLangPanel(){
       </div>
       <div class="lang-row" style="margin-top:14px">
         <button class="btn ghost small" onclick="closeLangPanel();openTransferDialog()">🔁 生词转语言</button>
+        <button class="btn ghost small" onclick="closeLangPanel();showBookmarklet()">🔖 书签小工具</button>
         <button class="btn ghost small" onclick="closeLangPanel();openCompareDialog()">📖 多语言对照</button>
         <button class="btn ghost small" onclick="closeLangPanel();startTutorial()">🎓 本语言带练</button>
         <button class="btn ghost small" onclick="shareLangLink()">🔗 分享本语言链接</button>
@@ -7445,6 +7593,17 @@ async function openFull(id){
   if(!curBook) return;
   const gb = Number(curBook.gb);
   const saved = (store.progress[id] || {});
+  /* 中文名著：包里已有原文，直接解析，不走联网 */
+  const _zhPack = (window.LZ_ZH_CLASSICS || []).find(x => x.id === id || x.gb === gb);
+  if(_zhPack && !fullCache[id]){
+    try{
+      const fallback = splitSentences(_zhPack.text).filter(x => x.en && x.en.replace(/\s/g,"").length > 2);
+      fullCache[id] = { sents: fallback, chapters: [{ t: _zhPack.t, start: 0, end: fallback.length }] };
+      fullMode = { id, chap: 0 };
+      openReader(id);
+      return;
+    }catch(e){}
+  }
   if(gb && fullCache[id] && fullCache[id].sents && !fullCache[id].guide){
     fullMode = {id, chap: Math.min(saved.chap||0, fullCache[id].chapters.length-1)};
     openReader(id);
@@ -7714,10 +7873,11 @@ function openReader(id){
      保证"点词"在任何语言的任何句子里都可用 */
   const LATIN_RE = /[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]+(?:-[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]+)*/g;
   const TOK_FOR = (txt) => {
-    const re = new RegExp(TOK.source, "g");
-    re.lastIndex = 0;
-    const has = re.test(txt || "");
-    return has ? TOK : LATIN_RE;
+    try{
+      /* 用不带 g 的版本判断（带 g 的 test 会改 lastIndex，导致偶发漏判） */
+      const probe = new RegExp(TOK.source);
+      return probe.test(txt || "") ? new RegExp(TOK.source, "g") : LATIN_RE;
+    }catch(e){ return TOK; }
   };
   const _ww = (typeof readView === "function" && readView() === "wordwise");
   const wordSpans = (s,i)=> (_ww || inlineGlossOn()) ? wordSpansGloss(s, i)
@@ -13678,6 +13838,7 @@ try{
   const h = (location.hash || "").replace(/^#/, "");
   if(h && h !== "reader" && h !== "book" && document.getElementById("view-" + h)) setTimeout(() => go(h), 0);
 }catch(e){}
+try{ handleLookupHash(); }catch(e){}
 window.addEventListener("hashchange", () => {
   const h = (location.hash || "").replace(/^#/, "");
   if(h && h !== "reader" && h !== "book" && document.getElementById("view-" + h) && !document.getElementById("view-" + h).classList.contains("on")) go(h);
