@@ -41,3 +41,5 @@ store/huawei/assets/
 !.env.example
 *.key
 secrets/
+dist-pages/
+dist-web/
