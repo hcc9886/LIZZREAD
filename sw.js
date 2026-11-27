@@ -5,8 +5,8 @@
    - 字体/词典 → cache-first，首次出现时缓存
    - 外部翻译/词典 API → 不缓存（译文由 IndexedDB 持久化，离线读本地译文）
 */
-const CACHE = "lizzread_v28";
-const BUILD = "2026-11-23";
+const CACHE = "lizzread_v29";
+const BUILD = "2026-11-27";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -41,6 +41,12 @@ const PRECACHE = [
   "./reader/assembly-panel.js?v=14",
   "./vendor/jszip.min.js",
   "./sentences/books.json?v=2",
+  /* 新增的小体积必需文件（AI 层 / 游戏词库 / 漫画目录）。
+     公版书包(3.8MB)、漫画大图(7MB)、示例图 不进预缓存——
+     它们走 cache-first，第一次打开时自动缓存，避免安装时下载十几 MB。 */
+  "./ai.js?v=1",
+  "./data/wq-common.js?v=1",
+  "./data/comics-pd.js?v=1",
 ];
 const MAX_CACHE_BYTES = 150 * 1024 * 1024;
 
