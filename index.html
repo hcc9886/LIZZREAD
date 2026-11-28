@@ -37,7 +37,7 @@
 <script src="data/books-pg-multi2.js?v=1" defer></script>
 <script src="data/books-zh-classics.js?v=1" defer></script>
 <script src="data/wq-common.js?v=1" defer></script>
-<script src="data/comics-pd.js?v=3" defer></script>
+<script src="data/comics-pd.js?v=4" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=6"></script>
@@ -260,7 +260,8 @@
 .nav4-fav:hover{background:var(--surface2)}
 .nav4-fav b{color:var(--accent)}
 
-.nav-panel{position:absolute;left:0;right:0;top:100%;z-index:9950;
+#navAnchor{position:relative;height:0;z-index:9950}
+.nav-panel{position:absolute;left:0;right:0;top:0;z-index:9950;
   background:var(--surface);border-bottom:1px solid var(--border);
   box-shadow:0 12px 28px rgba(0,0,0,.08);animation:navIn .16s ease-out}
 @keyframes navIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
@@ -607,6 +608,9 @@ body.nav-open .speak-bar{display:none!important}
   font:inherit;color:var(--text);cursor:pointer;border-radius:3px;transition:.1s}
 .cx-word:hover{background:var(--brand-soft);color:var(--brand-deep)}
 .cx-img{cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:none}
+.lz-errbar{display:none;position:fixed;left:10px;right:10px;top:10px;z-index:9999;
+  background:#8A2B22;color:#fff;font-size:12.5px;line-height:1.5;padding:10px 14px;
+  border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);cursor:pointer}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1312,8 +1316,10 @@ body.no-zh .sent .zh{display:none}
     </nav>
   </div>
 </header>
-<!-- 导航面板放在 header 外：header 有 backdrop-filter，会把 fixed 子元素变成相对 header 定位 -->
-<div id="navPanel" class="nav-panel" hidden></div>
+<!-- 导航面板放在 header 外（header 的 backdrop-filter 会让 fixed 子元素相对 header 定位）；
+     但移出后 position:absolute;top:100% 会相对视口算，跑到屏幕外 ——
+     所以再包一层 0 高度的定位锚点，top:0 正好落在 header 正下方。 -->
+<div id="navAnchor"><div id="navPanel" class="nav-panel" hidden></div></div>
 
 <main>
   <!-- ============ 书城 ============ -->
@@ -4048,7 +4054,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.5.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.6.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -8191,8 +8197,38 @@ async function fetchVia(url){
   }
   return null;
 }
+/* 常见外刊的 RSS 地址（有就直接读 RSS，比抓首页准得多） */
+const PRESS_RSS = {
+  "https://www.theguardian.com/international": "https://www.theguardian.com/world/rss",
+  "https://www.bbc.com/news": "https://feeds.bbci.co.uk/news/rss.xml",
+  "https://www.nytimes.com": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+  "https://www.reuters.com": "https://feeds.reuters.com/reuters/topNews",
+  "https://www.npr.org": "https://feeds.npr.org/1001/rss.xml",
+  "https://www.theatlantic.com": "https://www.theatlantic.com/feed/all/",
+  "https://www.economist.com": "https://www.economist.com/international/rss.xml",
+  "https://www.wsj.com": "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+  "https://www.washingtonpost.com": "https://feeds.washingtonpost.com/rss/world",
+  "https://www.lemonde.fr": "https://www.lemonde.fr/rss/une.xml",
+  "https://www.spiegel.de": "https://www.spiegel.de/international/index.rss",
+  "https://www.lefigaro.fr": "https://www.lefigaro.fr/rss/figaro_actualites.xml",
+  "https://elpais.com": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+  "https://www.repubblica.it": "https://www.repubblica.it/rss/homepage/rss2.0.xml",
+  "https://www.asahi.com": "https://www.asahi.com/rss/asahi/newsheadlines.rdf",
+  "https://www3.nhk.or.jp": "https://www3.nhk.or.jp/rss/news/cat0.xml"
+};
 async function pressFetchHeadlines(url){
-  /* ① 自己的后端（快、稳） */
+  /* ① 有 RSS 就先用 RSS（最准） */
+  const rss = PRESS_RSS[url] || PRESS_RSS[url.replace(/\/$/, "")];
+  if(rss){
+    try{
+      const j = await fetchVia(rss);
+      if(j && j.kind === "xml" && j.text){
+        const items = (typeof rssParse === "function" ? rssParse(j.text) : []) || [];
+        if(items.length) return items.slice(0, 24).map(x => ({ title: x.title, link: x.link }));
+      }
+    }catch(e){}
+  }
+  /* ② 抓首页再解析 */
   try{
     const j = await fetchVia(url);
     if(j && j.kind === "html" && j.html){
@@ -8242,41 +8278,58 @@ function pressRenderHomes(){
       <button class="btn ghost small" onclick="window.open('${escAttr(url)}','_blank','noopener')">官网</button>
     </div>`).join("");
 }
-/* 从网页 HTML 里抽新闻标题（<a> 文本 + 长度/大写过滤） */
+/* 从网页 HTML 里抽新闻标题：优先语义选择器，其次文章链接 */
+function _decodeEnt(t){
+  return String(t || "")
+    .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
+    .replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;/g," ")
+    .replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(+n));
+}
 function pressParseHtml(html){
   const out = [];
   const seen = new Set();
-  let doc = null;
-  try{ doc = new DOMParser().parseFromString(html, "text/html"); }catch(e){}
+  const NAV = /^(Home|News|Sport|Sports|Business|Culture|Opinion|World|UK|US|Politics|Money|Life|Travel|Style|Food|Science|Tech|Technology|Health|Education|Video|Podcast|Newsletter|Subscribe|Sign in|Log in|Menu|Search|Help|About|Contact|Privacy|Terms|Cookie|Archive|Weather|Jobs|Shop|All|More)$/i;
   const push = (title, href) => {
-    const t = String(title || "").replace(/\s+/g, " ").trim();
-    if(t.length < 22 || t.length > 120) return;
+    const t = _decodeEnt(String(title || "")).replace(/\s+/g, " ").trim();
+    if(t.length < 24 || t.length > 130) return;
+    if(NAV.test(t)) return;
     if(seen.has(t.toLowerCase())) return;
-    if(/^(Home|News|Subscribe|Sign in|Log in|Menu|Search|Advertisement|Share|Listen|Watch|Play|Skip)/i.test(t)) return;
+    const wc = t.split(/\s+/).length;
+    if(wc < 4) return;                       /* 太短的多半是栏目名 */
     if(/^[a-z]/.test(t)) return;
+    if(/[。！？]$/.test(t) && wc < 6) return;
     seen.add(t.toLowerCase());
     out.push({ title: t, link: href || "" });
   };
+  let doc = null;
+  try{ doc = new DOMParser().parseFromString(html, "text/html"); }catch(e){}
   if(doc){
-    const anchors = [...doc.querySelectorAll("a[href]")];
+    /* ① 最可信：标题标签里的链接 */
+    let anchors = [...doc.querySelectorAll("h1 a, h2 a, h3 a, h4 a, [class*='headline'] a, [class*='title'] a")]
+      .filter(a => (a.textContent || "").trim().length >= 24);
+    /* ② 文章区域内的链接 */
+    if(anchors.length < 5){
+      anchors = [...doc.querySelectorAll("article a, [class*='article'] a, [class*='story'] a, [class*='card'] a, main a")]
+        .filter(a => (a.textContent || "").trim().length >= 24);
+    }
+    /* ③ 最后才用全部链接 */
+    if(anchors.length < 5) anchors = [...doc.querySelectorAll("a[href]")];
     for(const a of anchors){
       if(out.length >= 24) break;
       const h = a.getAttribute("href") || "";
-      if(!h || h.startsWith("#")) continue;
-      let abs = h;
-      try{ abs = new URL(h, "https://example.com/").href; }catch(e){}
-      const txt = (a.textContent || "").trim();
-      /* 只保留看起来像文章标题的链接 */
-      if(!/[A-Z]/.test(txt.slice(0, 1))) continue;
-      push(txt, abs);
+      if(!h || h === "#" || /^(javascript:|mailto:)/.test(h)) continue;
+      push(a.textContent, h);
     }
   }
   if(!out.length){
-    const re = /<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>([\s\S]{20,180}?)<\/a>/gi;
+    const re = /<(?:h1|h2|h3)[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]{20,180}?)<\/a>/gi;
     let m;
-    while((m = re.exec(html)) && out.length < 24){
-      push(m[2].replace(/<[^>]+>/g, " "), m[1]);
-    }
+    while((m = re.exec(html)) && out.length < 24) push(m[2].replace(/<[^>]+>/g, " "), m[1]);
+  }
+  if(!out.length){
+    const re = /<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>([\s\S]{24,180}?)<\/a>/gi;
+    let m;
+    while((m = re.exec(html)) && out.length < 24) push(m[2].replace(/<[^>]+>/g, " "), m[1]);
   }
   return out;
 }
@@ -15277,6 +15330,33 @@ function maybeShowOnboarding(){
 /* 全局提示：原来只写 console，用户完全看不到反馈（点了像没反应）。
    现在真正显示在屏幕上。 */
 let _toastTimer = null;
+/* 全局错误提示：任何脚本错误都显示出来，避免"点了没反应"却毫无线索 */
+(function(){
+  if(window.__lzErrBound) return;
+  window.__lzErrBound = 1;
+  const show = (msg) => {
+    try{
+      let el = document.getElementById("lzErrBar");
+      if(!el){
+        el = document.createElement("div");
+        el.id = "lzErrBar";
+        el.className = "lz-errbar";
+        el.onclick = () => el.remove();
+        document.body.appendChild(el);
+      }
+      el.textContent = "⚠️ 脚本错误：" + String(msg).slice(0, 200) + "（点此关闭）";
+      el.style.display = "block";
+    }catch(e){}
+  };
+  window.addEventListener("error", e => {
+    if(e && e.message) show(e.message + " @" + (e.filename || "").split("/").pop() + ":" + (e.lineno || ""));
+  });
+  window.addEventListener("unhandledrejection", e => {
+    const r = e && e.reason;
+    show((r && (r.message || r)) || "Promise 未处理异常");
+  });
+})();
+
 function toast(msg, ms){
   if(!msg) return;
   console.log("[toast]", msg);
