@@ -37,7 +37,7 @@
 <script src="data/books-pg-multi2.js?v=1" defer></script>
 <script src="data/books-zh-classics.js?v=1" defer></script>
 <script src="data/wq-common.js?v=1" defer></script>
-<script src="data/comics-pd.js?v=2" defer></script>
+<script src="data/comics-pd.js?v=3" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=4"></script>
@@ -3562,7 +3562,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.5.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.6.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -4627,21 +4627,32 @@ function comicShelfRender(){
   if(!host) return;
   const list = window.LZ_COMICS_PD || [];
   if(!list.length){ host.innerHTML = `<div class="empty-state"><div class="empty-t">漫画未加载</div></div>`; return; }
-  host.innerHTML = list.map(c => `
+  /* 按作品分组：同一部作品的多个期合并成一张封面 */
+  const groups = {};
+  for(const c of list){
+    const k = (c.tzh || c.t);
+    if(!groups[k]) groups[k] = [];
+    groups[k].push(c);
+  }
+  host.innerHTML = Object.entries(groups).map(([name, arr]) => {
+    const c = arr[0];
+    const n = arr.length;
+    return `
     <div class="comic-card" onclick="comicOpen('${escAttr(c.id)}')">
       <div class="comic-thumb">
         <img loading="lazy" width="200" height="270" src="${escAttr(c.file)}" alt="${escAttr(c.t)}">
         <span class="comic-lic-tag">${escHtml(c.license)}</span>
       </div>
       <div class="comic-meta">
-        <div class="comic-t">${escHtml(c.tzh || c.t)}</div>
-        <div class="comic-d">${escHtml(c.date)} · ${escHtml(c.author)}</div>
+        <div class="comic-t">${escHtml(name)}</div>
+        <div class="comic-d">${escHtml(c.author)} · ${n > 1 ? "共 " + n + " 期" : escHtml(c.date)}</div>
         <div class="comic-acts">
-          <button class="btn small" onclick="event.stopPropagation();comicOpen('${escAttr(c.id)}')">阅读</button>
+          <button class="btn small" onclick="event.stopPropagation();comicOpen('${escAttr(c.id)}')">阅读${n > 1 ? "（" + n + " 期）" : ""}</button>
           <button class="btn ghost small" onclick="event.stopPropagation();comicTranslate('${escAttr(c.id)}')">整页翻译</button>
         </div>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 /* 打开一部漫画：进入阅读器 */
@@ -13462,7 +13473,7 @@ function renderSettings(){
           <button class="btn ghost small" onclick="clearAiKey()">清除</button>
         </div>
         <div class="tip" style="margin-top:4px">
-          获取：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → API Keys</a>。
+          获取：<a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a>（登录后左侧菜单找「API Keys / API 密钥」）。
           Key 存在你自己的浏览器里，请求时随同发给站点后端转发（不会写进代码，也不会被其他用户看到）。
         </div>
 

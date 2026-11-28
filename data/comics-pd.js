@@ -86,4 +86,60 @@ window.LZ_COMICS_PD = [
     lang: "en", license: "Public Domain",
     src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1907-11-10.jpg"
   },
+  {
+    id: "krazykat-1916-07-09", file: "comics/krazykat-1916-07-09.jpg",
+    t: "Krazy Kat", tzh: "疯狂猫",
+    date: "1916-07-09", author: "George Herriman",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Krazy%20Kat"
+  },
+  {
+    id: "krazykat-1921-tophat", file: "comics/krazykat-1921-tophat.jpg",
+    t: "Krazy Kat", tzh: "疯狂猫",
+    date: "1921", author: "George Herriman",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Krazy%20Kat"
+  },
+  {
+    id: "muttjeff-1925", file: "comics/muttjeff-1925.jpg",
+    t: "Mutt and Jeff", tzh: "墨特与杰夫",
+    date: "1925", author: "Bud Fisher",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Mutt%20and%20Jeff"
+  },
+  {
+    id: "muttjeff-1916", file: "comics/muttjeff-1916.jpg",
+    t: "Mutt and Jeff", tzh: "墨特与杰夫",
+    date: "1916", author: "Bud Fisher",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Mutt%20and%20Jeff"
+  },
+  {
+    id: "muttjeff-1924-10-09", file: "comics/muttjeff-1924-10-09.jpg",
+    t: "Mutt and Jeff", tzh: "墨特与杰夫",
+    date: "1924-10-09", author: "Bud Fisher",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Mutt%20and%20Jeff"
+  },
+  {
+    id: "hooligan-1905-04-09", file: "comics/hooligan-1905-04-09.jpg",
+    t: "Happy Hooligan", tzh: "快乐的胡利根",
+    date: "1905-04-09", author: "Frederick Burr Opper",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Happy%20Hooligan"
+  },
+  {
+    id: "katzenjammer-1897-12-12", file: "comics/katzenjammer-1897-12-12.jpg",
+    t: "The Katzenjammer Kids", tzh: "捣蛋鬼",
+    date: "1897-12-12", author: "Rudolph Dirks",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=The%20Katzenjammer%20Kids"
+  },
+  {
+    id: "busterbrown-1908", file: "comics/busterbrown-1908.jpg",
+    t: "Buster Brown", tzh: "巴斯特·布朗",
+    date: "1908", author: "Richard F. Outcault",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/Special:Search?search=Buster%20Brown"
+  },
 ];
