@@ -4395,7 +4395,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.0.1"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.1.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -9225,9 +9225,11 @@ function studyStats(){
   try{
     const vs = wordStates() || {};
     for(const [k, v] of Object.entries(vs)){
-      if(!v) continue;
-      if(v.st === 0) out.learning++;
+      if(!v || v.st === -1) continue;          /* -1 = 忽略，不算进任何统计 */
+      /* 状态：0=不熟悉 1=学习中 2=已掌握（之前把 0 当成"学习中"，统计全错位） */
+      if(v.st === 1) out.learning++;
       else if(v.st === 2) out.mastered++;
+      else out.unfamiliar = (out.unfamiliar || 0) + 1;
       out.vocab++;
     }
   }catch(e){}
@@ -15140,7 +15142,8 @@ function asmSubmitTyped(){
   if(!got){ if(box) box.textContent = "先输入一句再提交"; return; }
   if(got === want){
     if(box) box.innerHTML = `<b style="color:var(--brand-deep)">✅ 完全正确！</b><div class="tip">${escHtml(asmState.sentence.zh || "")}</div>`;
-    try{ if(typeof asmLogResult === "function") asmLogResult(true, true); }catch(e){}
+    /* 拼装模块没有对外日志接口，这里不再调用不存在的 asmLogResult */
+    try{ if(window.AssemblyPanel && AssemblyPanel.logResult) AssemblyPanel.logResult(true, true); }catch(e){}
   } else {
     const gw = got.split(" "), ww = want.split(" ");
     let same = 0;
@@ -15650,8 +15653,7 @@ function endTour(completed){
   _tourCompleted = (completed !== false);
   /* 不管「完成」还是「跳过」都记下来，绝不再自动打扰；教程页永远能重看 */
   tourSave({ done: true, at: tourIdx, skipped: completed === false, at2: Date.now() });
-  try{ if(typeof renderOnboardCard === "function") renderOnboardCard(); }catch(e){}
-  /* renderOnboardCard 未实现：教程完成后不需要额外卡片，这里静默跳过即可 */
+  /* 教程完成后不需要额外卡片（renderOnboardCard 未实现，已移除调用） */
 }
 function langGuideIntro(){
   const code = activeLang();

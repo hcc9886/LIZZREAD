@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 93 期。 */
+   由 scripts/gen-comics.py 自动生成，共 158 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "allysloper-marie-duval-ally-sloper-an-affair-of-honour-judy-june-24",
@@ -11,6 +11,39 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AMarie_Duval%2C_Ally_Sloper%2C_An_Affair_of_Honour_%28Judy%2C_June_24%2C_1874%29.jpg"
+ },
+ {
+  "id": "arab-cartoon-network-arabic-logo",
+  "file": "comics/arab-cartoon-network-arabic-logo.jpg",
+  "t": "Arabic cartoon",
+  "tzh": "阿语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACartoon_Network_Arabic_logo.png"
+ },
+ {
+  "id": "arab-dil-devrimi-karikat-r-ramiz-g-k-e",
+  "file": "comics/arab-dil-devrimi-karikat-r-ramiz-g-k-e.jpg",
+  "t": "Arabic cartoon",
+  "tzh": "阿语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ADil_Devrimi_karikat%C3%BCr%C3%BC%2C_Ramiz_G%C3%B6k%C3%A7e.jpg"
+ },
+ {
+  "id": "arab-oskar-shmerling-free-love-forced-marriage-molla-nasreddi",
+  "file": "comics/arab-oskar-shmerling-free-love-forced-marriage-molla-nasreddi.jpg",
+  "t": "Arabic cartoon",
+  "tzh": "阿语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AOskar_Shmerling._Free_love_%28Forced_marriage%29._Molla_Nasreddin.jpg"
  },
  {
   "id": "blondie-bumstead-family-blondie-1968",
@@ -57,6 +90,17 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Buster%20Brown"
  },
  {
+  "id": "busterbrown-buster-brown-and-his-bubble-2-1903",
+  "file": "comics/busterbrown-buster-brown-and-his-bubble-2-1903.jpg",
+  "t": "Buster Brown",
+  "tzh": "巴斯特·布朗",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABuster_Brown_and_his_bubble_2_1903.JPG"
+ },
+ {
   "id": "calvinhobbes-bill-watterson-at-kenyon",
   "file": "comics/calvinhobbes-bill-watterson-at-kenyon.jpg",
   "t": "Calvin and Hobbes",
@@ -77,6 +121,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ACalvin_ellis.jpg"
+ },
+ {
+  "id": "calvinhobbes-leviathan-hobbes-leviathan-1651-title-page-bl",
+  "file": "comics/calvinhobbes-leviathan-hobbes-leviathan-1651-title-page-bl.jpg",
+  "t": "Calvin and Hobbes",
+  "tzh": "卡尔文与霍布斯",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALeviathan_-_Hobbes%27_Leviathan_%281651%29%2C_title_page_-_BL.jpg"
  },
  {
   "id": "calvinhobbes-thomas-hobbes-portrait",
@@ -123,6 +178,83 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3AChildsworld01tategoog_0008.jpg"
  },
  {
+  "id": "child-mabel-betsy-hill-illustration-mother-goose-1915",
+  "file": "comics/child-mabel-betsy-hill-illustration-mother-goose-1915.jpg",
+  "t": "Children's book illustration",
+  "tzh": "童书插画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMabel-Betsy-Hill-illustration-Mother-Goose-1915.jpg"
+ },
+ {
+  "id": "cover-cc-no-02-ivanhoe-2",
+  "file": "comics/cover-cc-no-02-ivanhoe-2.jpg",
+  "t": "Comic book cover",
+  "tzh": "漫画封面",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACC_No_02_Ivanhoe_2.jpg"
+ },
+ {
+  "id": "cover-cover-of-dennis-the-menace-no-27-wither-weather",
+  "file": "comics/cover-cover-of-dennis-the-menace-no-27-wither-weather.jpg",
+  "t": "Comic book cover",
+  "tzh": "漫画封面",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACover_of_Dennis_the_Menace_no.27_-_Wither_Weather%3F.jpg"
+ },
+ {
+  "id": "cover-hercules-comic-cover",
+  "file": "comics/cover-hercules-comic-cover.jpg",
+  "t": "Comic book cover",
+  "tzh": "漫画封面",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AHercules_Comic_Cover.JPG"
+ },
+ {
+  "id": "cover-negro-romance-2-cover",
+  "file": "comics/cover-negro-romance-2-cover.jpg",
+  "t": "Comic book cover",
+  "tzh": "漫画封面",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ANegro_Romance_2_cover.jpg"
+ },
+ {
+  "id": "cover-rocket-ship-x-comic-book",
+  "file": "comics/cover-rocket-ship-x-comic-book.jpg",
+  "t": "Comic book cover",
+  "tzh": "漫画封面",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ARocket_Ship_X_comic_book.jpg"
+ },
+ {
+  "id": "dicktracy-big-boy-dick-tracy",
+  "file": "comics/dicktracy-big-boy-dick-tracy.jpg",
+  "t": "Dick Tracy",
+  "tzh": "迪克·崔西",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABig_Boy_%28Dick_Tracy%29.png"
+ },
+ {
   "id": "es-krazy-kat-1918-09-07",
   "file": "comics/es-krazy-kat-1918-09-07.jpg",
   "t": "Historieta",
@@ -132,6 +264,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1918-09-07.png"
+ },
+ {
+  "id": "fairy-an-illustration-of-the-grimm-s-fairy-tale-2014-03-13-22-",
+  "file": "comics/fairy-an-illustration-of-the-grimm-s-fairy-tale-2014-03-13-22-.jpg",
+  "t": "Fairy tale illustration",
+  "tzh": "童话插画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AAn_Illustration_of_The_Grimm%27s_Fairy_tale_2014-03-13_22-02.jpg"
  },
  {
   "id": "fairy-lorenz-fr-lich-fairy-tale-illustration-interior-with-gno",
@@ -154,6 +297,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3APage_158_illustration_in_More_English_Fairy_Tales.png"
+ },
+ {
+  "id": "garfield-garfield-assassination-engraving-cropped",
+  "file": "comics/garfield-garfield-assassination-engraving-cropped.jpg",
+  "t": "Garfield",
+  "tzh": "加菲猫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AGarfield_assassination_engraving_cropped.jpg"
  },
  {
   "id": "garfield-james-abram-garfield-photo-portrait-seated",
@@ -198,6 +352,94 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AHappy_Hooligan_1905-04-09.jpg"
+ },
+ {
+  "id": "indian-ganesha-basohli-miniature-circa-1730-dubost-p73",
+  "file": "comics/indian-ganesha-basohli-miniature-circa-1730-dubost-p73.jpg",
+  "t": "Indian miniature",
+  "tzh": "印度细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AGanesha_Basohli_miniature_circa_1730_Dubost_p73.jpg"
+ },
+ {
+  "id": "indian-indian-courtesan-head-and-shoulders-a-rose-in-her-hand-a",
+  "file": "comics/indian-indian-courtesan-head-and-shoulders-a-rose-in-her-hand-a.jpg",
+  "t": "Indian miniature",
+  "tzh": "印度细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AIndian_courtesan%2C_head_and_shoulders%2C_a_rose_in_her_hand_-_Anon%2C_c.1880_-_BL_Add.Or.1879.jpg"
+ },
+ {
+  "id": "indian-murugan-by-raja-ravi-varma",
+  "file": "comics/indian-murugan-by-raja-ravi-varma.jpg",
+  "t": "Indian miniature",
+  "tzh": "印度细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMurugan_by_Raja_Ravi_Varma.jpg"
+ },
+ {
+  "id": "indian-photograph-of-an-indian-miniature-painting-depicting-ilt",
+  "file": "comics/indian-photograph-of-an-indian-miniature-painting-depicting-ilt.jpg",
+  "t": "Indian miniature",
+  "tzh": "印度细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APhotograph_of_an_Indian_miniature_painting_depicting_Iltutmish_of_the_Mamluk_Sultanate%2C_published_in_%27Tawarikh-i-Ghuri%27_by_Munshi_Bulaqi_Das_Sahib_%281881%29.jpg"
+ },
+ {
+  "id": "indian-troops-of-29th-indian-infantry-brigade-in-the-trenches-g",
+  "file": "comics/indian-troops-of-29th-indian-infantry-brigade-in-the-trenches-g.jpg",
+  "t": "Indian miniature",
+  "tzh": "印度细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ATroops_of_29th_Indian_Infantry_Brigade_in_the_trenches%2C_Gallipoli%2C_1915.jpg"
+ },
+ {
+  "id": "ja-hasegawa-machiko-1952",
+  "file": "comics/ja-hasegawa-machiko-1952.jpg",
+  "t": "Manga",
+  "tzh": "日语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AHasegawa_Machiko_1952.JPG"
+ },
+ {
+  "id": "ja-red-suit-anime-girl",
+  "file": "comics/ja-red-suit-anime-girl.jpg",
+  "t": "Manga",
+  "tzh": "日语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ARed_suit_anime_girl.png"
+ },
+ {
+  "id": "karik-punch-rhodes-colossus",
+  "file": "comics/karik-punch-rhodes-colossus.jpg",
+  "t": "Karikatür",
+  "tzh": "土语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APunch_Rhodes_Colossus.png"
  },
  {
   "id": "katzenjammer-1897-12-12",
@@ -321,6 +563,17 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3AMotion_Picture_Cocktails_%28advertisement%29.jpg"
  },
  {
+  "id": "lhh-195109-1951",
+  "file": "comics/lhh-195109-1951.jpg",
+  "t": "Lianhuanhua",
+  "tzh": "连环画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3A195109_1951%E5%B9%B4%E4%B8%8A%E6%B5%B7%E5%B8%82%E6%B0%91%E9%98%85%E8%AF%BB%E8%BF%9E%E7%8E%AF%E7%94%BB.png"
+ },
+ {
   "id": "lilabner-beth-howland",
   "file": "comics/lilabner-beth-howland.jpg",
   "t": "Li'l Abner",
@@ -330,6 +583,182 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ABeth_Howland.JPG"
+ },
+ {
+  "id": "lubok-chudolesnoye",
+  "file": "comics/lubok-chudolesnoye.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AChudoLesnoye.jpg"
+ },
+ {
+  "id": "lubok-kulikovo-lubok",
+  "file": "comics/lubok-kulikovo-lubok.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKulikovo_lubok.jpg"
+ },
+ {
+  "id": "lubok-lubok-alkonost",
+  "file": "comics/lubok-lubok-alkonost.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALubok_alkonost.JPG"
+ },
+ {
+  "id": "lubok-mermenlubok",
+  "file": "comics/lubok-mermenlubok.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMermenLubok.jpg"
+ },
+ {
+  "id": "lubok-michaellubok",
+  "file": "comics/lubok-michaellubok.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMichaelLubok.jpg"
+ },
+ {
+  "id": "lubok-raskolnik",
+  "file": "comics/lubok-raskolnik.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ARaskolnik.jpg"
+ },
+ {
+  "id": "manga-4-frame-comic-strip-about-sewing-mashine-1953",
+  "file": "comics/manga-4-frame-comic-strip-about-sewing-mashine-1953.jpg",
+  "t": "Manga",
+  "tzh": "日语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3A4-frame_comic_strip_about_sewing_mashine_1953.jpg"
+ },
+ {
+  "id": "manga-berruguete-pedro-selfportrait",
+  "file": "comics/manga-berruguete-pedro-selfportrait.jpg",
+  "t": "Manga",
+  "tzh": "日语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABerruguete-Pedro-selfportrait.jpg"
+ },
+ {
+  "id": "manga-shoujo-november-1910-with-translation",
+  "file": "comics/manga-shoujo-november-1910-with-translation.jpg",
+  "t": "Manga",
+  "tzh": "日语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AShoujo_November_1910_with_translation.jpg"
+ },
+ {
+  "id": "manhwa-manhwa-yu-gil-jun-yahak-01",
+  "file": "comics/manhwa-manhwa-yu-gil-jun-yahak-01.jpg",
+  "t": "Manhwa",
+  "tzh": "韩语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AManhwa-Yu.Gil-jun-Yahak-01.jpg"
+ },
+ {
+  "id": "mini-anatomical-man",
+  "file": "comics/mini-anatomical-man.jpg",
+  "t": "Manuscript miniature",
+  "tzh": "中世纪细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AAnatomical_Man.jpg"
+ },
+ {
+  "id": "mini-ethiopian-biblical-manuscript-u-oregon-museum-shelf-mark",
+  "file": "comics/mini-ethiopian-biblical-manuscript-u-oregon-museum-shelf-mark.jpg",
+  "t": "Manuscript miniature",
+  "tzh": "中世纪细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AEthiopian_Biblical_Manuscript_-_U.Oregon_Museum_Shelf_Mark_10-844_a.jpg"
+ },
+ {
+  "id": "mini-lunar-phases-al-biruni",
+  "file": "comics/mini-lunar-phases-al-biruni.jpg",
+  "t": "Manuscript miniature",
+  "tzh": "中世纪细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALunar_phases_al-Biruni.jpg"
+ },
+ {
+  "id": "mini-medieval-miniature-book-illustration-of-bonnacon-bonasus",
+  "file": "comics/mini-medieval-miniature-book-illustration-of-bonnacon-bonasus.jpg",
+  "t": "Manuscript miniature",
+  "tzh": "中世纪细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMedieval_miniature_book_illustration_of_Bonnacon_%28bonasus_or_bonacho%29_legendary_animal_expelling_caustic_feces_etc._Worksop_Bestiary%2C_ca._1185%2C_Morgan_Library%2C_MS_M.81%2C_f._37r_publicdomainreview.org.jpg"
+ },
+ {
+  "id": "mini-nibelungenlied-manuscript-k",
+  "file": "comics/mini-nibelungenlied-manuscript-k.jpg",
+  "t": "Manuscript miniature",
+  "tzh": "中世纪细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ANibelungenlied_manuscript-k.jpg"
+ },
+ {
+  "id": "mini-woman-teaching-geometry",
+  "file": "comics/mini-woman-teaching-geometry.jpg",
+  "t": "Manuscript miniature",
+  "tzh": "中世纪细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AWoman_teaching_geometry.jpg"
  },
  {
   "id": "muttjeff-1916",
@@ -728,6 +1157,17 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3ALittle_Orphan_Annie.jpg"
  },
  {
+  "id": "orphanannie-sunday24",
+  "file": "comics/orphanannie-sunday24.jpg",
+  "t": "Little Orphan Annie",
+  "tzh": "小孤儿安妮",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ASunday24.jpg"
+ },
+ {
   "id": "peanuts-cb1948",
   "file": "comics/peanuts-cb1948.jpg",
   "t": "Peanuts",
@@ -737,6 +1177,39 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ACB1948.jpg"
+ },
+ {
+  "id": "peanuts-charles-schulz-nywts",
+  "file": "comics/peanuts-charles-schulz-nywts.jpg",
+  "t": "Peanuts",
+  "tzh": "花生漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACharles_Schulz_NYWTS.jpg"
+ },
+ {
+  "id": "persian-persian-musketeer",
+  "file": "comics/persian-persian-musketeer.jpg",
+  "t": "Persian miniature",
+  "tzh": "波斯细密画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APersian_Musketeer.jpg"
+ },
+ {
+  "id": "pol-cartoon-from-the-bulletin-sydney-vol-11-no-531-19-apr-18",
+  "file": "comics/pol-cartoon-from-the-bulletin-sydney-vol-11-no-531-19-apr-18.jpg",
+  "t": "Political cartoon",
+  "tzh": "政治漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACartoon_from_The_Bulletin_%28Sydney%29%2C_Vol._11_No._531%2C_19_Apr_1890%2C_p9.jpg"
  },
  {
   "id": "popeye-first-popeye-strip-east-liverpool-review-1929-01-17-p12",
@@ -761,6 +1234,50 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3APopeye%2C_the_Ace_of_Space_%281953_Boxoffice_trade_advertisement%29.jpg"
  },
  {
+  "id": "poster-henry-gray-poster-cycles-brillant",
+  "file": "comics/poster-henry-gray-poster-cycles-brillant.jpg",
+  "t": "Poster",
+  "tzh": "老海报",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AHenry_Gray_-_Poster_Cycles_Brillant.jpg"
+ },
+ {
+  "id": "poster-louis-rhead-the-sun1",
+  "file": "comics/poster-louis-rhead-the-sun1.jpg",
+  "t": "Poster",
+  "tzh": "老海报",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALouis_Rhead-The_Sun1.jpg"
+ },
+ {
+  "id": "poster-pal-jean-de-pal-ologue-supreme-cusenier",
+  "file": "comics/poster-pal-jean-de-pal-ologue-supreme-cusenier.jpg",
+  "t": "Poster",
+  "tzh": "老海报",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APal_%28Jean_de_Pal%C3%A9ologue%29_-_SUPREME_CUSENIER.jpg"
+ },
+ {
+  "id": "poster-pubstraphael1900",
+  "file": "comics/poster-pubstraphael1900.jpg",
+  "t": "Poster",
+  "tzh": "老海报",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APubStRaphael1900.jpg"
+ },
+ {
   "id": "princevaliant-only-the-valiant-1951-2",
   "file": "comics/princevaliant-only-the-valiant-1951-2.jpg",
   "t": "Prince Valiant",
@@ -770,6 +1287,39 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AOnly_the_Valiant_%281951%29_2.jpg"
+ },
+ {
+  "id": "punch-as-between-friends-punch-magazine-13-december-1911-detai",
+  "file": "comics/punch-as-between-friends-punch-magazine-13-december-1911-detai.jpg",
+  "t": "Punch cartoon",
+  "tzh": "讽刺漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AAs_Between_Friends_%28Punch_magazine%2C_13_December_1911%2C_detail%29.jpg"
+ },
+ {
+  "id": "punch-cartoon-bishop-s-breakfast-table",
+  "file": "comics/punch-cartoon-bishop-s-breakfast-table.jpg",
+  "t": "Punch cartoon",
+  "tzh": "讽刺漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACartoon_-_Bishop%27s_Breakfast_Table.jpg"
+ },
+ {
+  "id": "punch-the-crinoletta-disfigurans-anoldparasite-in-anewform",
+  "file": "comics/punch-the-crinoletta-disfigurans-anoldparasite-in-anewform.jpg",
+  "t": "Punch cartoon",
+  "tzh": "讽刺漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ATHE_CRINOLETTA_DISFIGURANS_AnOldParasite_in_aNewForm.png"
  },
  {
   "id": "rarebit-1904-12-10",
@@ -906,13 +1456,13 @@ window.LZ_COMICS_PD = [
  {
   "id": "strip-katzenjammer-kids-1897-12-12",
   "file": "comics/strip-katzenjammer-kids-1897-12-12.jpg",
-  "t": "Comic: Katzenjammer Kids 1897 12 12",
-  "tzh": "其它漫画",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
   "date": "—",
   "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Comic:%20Katzenjammer%20Kids%201897%2012%2012"
+  "src": "https://commons.wikimedia.org/wiki/File%3AKatzenjammer_Kids_%281897-12-12%29.jpg"
  },
  {
   "id": "strip-krazy-kat-1916-07-09",
@@ -1023,5 +1573,170 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ALes_Cigares_du_Pharaon.png"
+ },
+ {
+  "id": "ukiyo-a-painting-of-birds-and-flowers-by-kitayama-kangan",
+  "file": "comics/ukiyo-a-painting-of-birds-and-flowers-by-kitayama-kangan.jpg",
+  "t": "Ukiyo-e",
+  "tzh": "浮世绘",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AA_painting_of_birds_and_flowers_by_Kitayama_Kangan.jpg"
+ },
+ {
+  "id": "ukiyo-daimyo-konishi-yukinaga-ukiyo-e",
+  "file": "comics/ukiyo-daimyo-konishi-yukinaga-ukiyo-e.jpg",
+  "t": "Ukiyo-e",
+  "tzh": "浮世绘",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ADaimyo_Konishi_Yukinaga_Ukiyo-e.jpg"
+ },
+ {
+  "id": "ukiyo-kitagawa-utamaro-ukiyo-e-woodblock-print",
+  "file": "comics/ukiyo-kitagawa-utamaro-ukiyo-e-woodblock-print.jpg",
+  "t": "Ukiyo-e",
+  "tzh": "浮世绘",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKitagawa_Utamaro_ukiyo-e_woodblock_print.jpg"
+ },
+ {
+  "id": "ukiyo-shogun-tokugawa-ieyasu",
+  "file": "comics/ukiyo-shogun-tokugawa-ieyasu.jpg",
+  "t": "Ukiyo-e",
+  "tzh": "浮世绘",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AShogun-Tokugawa-Ieyasu.png"
+ },
+ {
+  "id": "ukiyoe-kitagawa-utamaro-ukiyo-e-woodblock-print",
+  "file": "comics/ukiyoe-kitagawa-utamaro-ukiyo-e-woodblock-print.jpg",
+  "t": "Ukiyo-e",
+  "tzh": "浮世绘",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKitagawa_Utamaro_ukiyo-e_woodblock_print.jpg"
+ },
+ {
+  "id": "ukiyoe-kuniyoshi-kuzunoha",
+  "file": "comics/ukiyoe-kuniyoshi-kuzunoha.jpg",
+  "t": "Ukiyo-e",
+  "tzh": "浮世绘",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKuniyoshi_Kuzunoha.jpg"
+ },
+ {
+  "id": "wbp-among-the-rocks-by-onchi-k-shir-1929-woodblock-printhono",
+  "file": "comics/wbp-among-the-rocks-by-onchi-k-shir-1929-woodblock-printhono.jpg",
+  "t": "Woodblock print",
+  "tzh": "木版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AAmong_the_Rocks_by_Onchi_K%C5%8Dshir%C5%8D%2C_1929%2C_woodblock_printHonolulu_Museum_of_Art.jpg"
+ },
+ {
+  "id": "wbp-flowers-of-japan-rose-by-kawanishi-hide-1946-woodblock-p",
+  "file": "comics/wbp-flowers-of-japan-rose-by-kawanishi-hide-1946-woodblock-p.jpg",
+  "t": "Woodblock print",
+  "tzh": "木版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AFlowers_of_Japan_-_Rose_by_Kawanishi_Hide%2C_1946%2C_woodblock_print%2C_Honolulu_Museum_of_Art.jpg"
+ },
+ {
+  "id": "wbp-men-dancing-to-samisen",
+  "file": "comics/wbp-men-dancing-to-samisen.jpg",
+  "t": "Woodblock print",
+  "tzh": "木版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMen_Dancing_To_Samisen.jpg"
+ },
+ {
+  "id": "wbp-tomonoura-by-yoshida-hiroshi-1927-woodblock-print-honolu",
+  "file": "comics/wbp-tomonoura-by-yoshida-hiroshi-1927-woodblock-print-honolu.jpg",
+  "t": "Woodblock print",
+  "tzh": "木版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ATomonoura_by_Yoshida_Hiroshi%2C_1927%2C_woodblock_print%2C_Honolulu_Museum_of_Art.jpg"
+ },
+ {
+  "id": "yellowkid-buster-brown-and-his-bubble-2-1903",
+  "file": "comics/yellowkid-buster-brown-and-his-bubble-2-1903.jpg",
+  "t": "The Yellow Kid",
+  "tzh": "黄孩子",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABuster_Brown_and_his_bubble_2_1903.JPG"
+ },
+ {
+  "id": "yellowkid-yellow-kid-november-1-1896-bryan-mckinley-election",
+  "file": "comics/yellowkid-yellow-kid-november-1-1896-bryan-mckinley-election.jpg",
+  "t": "The Yellow Kid",
+  "tzh": "黄孩子",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AYellow_Kid_November_1_1896_Bryan_McKinley_election.jpg"
+ },
+ {
+  "id": "zh-2009-3022-74-a-shanghai-manhua",
+  "file": "comics/zh-2009-3022-74-a-shanghai-manhua.jpg",
+  "t": "Comic",
+  "tzh": "中文漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3A2009%2C3022.74.a_-_Shanghai_Manhua.png"
+ },
+ {
+  "id": "zh-boxertroops",
+  "file": "comics/zh-boxertroops.jpg",
+  "t": "Comic",
+  "tzh": "中文漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABoxerTroops.jpg"
+ },
+ {
+  "id": "zh-huang-yao-shanghai-manhua-2-1936",
+  "file": "comics/zh-huang-yao-shanghai-manhua-2-1936.jpg",
+  "t": "Comic",
+  "tzh": "中文漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AHuang_Yao_-_Shanghai_Manhua_%282%29_-_1936.jpg"
  }
 ];
