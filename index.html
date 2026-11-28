@@ -558,6 +558,47 @@ body.nav-open .speak-bar{display:none!important}
   border-radius:20px;padding:4px 12px;font-size:12.5px;cursor:pointer;transition:.15s}
 .gr-tag:hover{border-color:var(--accent)}
 .gr-tag.on{background:var(--brand-soft);border-color:var(--accent);color:var(--brand-deep);font-weight:600}
+/* ================= 手机端版式修正 ================= */
+@media (max-width:760px){
+  /* 阅读器工具条：单行横向滚动，不要换成一堆大字块 */
+  #view-reader .rd-layout{
+    display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;
+    padding:2px 0 6px;margin:6px 0 8px;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  }
+  #view-reader .rd-layout::-webkit-scrollbar{display:none}
+  #view-reader .rd-layout>*{flex:0 0 auto}
+  #view-reader .rd-layout .tip{display:none}      /* 隐藏「排版」这类小标签，省空间 */
+  #view-reader .rd-layout .chip,
+  #view-reader .rd-layout .btn{
+    white-space:nowrap;font-size:12.5px;min-height:32px;padding:0 12px;
+  }
+  /* 视图切换同样单行滚动 */
+  #view-reader .view-switch,
+  #view-reader .rd-view{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;scrollbar-width:none}
+  #view-reader .view-switch::-webkit-scrollbar{display:none}
+
+  /* 章节导航：页内那个和底部固定条重复了，手机只留底部那条 */
+  #view-reader .page-nav,
+  #view-reader .rd-endnav{display:none!important}
+
+  /* 阅读正文：底部给固定条留够空间，别被盖住 */
+  html.dv-phone .reader{padding-bottom:110px}
+  #view-reader{padding-bottom:96px}
+  #view-reader .reader .page{box-shadow:none;border:none;background:transparent;padding:0}
+
+  /* 书封网格更紧凑 */
+  html.dv-phone .grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
+  html.dv-phone .book .cover{height:140px}
+
+  /* 「我读过的」卡片：窄屏单列 */
+  .rl-grid{grid-template-columns:1fr}
+  .rl-cover{flex:0 0 54px;height:78px}
+
+  /* 页面标题别太大，占屏幕 */
+  html.dv-phone .sec{font-size:19px;line-height:1.35}
+  html.dv-phone .page-head .sub{font-size:12.5px}
+}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1769,6 +1810,7 @@ body.no-zh .sent .zh{display:none}
     <div class="lang-row" style="margin:10px 0">
       <button class="btn small" onclick="document.getElementById('vidAll').click()">📁 一次导入（视频 + 字幕一起选）</button>
       <input type="file" id="vidAll" accept="video/*,audio/*,.srt,.vtt,text/plain" multiple style="display:none" onchange="loadMediaAll(this)">
+      <button class="btn ghost small" id="vidAsrBtn" onclick="videoAutoSubtitle()">🎙 自动生成字幕</button>
       <button class="btn ghost small" onclick="loadDemoSubs()">载入示例字幕试试</button>
     </div>
     <div class="tip" id="vidTip">① 先「选择视频/音频」（可多选：视频 + 同名字幕会自动配对）② 再「导入字幕」③ 字幕列表出现后即可逐句点、逐句听。</div>
@@ -3996,7 +4038,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.2.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.3.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -7009,6 +7051,122 @@ The man spoke in a low voice and his eyes moved to the window.`;
   if(tip) tip.textContent = "已载入示例字幕 " + _videoSubs.length + " 句（没有视频时也能练听写与点词）";
   toast("示例字幕已载入");
 }
+/* ================= 视频没字幕：自动生成字幕 =================
+   流程：解码音频 → 16k 单声道 → 切片（约 25 秒）→ 逐片调 /api/asr（Whisper）
+        → 把每片文本按时间轴拼成字幕行 */
+async function videoAutoSubtitle(){
+  const el = document.getElementById("vidPlayer") || document.querySelector("#view-video video");
+  if(!el || !el.src){ toast("先选择一个视频或音频文件"); return; }
+  const tip = document.getElementById("vidTip");
+  const say = t => { if(tip) tip.textContent = t; };
+  const btn = document.getElementById("vidAsrBtn");
+  if(btn){ btn.disabled = true; btn.textContent = "识别中…"; }
+  try{
+    say("正在读取音轨…");
+    const res = await fetch(el.src);
+    const buf = await res.arrayBuffer();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ac = new AC();
+    const audio = await ac.decodeAudioData(buf.slice(0));
+    /* 降到 16kHz 单声道 */
+    const targetRate = 16000;
+    let pcm;
+    if(audio.sampleRate === targetRate && audio.numberOfChannels === 1){
+      pcm = audio.getChannelData(0);
+    }else{
+      const len = Math.ceil(audio.duration * targetRate);
+      const off = new OfflineAudioContext(1, len, targetRate);
+      const src = off.createBufferSource();
+      src.buffer = audio;
+      src.connect(off.destination);
+      src.start(0);
+      const rendered = await off.startRendering();
+      pcm = rendered.getChannelData(0);
+    }
+    const total = pcm.length;
+    const CHUNK = targetRate * 25;             /* 25 秒一片 */
+    const pieces = Math.ceil(total / CHUNK);
+    const lines = [];
+    for(let i = 0; i < pieces; i++){
+      say("正在识别第 " + (i+1) + " / " + pieces + " 段…");
+      const start = i * CHUNK;
+      const end = Math.min(total, start + CHUNK);
+      const slice = pcm.subarray(start, end);
+      const wav = encodeWav16(slice, targetRate);
+      const b64 = await blobToBase64(new Blob([wav], { type: "audio/wav" }));
+      let out = null;
+      try{
+        const r = await fetch(ASR_ENDPOINT(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audio: b64.split(",")[1] || b64, language: activeLang() }),
+          signal: AbortSignal.timeout(120000)
+        });
+        out = await r.json();
+      }catch(e){ out = null; }
+      if(!out || !out.ok){
+        if(i === 0){
+          say("语音识别服务没连上" + (out && out.message ? "：" + out.message : "") + "。可以手动导入字幕文件。");
+          return;
+        }
+        break;
+      }
+      const txt = String(out.text || "").trim();
+      if(txt){
+        const t0 = start / targetRate, t1 = end / targetRate;
+        lines.push({ t0, t1, text: txt });
+      }
+    }
+    if(!lines.length){ say("这段音频里没识别出语音。"); return; }
+    /* 存成字幕（SRT）并直接载入 */
+    const srt = lines.map((l, i) =>
+      (i+1) + "\n" + srtTime(l.t0) + " --> " + srtTime(l.t1) + "\n" + l.text + "\n").join("\n");
+    const file = new File([srt], "自动生成字幕.srt", { type: "text/plain" });
+    await loadSubtitleFile({ files: [file], target: { files: [file] } });
+    say("✅ 已自动生成 " + lines.length + " 条字幕（识别可能有误差，可手动修正）");
+    toast("字幕生成完成：" + lines.length + " 条");
+  }catch(e){
+    say("生成失败：" + (e.message || e));
+    toast("字幕生成失败");
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = "🎙 自动生成字幕"; }
+  }
+}
+function ASR_ENDPOINT(){
+  /* 同源优先；GitHub Pages 等静态站兜底到已部署的 Worker */
+  return "https://lizzread.13585658272.workers.dev/api/asr";
+}
+function encodeWav16(samples, rate){
+  const n = samples.length;
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const ws = (o, s) => { for(let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, "RIFF"); v.setUint32(4, 36 + n*2, true); ws(8, "WAVE");
+  ws(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate*2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  ws(36, "data"); v.setUint32(40, n*2, true);
+  let off = 44;
+  for(let i = 0; i < n; i++){
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    off += 2;
+  }
+  return buf;
+}
+function blobToBase64(blob){
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result));
+    fr.onerror = () => rej(new Error("读取失败"));
+    fr.readAsDataURL(blob);
+  });
+}
+function srtTime(sec){
+  const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = Math.floor(sec%60), ms = Math.round((sec%1)*1000);
+  const pad = (x, n) => String(x).padStart(n, "0");
+  return pad(h,2)+":"+pad(m,2)+":"+pad(s,2)+","+pad(ms,3);
+}
+
 function loadSubtitleFile(input){
   const f = input.files && input.files[0];
   if(!f) return;
@@ -8903,6 +9061,8 @@ function navGrp(g){
     }
   }
   document.querySelectorAll(".nav4-btn").forEach(b => b.classList.toggle("on", b.dataset.grp === g));
+  const mb2 = document.getElementById("navMore");
+  if(mb2) mb2.textContent = (g === "more" ? "收起 ▴" : "更多 ▾");
   /* 面板打开时把底部固定条压下去，别挡视线 */
   document.body.classList.add("nav-open");
 }
@@ -8913,6 +9073,8 @@ function navClose(){
   if(scrim) scrim.remove();
   document.body.classList.remove("nav-open");
   document.querySelectorAll(".nav4-btn").forEach(b => b.classList.remove("on"));
+  const mb = document.getElementById("navMore");
+  if(mb) mb.textContent = "更多 ▾";
   _navOpen = null;
   const cur = ((document.querySelector(".view.on") || {}).id || "").replace(/^view-/, "");
   const g = VIEW_TO_GROUP[cur] || null;
@@ -8929,7 +9091,14 @@ document.addEventListener("click", e => {
 function toggleNavMore(){
   const grp = document.getElementById("navGrpMore");
   const btn = document.getElementById("navMore");
-  if(!grp) return;
+  /* 新版导航（4 组下拉）里根本没有 #navGrpMore 这个元素，
+     老代码 `if(!grp) return;` 就直接静默退出 ——
+     这就是「手机上点更多完全没反应」的真正原因。 */
+  if(!grp){
+    if(_navOpen === "more") navClose();
+    else navGrp("more");
+    return;
+  }
   const willShow = grp.hidden;
   grp.hidden = !willShow;
   if(btn) btn.textContent = willShow ? "收起 ▴" : "更多 ▾";

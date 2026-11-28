@@ -5,6 +5,38 @@ export default {
   async fetch(request, env, ctx){
     const url = new URL(request.url);
 
+    /* ---- 语音识别（视频没字幕时自动生成）：Cloudflare Workers AI Whisper ---- */
+    if(url.pathname === "/api/asr"){
+      if(request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
+      if(request.method !== "POST") return json({ ok: false, message: "只支持 POST" }, 405);
+      if(!env.AI) return json({ ok: false, configured: false, message: "Worker 没有绑定 AI" });
+      let body = {};
+      try{ body = await request.json(); }catch(e){ body = {}; }
+      const audioB64 = String(body.audio || "");
+      if(!audioB64) return json({ ok: false, message: "缺少 audio（base64）" });
+      const lang = String(body.language || "en").slice(0, 5);
+      try{
+        /* Whisper 优先接受 base64 字符串；如果失败再退回 int 数组 */
+        let out = null, lastErr = null;
+        try{
+          out = await env.AI.run("@cf/openai/whisper", { audio: audioB64, language: lang, task: "transcribe" });
+        }catch(e1){ lastErr = e1; }
+        if(!out || !out.text){
+          try{
+            const bin = Uint8Array.from(atob(audioB64), c => c.charCodeAt(0));
+            out = await env.AI.run("@cf/openai/whisper", { audio: Array.from(bin), language: lang, task: "transcribe" });
+          }catch(e2){ lastErr = e2; }
+        }
+        if(!out) throw lastErr || new Error("识别失败");
+        return json({ ok: true, configured: true,
+          text: (out && out.text) || "",
+          segments: (out && out.segments) || null,
+          word_count: (out && out.word_count) || null });
+      }catch(e){
+        return json({ ok: false, configured: true, message: e.message || String(e) });
+      }
+    }
+
     /* ---- 视觉识别（漫画/图片里的字）：用 GLM-4V，手写体也能认 ---- */
     if(url.pathname === "/api/vision"){
       if(request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
