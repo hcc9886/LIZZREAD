@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 48 期。 */
+   由 scripts/gen-comics.py 自动生成，共 50 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "busterbrown-1908",
@@ -37,6 +37,28 @@ window.LZ_COMICS_PD = [
  {
   "id": "katzenjammer-1897-12-12",
   "file": "comics/katzenjammer-1897-12-12.jpg",
+  "t": "The Katzenjammer Kids",
+  "tzh": "捣蛋鬼",
+  "date": "—",
+  "author": "Rudolph Dirks",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=The%20Katzenjammer%20Kids"
+ },
+ {
+  "id": "katzenjammer-katzenjammer-kids-1897-12-12",
+  "file": "comics/katzenjammer-katzenjammer-kids-1897-12-12.jpg",
+  "t": "The Katzenjammer Kids",
+  "tzh": "捣蛋鬼",
+  "date": "—",
+  "author": "Rudolph Dirks",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=The%20Katzenjammer%20Kids"
+ },
+ {
+  "id": "katzenjammer-motion-picture-cocktails-advertisement",
+  "file": "comics/katzenjammer-motion-picture-cocktails-advertisement.jpg",
   "t": "The Katzenjammer Kids",
   "tzh": "捣蛋鬼",
   "date": "—",

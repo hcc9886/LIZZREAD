@@ -3931,6 +3931,7 @@ async function requestAiExplain(word){
   }catch(e){}
   if(/\b(transcribed|copyright|project gutenberg|ebook|edition by|editorial)\b/i.test(en)){ en = ""; zh = ""; }
   if(!en){ const ctx = document.getElementById("shCtx"); en = ctx ? ctx.textContent.replace("（本句暂无译文）","") : ""; }
+  if(!window.LZ_AI){ if(body) body.textContent = "AI 模块没加载上，刷新页面再试。"; if(btn) btn.disabled = false; return; }
   const out = await window.LZ_AI.explainWord(word, en, zh);
   if(out){ if(body) body.textContent = out; if(btn) btn.textContent = "✨ 重新解析"; }
   else { if(body) body.textContent = "AI 这次没回应，稍后再点一次试试。上方的助记和例句是本地生成的，照样能用。"; if(btn) btn.textContent = "重试"; }
@@ -3999,7 +4000,7 @@ function toggleMoreSenses(btn){
   box.style.display = open ? "none" : "block";
   btn.dataset.open = open ? "0" : "1";
   const n = btn.dataset.total || "";
-  btn.textContent = open ? "展开其余义项 ▾" : "收起 ▴";
+  btn.textContent = open ? "收起 ▴" : ("展开其余 " + n + " 个义项 ▾");
 }
 function renderRichWordCard(word, low){
   const def = document.getElementById("shDef");
@@ -4028,9 +4029,7 @@ function renderRichWordCard(word, low){
   const posTag = groups.length ? groups[0].pos : "";
   def.innerHTML = `
     <div class="rw-word">${escHtml(String(word))}</div>
-    <div class="rw-phon">${escHtml(phon)}${phon.indexOf("ˈ") === 0 ? "" : ""}
-      ${phon && /^\/ˈ?/.test(phon) ? "" : ""}${(window.LZ_LEVEL_TAG || {})[low] ? `<span class="rw-tag">${escHtml(window.LZ_LEVEL_TAG[low])}</span>` : ""}
-    </div>
+    <div class="rw-phon">${escHtml(phon)}</div>
     ${(()=>{
       if(!groups.length){
         return cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "";
@@ -4048,7 +4047,7 @@ function renderRichWordCard(word, low){
       }
       if(hiddenCount > 0){
         rows.push(`<div class="rw-more-senses">
-          <button class="linkbtn" onclick="toggleMoreSenses(this)" data-open="0">展开其余 ${hiddenCount} 个义项 ▾</button>
+          <button class="linkbtn" onclick="toggleMoreSenses(this)" data-open="0" data-total="${hiddenCount}">展开其余 ${hiddenCount} 个义项 ▾</button>
           <div class="rw-extra" style="display:none">
             ${groups.map(g => g.senses.length > 2 ? `<div class="rw-pos-row">
               ${g.pos ? `<span class="rw-pos">${escHtml(g.pos)}</span>` : ""}
@@ -4121,7 +4120,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.7.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.7.1"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -6298,6 +6297,7 @@ async function zh2enRun(){
 3. 只输出英文正文，不要标题、不要解释、不要 Markdown。
 中文原文：
 ${use[i]}`;
+      if(!window.LZ_AI){ throw new Error("AI 模块没加载上，刷新页面再试"); }
       const r = await window.LZ_AI.ask(
         [{ role:"system", content:"你是英语分级读物作者，擅长把中文内容改写成指定 CEFR 等级的地道英文。" },
          { role:"user", content: prompt }],
@@ -11211,7 +11211,25 @@ function openReader(id){
       <span id="mtout-${key}">${escHtml(shown.join(""))}</span>`;
   };
   let html = readerToolExtras() + (window.__rdProgressBar ? window.__rdProgressBar() : "");
-  if(store.mode === "page"){
+  /* 视图优先：选了「段落对照」就不管「阅读方式」是什么 */
+  if(readView() === "para"){
+    const PER = 4;
+    const blocks = [];
+    for(let i = rng[0]; i < rng[1]; i += PER){
+      const segEnd = Math.min(rng[1], i + PER);
+      const enParts = [], zhParts = [];
+      for(let j = i; j < segEnd; j++){
+        enParts.push(`<span class="sent" data-si="${j}" id="sent-${j}"><span class="en" onclick="wordClick(event)">${wordSpans(sents[j], j)}</span></span>`);
+        const z = sents[j].zh || "";
+        if(z) zhParts.push(z);
+      }
+      blocks.push(`<div class="para-pair">
+        <div class="pp-en">${enParts.join(" ")}</div>
+        ${zhParts.length ? `<div class="pp-zh">${escHtml(zhParts.join(""))}</div>` : `<div class="pp-zh dim">（这段还没翻译）</div>`}
+      </div>`);
+    }
+    html += `<div class="body-flow para-flow">${blocks.join("")}</div>`;
+  } else if(store.mode === "page"){
     html += renderPageMode(sents, rng, wordSpans, zhBlock);
   } else if(store.mode === "para"){
     for(let p=rng[0]; p<rng[1]; p+=3){
@@ -11228,26 +11246,6 @@ function openReader(id){
         </div>
       </div>`;
     }
-  }else if(readView() === "para"){
-    /* ===== 段落对照：先整段英文，再整段中文，交替排列 =====
-       和「双语对照」的区别：那个是逐句翻译，读起来被打断；
-       这个是按段（4 句）成块，先读英文再读中文，适合通读。 */
-    const PER = 4;
-    const blocks = [];
-    for(let i = rng[0]; i < rng[1]; i += PER){
-      const segEnd = Math.min(rng[1], i + PER);
-      const enParts = [], zhParts = [];
-      for(let j = i; j < segEnd; j++){
-        enParts.push(`<span class="sent" data-si="${j}" id="sent-${j}"><span class="en" onclick="wordClick(event)">${wordSpans(sents[j], j)}</span></span>`);
-        const zh = sents[j].zh || "";
-        if(zh) zhParts.push(zh);
-      }
-      blocks.push(`<div class="para-pair">
-        <div class="pp-en">${enParts.join(" ")}</div>
-        ${zhParts.length ? `<div class="pp-zh">${escHtml(zhParts.join(""))}</div>` : `<div class="pp-zh dim">（这段还没翻译，点上方「翻译本章」）</div>`}
-      </div>`);
-    }
-    html = `<div class="body-flow para-flow">${blocks.join("")}</div>`;
   }else if(readLayout() === "book" || readLayout() === "ebook"){
     /* ===== 连排渲染：整章流成连续正文，不带每句卡片和工具条 =====
        每 4 句分一段（用块级 break 制造段落），段首缩进由 .body-flow 的 text-indent 控制 */
@@ -14917,6 +14915,7 @@ async function runAiDiag(){
   const out = document.getElementById("aiDiagOut");
   if(out){ out.style.display="block"; out.textContent = "检测中…"; }
   try{
+    if(!window.LZ_AI) throw new Error("AI 模块没加载上");
     const r = await window.LZ_AI.diagnose();
     if(out) out.textContent = r;
   }catch(e){
@@ -14951,11 +14950,11 @@ function saveAiBase(){
   const v = (document.getElementById("aiBaseInput")?.value || "").trim();
   if(!v){ toast("先粘贴后端地址"); return; }
   if(!/^https?:\/\//i.test(v)){ toast("地址要以 http:// 或 https:// 开头"); return; }
-  if(!window.LZ_AI){ toast("AI 模块未加载"); return; }
+  if(!window.LZ_AI){ toast("AI 模块没加载上"); return; }
   window.LZ_AI.setUserBase(v);
   toast("已保存后端地址，正在检测…");
   setTimeout(async ()=>{
-    const m = await window.LZ_AI.mode();
+    const m = window.LZ_AI ? await window.LZ_AI.mode() : false;
     toast(m === "server" ? "✅ 后端连接成功，AI 可用了" : "⚠️ 连不上这个地址，检查一下是否填对、以及 Worker 是否部署成功");
     refreshAiStatus();
   }, 400);
