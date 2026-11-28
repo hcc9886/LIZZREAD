@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 76 期。 */
+   由 scripts/gen-comics.py 自动生成，共 82 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "blondie-bumstead-family-blondie-1968",
@@ -77,6 +77,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AThomas_Hobbes_%28portrait%29.jpg"
+ },
+ {
+  "id": "es-krazy-kat-1918-09-07",
+  "file": "comics/es-krazy-kat-1918-09-07.jpg",
+  "t": "Historieta",
+  "tzh": "西语漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1918-09-07.png"
  },
  {
   "id": "garfield-james-abram-garfield-photo-portrait-seated",
@@ -704,6 +715,61 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ADream_of_a_rarebit_fiend._%22I_always_like_to_sit_in_the_corner_of_a_car_then_I_don%27t_have_people_trampling_all_over_me%22_-_Silas._LCCN2005680624.jpg"
+ },
+ {
+  "id": "ru-chudolesnoye",
+  "file": "comics/ru-chudolesnoye.jpg",
+  "t": "ru chudolesnoye",
+  "tzh": "ru chudolesnoye",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=ru%20chudolesnoye"
+ },
+ {
+  "id": "ru-kulikovo-lubok",
+  "file": "comics/ru-kulikovo-lubok.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKulikovo_lubok.jpg"
+ },
+ {
+  "id": "ru-lubok-alkonost",
+  "file": "comics/ru-lubok-alkonost.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALubok_alkonost.JPG"
+ },
+ {
+  "id": "ru-mermenlubok",
+  "file": "comics/ru-mermenlubok.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMermenLubok.jpg"
+ },
+ {
+  "id": "ru-michaellubok",
+  "file": "comics/ru-michaellubok.jpg",
+  "t": "ru michaellubok",
+  "tzh": "ru michaellubok",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=ru%20michaellubok"
  },
  {
   "id": "strip-1922-0121-krazykat-det-650",

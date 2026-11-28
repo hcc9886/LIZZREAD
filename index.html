@@ -3365,7 +3365,8 @@ function closeFilterDrawer(){
   if(el) el.style.display = "none";
 }
 function onSearchInput(){
-  const kw = (document.getElementById("searchBox").value || "").trim();
+  const _sb = document.getElementById("searchBox");
+  const kw = ((_sb && _sb.value) || "").trim();
   const clearBtn = document.getElementById("searchClear");
   if(clearBtn) clearBtn.style.display = kw ? "inline-flex" : "none";
   const acts = document.getElementById("searchActions");
@@ -4368,7 +4369,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.3"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.9.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5406,7 +5407,7 @@ function longPressTranslate(si){
     </div>
   </div>`;
   const zh = offlineTranslate(text, "zh");
-  if(zh){ document.getElementById("lpZh").textContent = zh; return; }
+  if(zh){ const _z = document.getElementById("lpZh"); if(_z) _z.textContent = zh; return; }
   mtFetch(text).then(t => { const e = document.getElementById("lpZh"); if(e) e.textContent = t || "（翻译暂不可用）"; })
     .catch(()=>{ const e = document.getElementById("lpZh"); if(e) e.textContent = "（翻译暂不可用，可联网后重试）"; });
 }
@@ -6001,7 +6002,7 @@ function comicImportSnippet(orig, trans){
   try{
     const txt = orig + "\n\n" + (trans || "");
     importTextAsBook(txt, "漫画摘录");
-    document.getElementById("cxHit").style.display = "none";
+    const _ch = document.getElementById("cxHit"); if(_ch) _ch.style.display = "none";
   }catch(e){ toast("保存失败"); }
 }
 function cxShowHit(x, y, html){
@@ -10552,7 +10553,8 @@ function renderLibrary(){
   } else {
     renderChips();
   }
-  const kw = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+  const _sb2 = document.getElementById("searchBox");
+  const kw = ((_sb2 && _sb2.value) || "").trim().toLowerCase();
   /* 导入书籍排在最前（无筛选时） */
   const showImp = fLv==="all" && (fGenre==="all"||fGenre==="imp") && !kw;
   const impList = showImp ? store.imports.map(x=>({
@@ -10569,17 +10571,17 @@ function renderLibrary(){
   const lv = store.level;
   const banner = document.getElementById("recBanner");
   const rec = document.getElementById("recSec");
-  rec.innerHTML = "";
+  if(rec) rec.innerHTML = "";
   const recGrid = document.getElementById("recGrid");
   if(recGrid) recGrid.innerHTML = "";
   const bannerClosed = localStorage.getItem("lz_recbanner_off") === "1";
-  if(lv && fLv === "all" && !kw && !bannerClosed){
+  if(lv && fLv === "all" && !kw && !bannerClosed && banner){
     banner.innerHTML = `<div class="rec-line">
       <span>🎯 你的等级 <b>${escHtml(lv)}</b></span>
       <button class="rec-line-btn" onclick="setLv('${escHtml(lv)}')">只看 ${escHtml(lv)}</button>
       <button class="rec-line-x" onclick="localStorage.setItem('lz_recbanner_off','1');renderLibrary();" aria-label="关闭">✕</button>
     </div>`;
-  } else banner.innerHTML = "";
+  } else if(banner) banner.innerHTML = "";
   const filtered = (fLv!=="all"||fGenre!=="all"||kw);
   const L0 = LANG_INFO[activeLang()] || {};
   let streak = 0;
@@ -10604,7 +10606,8 @@ function renderLibrary(){
     }catch(e){ window.__libObs = null; }
   }
   const shown = list.slice(0, libLimit);
-  document.getElementById("bookGrid").innerHTML =
+  const _grid = document.getElementById("bookGrid");
+  if(_grid) _grid.innerHTML =
     shown.length ? shown.map(b=>bookCard(b,false)).join("") +
       (list.length > libLimit
         ? `<div id="libSentinel" style="grid-column:1/-1;text-align:center;padding:18px 0" data-more="1">
@@ -10660,7 +10663,7 @@ async function openBook(id){
     const loaded = await ensureImportLoaded(id);
     const data = fullCache[id];
     const sents = data ? data.sents.length : 0;
-    document.getElementById("view-book").innerHTML = `
+    const _vb = document.getElementById("view-book"); if(_vb) _vb.innerHTML = `
       <span class="back" onclick="go('library')">← 返回书城</span>
       <div class="detail-head">
         <div class="cover g-imp">
@@ -10691,7 +10694,7 @@ async function openBook(id){
   const hasFull = typeof b.gb === "number";
   const hasGuide = !!GUIDES[id];
   const prog = store.progress[id] || {};
-  document.getElementById("view-book").innerHTML = `
+  const _vb2 = document.getElementById("view-book"); if(_vb2) _vb2.innerHTML = `
     <span class="back" onclick="go('library')">← 返回书城</span>
     <div class="detail-head">
       <div class="cover g-${b.g}">
@@ -11438,7 +11441,7 @@ function openReader(id){
   try{ applyReadLayout(); }catch(e){}
   try{ applyReadView(); }catch(e){}
   if(!fullCache[id] && store.imports.some(x=>x.id===id)){
-    document.getElementById("view-reader").innerHTML = `<div class="reader"><p class="tip">正在从 IndexedDB 载入导入书…</p></div>`;
+    { const _vr = document.getElementById("view-reader"); if(_vr) _vr.innerHTML = `<div class="reader"><p class="tip">正在从 IndexedDB 载入导入书…</p></div>`; }
     ensureImportLoaded(id).then(ok=>{ if(ok) openReader(id); else alert("导入书数据丢失，请重新导入。"); });
     go("reader");
     return;
@@ -11591,7 +11594,7 @@ function openReader(id){
   const translated = isFull ? sents.slice(rng[0],rng[1]).filter(s=>s.zh).length : 0;
   const total = Math.max(1, rng[1]-rng[0]);
   applyReadLayout();
-  document.getElementById("view-reader").innerHTML = `
+  const _vr2 = document.getElementById("view-reader"); if(_vr2) _vr2.innerHTML = `
     <div class="reader">
       <span class="back" onclick="openBook('${id}')">← 返回详情</span>
       <div class="rd-head"><h2>${title} · ${isGuide?"精读导读":(isFull ? "整本阅读" : "双语试读")}</h2></div>
@@ -17611,12 +17614,20 @@ function endTutorial(completed){
 
 /* =====================================================
   十二、初始化
+   每一步单独 try/catch：任何一步失败都不能拖垮后面的初始化，
+   否则「某个按钮点了没反应」会毫无线索。
 ===================================================== */
-document.getElementById("searchBox").addEventListener("input", ()=>{ libLimit = 60; renderLibrary(); });
-renderLibrary();
-renderTestIntro();
-renderVocab();
-applyPrefs();
+function _bootStep(name, fn){
+  try{ fn(); }catch(e){ console.warn("[boot] " + name + " 失败:", e && e.message); }
+}
+_bootStep("搜索框", ()=>{
+  const sb = document.getElementById("searchBox");
+  if(sb) sb.addEventListener("input", ()=>{ libLimit = 60; renderLibrary(); });
+});
+_bootStep("书库", ()=>renderLibrary());
+_bootStep("词汇测试", ()=>renderTestIntro());
+_bootStep("生词本", ()=>renderVocab());
+_bootStep("偏好", ()=>applyPrefs());
 /* 清理历史上可能写入的“原文当译文”缓存，避免点词/翻译显示英文 */
 (function sanitizeTranslationCaches(){
   let changed = false;
@@ -17838,10 +17849,10 @@ function setAutoVocab(v){ localStorage.setItem(_AUTO_VOCAB, JSON.stringify(v)); 
 
 /* 系统暗模式 + 手动覆盖（统一走 applyPrefs） */
 function applySystemTheme(){ applyPrefs(); }
-matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", ()=>{
+try{ matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", ()=>{
   if(getPref("bg") === "auto") applyPrefs();
-});
-applyPrefs();
+}); }catch(e){}
+_bootStep("主题", ()=>applyPrefs());
 /* URL 分享：?lang=de&show=en 直接进入指定语言书库（可分享、可被搜索引擎收录） */
 (function applyUrlLang(){
   try{
