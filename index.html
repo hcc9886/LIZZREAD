@@ -541,6 +541,23 @@ body.nav-open .speak-bar{display:none!important}
 .ai-diag{white-space:pre-wrap;font:11.5px/1.6 ui-monospace,Menlo,monospace;
   background:var(--surface2);border:1px solid var(--border);border-radius:8px;
   padding:10px;margin-top:8px;max-height:220px;overflow:auto;color:var(--text)}
+/* 词卡底部工具栏（仿常见查词 App） */
+.wc-toolbar{display:flex;justify-content:space-between;gap:2px;margin-top:16px;
+  padding-top:12px;border-top:1px solid var(--border)}
+.wc-toolbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:none;border:none;padding:6px 2px;color:var(--muted);cursor:pointer;
+  font-size:11.5px;line-height:1;border-radius:8px;transition:.15s}
+.wc-toolbar button:hover{background:var(--brand-soft);color:var(--brand-deep)}
+.wc-toolbar i{font-style:normal;font-size:18px}
+.wc-toolbar span{white-space:nowrap}
+/* 句子精讲：编号讲解 + 语法本标签 */
+.gr-list{margin:6px 0 0 18px;padding:0;font-size:13px;line-height:1.85}
+.gr-list li{margin:3px 0}
+.gr-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.gr-tag{border:1px solid var(--border);background:var(--surface);color:var(--text);
+  border-radius:20px;padding:4px 12px;font-size:12.5px;cursor:pointer;transition:.15s}
+.gr-tag:hover{border-color:var(--accent)}
+.gr-tag.on{background:var(--brand-soft);border-color:var(--accent);color:var(--brand-deep);font-weight:600}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1978,6 +1995,16 @@ body.no-zh .sent .zh{display:none}
     <button class="btn ghost small" id="shAsmBtn" onclick="openAssemblyForCurrentWord()" style="display:none">🧩 在句中练</button>
     <button class="btn ghost small" onclick="exportWordCard()">🖼️ 导出卡片</button>
     <a class="btn ghost small" id="shMore" onclick="showMoreMeanings(event);return false;">更多释义</a>
+  </div>
+
+  <!-- 底部工具栏：问 AI / 复制 / 发音 / 识词组 / 反馈 / 设置 -->
+  <div class="wc-toolbar">
+    <button onclick="wcAskAi()"><i>✨</i><span>问 AI</span></button>
+    <button onclick="wcCopy()"><i>📋</i><span>复制</span></button>
+    <button onclick="speakWord()"><i>🔊</i><span>发音</span></button>
+    <button onclick="wcPhrases()"><i>🔗</i><span>识词组</span></button>
+    <button onclick="wcFeedback()"><i>🚩</i><span>反馈</span></button>
+    <button onclick="go('settings');closeSheet&&closeSheet()"><i>⚙️</i><span>设置</span></button>
   </div>
 </div>
 <div id="selpop">
@@ -3576,19 +3603,179 @@ const _SUFFIX = [
   ["ize","动词：使…化"],["ise","动词：使…化"],["ify","动词：使…"],["ate","动词或形容词"],
   ["ing","现在分词/名词"],["ed","过去式/过去分词"]
 ];
+/* ================= 助记：拆词 + 串联 + 落到词义 =================
+   目标输出样式（always）：
+     all（全部的）+ ways（路径/方式）→ 所有路径、所有方式 → 无论走哪条路都在发生 → 老是
+   做法：
+     ① 先试「合成词」拆分（all+ways / book+shelf / sun+flower）
+     ② 再试「前缀 + 词干 + 后缀」
+     ③ 最后退到「词根联想」
+   每一步都要给出中文义，并用联介词把两半串起来，最后落到本词义。 */
+const MORPH_ZH = {
+  all:"全部的", any:"任何", some:"某些", every:"每一个", no:"没有", none:"没有",
+  way:"路径/方式", day:"天", time:"时间", thing:"东西", body:"身体", one:"一个",
+  hand:"手", head:"头", foot:"脚", eye:"眼睛", ear:"耳朵", back:"后面/背",
+  book:"书", shelf:"架子", case:"盒子/情形", mark:"记号", board:"板子",
+  sun:"太阳", moon:"月亮", light:"光", fire:"火", water:"水", rain:"雨", snow:"雪",
+  wind:"风", earth:"土地", land:"陆地", sea:"海", tree:"树", flower:"花",
+  home:"家", house:"房子", room:"房间", door:"门", wall:"墙", yard:"院子",
+  work:"工作", play:"玩", life:"生活", long:"长", short:"短", high:"高", low:"低",
+  over:"越过/过度", under:"下面/不足", out:"向外/超出", up:"向上", down:"向下",
+  in:"里面", on:"上面", off:"离开", fore:"前面", mid:"中间", well:"好地",
+  self:"自己", half:"一半", full:"满的", open:"打开", free:"自由", hard:"硬/难",
+  news:"消息", paper:"纸", book2:"", grand:"大的", great:"伟大的",
+  super:"超级", extra:"额外", semi:"半个", anti:"反对", auto:"自动", bio:"生命",
+  glass:"玻璃", black:"黑", white:"白", green:"绿", blue:"蓝", red:"红",
+  star:"星", sky:"天空", bird:"鸟", fish:"鱼", dog:"狗", cat:"猫",
+  friend:"朋友", school:"学校", class:"班级", mate:"伙伴", room2:"",
+  post:"寄/后", card:"卡片", key:"钥匙/关键", note:"记录",
+  ground:"地面", bow:"弓", shelf:"架子", case2:"", mark2:"",
+  self2:"", help:"帮助", care:"关心", mind:"头脑/在意", heart:"心"
+};
+function _morphGloss(part, dictZh){
+  if(MORPH_ZH[part]) return MORPH_ZH[part];
+  const d = dictZh ? String(dictZh).replace(/^[a-z.]+\s*/i, "").split(/[,，;；]/)[0].trim() : "";
+  if(d && d.length <= 10 && !/[A-Za-z]{2,}/.test(d)) return d;
+  return "";
+}
+/* 合成词拆分。
+   注意 always = all + ways，但拼写上合并成了一个 l —— 所以要做「宽松切分」：
+   允许前缀补一个字母后才是真词（al → all）。否则这类词永远拆不开。 */
+function _partGloss(part){
+  /* 常见词素优先用人工义，避免「al → [计] 算法语言」这种专业词条干扰 */
+  if(MORPH_ZH[part]) return MORPH_ZH[part];
+  const G = window.LIZ_DICT || {};
+  const e = G[part];
+  if(!e) return "";
+  const raw = String(e[1] || "");
+  if(/^\[[^\]]+\]/.test(raw)) return "";           /* 带 [计]/[医] 标注的不要 */
+  const d = raw.replace(/^[a-z./]+\s*/i, "").split(/[,，;；]/)[0]
+    .replace(/（[^）]*）/g, "").replace(/\([^)]*\)/g, "").trim();
+  if(d && d.length <= 12 && !/[A-Za-z]{2,}/.test(d)) return d;
+  return "";
+}
+function _isRealWord(part){
+  const G = window.LIZ_DICT || {};
+  return !!(G[part] || MORPH_ZH[part]);
+}
+function _splitCompound(w){
+  const cands = [];
+  const tryPush = (a, b, shownA, shownB) => {
+    if(a.length < 2 || b.length < 3) return;
+    const azh = _partGloss(a), bzh = _partGloss(b);
+    if(!azh || !bzh) return;          /* 两半都要能讲清楚才值得拆 */
+    if(!_isRealWord(a) && !_isRealWord(b)) return;
+    const score = (azh ? 2 : 0) + (bzh ? 2 : 0)
+                - Math.abs(a.length - b.length) * 0.6
+                - (shownA !== a || shownB !== b ? 0.4 : 0);
+    cands.push({ a: shownA || a, b: shownB || b, azh, bzh, score });
+  };
+  let plainFound = false;
+  for(let i = 2; i <= w.length - 3; i++){
+    const a = w.slice(0, i), b = w.slice(i);
+    /* ① 原样切开（最可信） */
+    if(_isRealWord(a) && _isRealWord(b)){ const n0 = cands.length; tryPush(a, b); if(cands.length > n0) plainFound = true; }
+    /* ② 两边都靠人工词素表也能拆 */
+    else if(MORPH_ZH[a] && MORPH_ZH[b]){ const n1 = cands.length; tryPush(a, b); if(cands.length > n1) plainFound = true; }
+  }
+  /* ③ 原样切不开，才试「补一个字母」（always = al(l) + ways） */
+  if(!plainFound){
+    for(let i = 2; i <= w.length - 3; i++){
+      const a = w.slice(0, i), b = w.slice(i);
+      for(const ch of [a[a.length-1], "l", "e", "s", "d", "r"]){
+        const a2 = a + ch;
+        if(_isRealWord(a2) && _isRealWord(b)) tryPush(a2, b, a2, b);
+      }
+      for(const ch of [b[0], "e", "s", "y", "d", "r"]){
+        const b2 = b + ch;
+        if(_isRealWord(a) && _isRealWord(b2)) tryPush(a, b2, a, b2);
+      }
+    }
+  }
+  cands.sort((x, y) => y.score - x.score);
+  return cands[0] || null;
+}
+
+/* 联介词：把两半自然串起来 */
+function _gluePhrase(a, azh, b, bzh){
+  const set = new Set([a, b]);
+  if(set.has("all")){
+    if(/way/.test(b)) return "所有" + (bzh || "路径/方式") + "加起来 → 无论走哪条路";
+    return "所有" + (bzh || b) + "加起来";
+  }
+  if(set.has("every")) return "每一个" + (bzh || "…");
+  if(set.has("any")) return "任何" + (bzh || "…") + "都";
+  if(set.has("some")) return "某个" + (bzh || "…");
+  if(set.has("no") || set.has("none")) return "没有" + (bzh || "…");
+  if(set.has("over")) return "越过了头 → 变成";
+  if(set.has("under")) return "不够、在下面 → 变成";
+  if(set.has("out")) return "向外超出 → 变成";
+  if(set.has("self") && /^(self|auto)/.test(a + b)) return "对自己 → 自动地";
+  if(set.has("fore")) return "在前面 → 预先";
+  const COMPOUND_GLUE = {
+    "book+shelf":"放书的架子", "bookshelf":"放书的架子",
+    "sun+flower":"朝着太阳开的花", "rain+bow":"雨后的弓形 → 彩虹",
+    "home+work":"在家做的功课", "back+ground":"后面的场景 → 背景",
+    "news+paper":"印消息的纸 → 报纸", "foot+ball":"用脚踢的球",
+    "book+case":"放书的柜子", "book+mark":"夹在书里做记号",
+    "water+fall":"水从高处落下", "fire+fly":"发光的飞虫",
+    "green+house":"种花的玻璃房 → 温室", "black+board":"黑色的板子 → 黑板",
+    "hand+book":"随身拿的手册", "note+book":"记笔记的本子",
+    "class+room":"上课的房间", "bed+room":"放床的房间",
+    "tooth+brush":"刷牙的刷子", "rain+coat":"挡雨的外套"
+  };
+  const key = a + "+" + b;
+  if(COMPOUND_GLUE[key]) return COMPOUND_GLUE[key];
+  return "与「" + (azh || a) + "」有关的「" + (bzh || b) + "」";
+}
 function mnemoOf(word, senses){
   const w = String(word || "").toLowerCase().replace(/[^a-z]/g, "");
-  if(w.length < 5) return "";
+  if(w.length < 4) return "";
+  const sense = (senses && senses.length) ? String(senses[0]).trim() : "";
+
+  /* ① 合成词 */
+  const comp = _splitCompound(w);
+  if(comp){
+    const chain = [];
+    chain.push(comp.a + "（" + (comp.azh || "…") + "）");
+    chain.push(comp.b + "（" + (comp.bzh || "…") + "）");
+    const glue = _gluePhrase(comp.a, comp.azh, comp.b, comp.bzh);
+    let out = chain.join(" + ") + " → " + glue;
+    if(sense && glue.indexOf(sense) < 0) out += " → " + sense;
+    return out;
+  }
+
+  /* ② 前缀 + 词干 + 后缀 */
   const parts = [];
+  let rest = w;
   for(const [pre, zh] of _AFFIX){
-    if(pre && w.startsWith(pre) && w.length - pre.length >= 3){ parts.push(pre + "（" + zh + "）"); break; }
+    if(pre && rest.startsWith(pre) && rest.length - pre.length >= 3){
+      parts.push(pre + "（" + zh + "）");
+      rest = rest.slice(pre.length);
+      break;
+    }
   }
   for(const [suf, zh] of _SUFFIX){
-    if(w.endsWith(suf) && w.length - suf.length >= 3){ parts.push("-" + suf + "（" + zh + "）"); break; }
+    if(rest.endsWith(suf) && rest.length - suf.length >= 3){
+      parts.push("-" + suf + "（" + zh + "）");
+      rest = rest.slice(0, rest.length - suf.length);
+      break;
+    }
   }
-  if(!parts.length) return "";
-  const core = "核心词根 " + w.slice(0, 5) + "…";
-  return "拆解：" + parts.join(" + ") + " → " + (senses && senses.length ? senses[0] : core);
+  if(parts.length){
+    let out = (rest ? rest + "（词干） + " : "") + parts.join(" + ");
+    if(sense) out += " → " + sense;
+    return out;
+  }
+
+  /* ③ 词根联想（没拆开也要给点东西） */
+  const G = window.LIZ_DICT || {};
+  const stem = w.slice(0, Math.min(5, w.length));
+  const kin = Object.keys(G).find(k => k !== w && k.startsWith(stem) && k.length <= stem.length + 4);
+  if(kin && sense){
+    return "词干「" + stem + "…」→ 同族词 " + kin + "（" + String(G[kin][1] || "").split(/[,，;；]/)[0].slice(0,8) + "）→ " + sense;
+  }
+  return "";
 }
 
 /* 同根词族：用前缀/后缀/词干推断，再从 25.5 万词条里找真实同族词 */
@@ -3672,6 +3859,62 @@ async function requestAiExplain(word){
   else { if(body) body.textContent = "AI 这次没回应，稍后再点一次试试。上方的助记和例句是本地生成的，照样能用。"; if(btn) btn.textContent = "重试"; }
   if(btn) btn.disabled = false;
 }
+/* ================= 词卡底部工具栏动作 ================= */
+function _shCurrentWord(){
+  if(typeof sheetWord !== "undefined" && sheetWord) return sheetWord;
+  const el = document.getElementById("shWord");
+  return el ? el.textContent.trim() : "";
+}
+async function wcAskAi(){
+  const w = _shCurrentWord();
+  if(!w) return;
+  try{ await requestAiExplain(w); }catch(e){ toast("AI 暂不可用"); }
+}
+function wcCopy(){
+  const w = _shCurrentWord();
+  const def = document.getElementById("shDef");
+  const text = w + "\n" + (def ? def.innerText.replace(/\n{2,}/g, "\n") : "");
+  try{
+    navigator.clipboard.writeText(text);
+    toast("已复制词卡内容");
+  }catch(e){
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); toast("已复制"); }catch(err){ toast("复制失败"); }
+    ta.remove();
+  }
+}
+function wcPhrases(){
+  const w = _shCurrentWord();
+  let list = [];
+  try{ list = findCollocations(w) || []; }catch(e){}
+  if(!list.length){
+    toast("这个词暂时没找到固定搭配");
+    return;
+  }
+  const html = list.map(x => `<div class="rw-col"><span>${escHtml(x.phrase)}</span><span class="dim">${escHtml(x.zh)}</span></div>`).join("");
+  let box = document.getElementById("wcPhraseBox");
+  if(!box){
+    box = document.createElement("div");
+    box.id = "wcPhraseBox";
+    box.className = "rw-block";
+    const def = document.getElementById("shDef");
+    if(def) def.appendChild(box);
+  }
+  box.innerHTML = `<b>常见搭配</b>${html}`;
+  box.scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+function wcFeedback(){
+  const w = _shCurrentWord();
+  const ok = confirm("「" + w + "」的解释有问题吗？\n\n点确定会复制词条信息，可以粘贴到反馈里。");
+  if(!ok) return;
+  const def = document.getElementById("shDef");
+  const text = "词条反馈：" + w + "\n" + (def ? def.innerText.slice(0, 300) : "");
+  try{ navigator.clipboard.writeText(text); }catch(e){}
+  go("feedback");
+  toast("已复制词条信息，粘贴到反馈框即可");
+}
+
 function renderRichWordCard(word, low){
   const def = document.getElementById("shDef");
   if(!def) return;
@@ -3753,7 +3996,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.1.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.2.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -4501,6 +4744,51 @@ function grammarExplain(sentence){
     : "陈述语气";
   return { hits, subj, verb, tense, mood, words: words.length };
 }
+/* ================= 语法本：收藏句子里的语法点 ================= */
+function grammarSavedOf(){
+  try{ return JSON.parse(localStorage.getItem(pk("grammar_saved")) || "[]"); }catch(e){ return []; }
+}
+function grammarToggle(tag, btn){
+  const list = grammarSavedOf();
+  const i = list.indexOf(tag);
+  if(i >= 0){ list.splice(i, 1); btn.classList.remove("on"); btn.textContent = "＋ " + tag; toast("已移出语法本"); }
+  else { list.push(tag); btn.classList.add("on"); btn.textContent = "✓ " + tag; toast("已收进语法本：" + tag); }
+  try{ localStorage.setItem(pk("grammar_saved"), JSON.stringify(list)); }catch(e){}
+  const c = document.getElementById("grTagCount");
+  if(c) c.textContent = list.length;
+}
+/* 从句子里抽固定搭配：动词+介词、be+形容词+介词、常见短语 */
+const PHRASE_PATTERNS = [
+  [/(\b\w+\s+(?:up|down|out|off|on|in|over|away|back|through|along|around|about)\b)/gi, "动词短语"],
+  [/(\b(?:be|is|are|was|were)\s+\w+\s+(?:of|to|for|with|about|in|at)\b)/gi, "be + 形容词 + 介词"],
+  [/(\b(?:in|on|at|by|for|with|under|without)\s+(?:the\s+)?\w+\s+of\b)/gi, "介词短语"],
+  [/(\b(?:make|take|give|have|do|get|put|keep)\s+(?:a|an|the)?\s*\w+)/gi, "动宾搭配"]
+];
+function findPhrases(sentence){
+  const txt = String(sentence || "");
+  const out = [];
+  const seen = new Set();
+  for(const [re, kind] of PHRASE_PATTERNS){
+    re.lastIndex = 0;
+    let m;
+    while((m = re.exec(txt)) !== null){
+      const en = m[1].trim().replace(/\s+/g, " ");
+      const key = en.toLowerCase();
+      if(key.length < 5 || seen.has(key)) continue;
+      seen.add(key);
+      let zh = "";
+      try{
+        const cols = findCollocations(en) || [];
+        if(cols.length) zh = cols[0].zh || "";
+      }catch(e){}
+      out.push({ en, zh: zh || kind });
+      if(out.length >= 6) break;
+    }
+    if(out.length >= 6) break;
+  }
+  return out;
+}
+
 function openGrammarSheet(){
   if(!curBook) return;
   const all = getSents(curBook.id);
@@ -4523,7 +4811,43 @@ function openGrammarSheet(){
     <div class="gr-row"><b>时态</b><span>${escHtml(g.tense)}</span></div>
     <div class="gr-row"><b>语气</b><span>${escHtml(g.mood)}</span></div>
     <div class="gr-row"><b>结构</b><span>${g.hits.length ? g.hits.map(h => escHtml(h.name)).join(" · ") : "简单句（无复杂从句）"}</span></div>
-    ${g.hits.map(h => `<div class="gr-block"><b>${escHtml(h.name)}</b><div>${escHtml(h.tip)}</div></div>`).join("")}
+    ${(()=>{
+      /* 编号讲解：把结构要点按 1/2/3 排开，读起来像老师讲课 */
+      const pts = [];
+      pts.push("主干是「" + (g.subj || "主语") + " + " + (g.verb || "谓语") + "」，先抓住它就不怕句子长。");
+      if(g.tense) pts.push("时态：" + g.tense + "，注意它决定了动作发生在什么时候。");
+      if(g.mood) pts.push("语气：" + g.mood + "。");
+      for(const h of (g.hits || [])) pts.push(h.name + "：" + h.tip);
+      if(!g.hits || !g.hits.length) pts.push("没有复杂从句，把修饰成分（形容词/介词短语）先划掉，剩下的就是主干。");
+      return `<div class="gr-block"><b>讲解</b>
+        <ol class="gr-list">${pts.map(x => `<li>${escHtml(x)}</li>`).join("")}</ol></div>`;
+    })()}
+    ${(()=>{
+      const tags = [];
+      const seen = new Set();
+      for(const h of (g.hits || [])){
+        const k = String(h.name || "");
+        if(!k || seen.has(k)) continue;
+        seen.add(k); tags.push(k);
+      }
+      if(g.tense && g.tense !== "一般现在时"){ const k = g.tense; if(!seen.has(k)) tags.push(k); }
+      if(g.mood && g.mood !== "陈述语气"){ if(!tags.includes(g.mood)) tags.push(g.mood); }
+      if(!tags.length) return "";
+      const saved = grammarSavedOf();
+      return `<div class="gr-block"><b>收进语法本（可多选）</b>
+        <div class="gr-tags">${tags.map(t => {
+          const on = saved.includes(t);
+          return `<button class="gr-tag ${on ? "on" : ""}" onclick="grammarToggle('${escAttr(t)}',this)">${on ? "✓ " : "＋ "}${escHtml(t)}</button>`;
+        }).join("")}</div>
+        <div class="tip" style="margin:6px 0 0">已收进 <b id="grTagCount">${saved.length}</b> 个语法点，之后在「学习报告」里能复习。</div>
+      </div>`;
+    })()}
+    ${(()=>{
+      const ph = findPhrases(s.en);
+      if(!ph.length) return "";
+      return `<div class="gr-block"><b>短语 · 固定搭配</b>
+        ${ph.map(x => `<div class="rw-col"><span>${escHtml(x.en)}</span><span class="dim">${escHtml(x.zh || "")}</span></div>`).join("")}</div>`;
+    })()}
     <div class="lang-row" style="margin-top:12px">
       <button class="btn small" onclick="speak(sheetSent>=0?sheetSent:0)">🔊 朗读</button>
       <button class="btn ghost small" onclick="document.getElementById('gramSheet').style.display='none'">关闭</button>
