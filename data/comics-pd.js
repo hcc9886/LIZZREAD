@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 91 期。 */
+   由 scripts/gen-comics.py 自动生成，共 93 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "allysloper-marie-duval-ally-sloper-an-affair-of-honour-judy-june-24",
@@ -706,6 +706,17 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3ALittle_Nemo_postcard.jpg"
  },
  {
+  "id": "nemo-little-nemo-sea",
+  "file": "comics/nemo-little-nemo-sea.jpg",
+  "t": "Little Nemo in Slumberland",
+  "tzh": "小尼莫梦游记",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALittle_Nemo_sea.jpg"
+ },
+ {
   "id": "orphanannie-little-orphan-annie",
   "file": "comics/orphanannie-little-orphan-annie.jpg",
   "t": "Little Orphan Annie",
@@ -891,6 +902,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AHappy_Hooligan_1905-04-09.jpg"
+ },
+ {
+  "id": "strip-katzenjammer-kids-1897-12-12",
+  "file": "comics/strip-katzenjammer-kids-1897-12-12.jpg",
+  "t": "Comic: Katzenjammer Kids 1897 12 12",
+  "tzh": "其它漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Comic:%20Katzenjammer%20Kids%201897%2012%2012"
  },
  {
   "id": "strip-krazy-kat-1916-07-09",

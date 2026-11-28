@@ -2932,6 +2932,32 @@ function pickDistractors(pool, n){
 let _testSession = null;
 
 /* 各难度档的词池：用考试词书当"难度代理"，越靠后越难 */
+/* 干净词池：只包含考试词书 + 300 高频词。
+   大词典有 25 万条（含人名、古词、专业缩略语），直接抽会出
+   clidagra / argvalin / cuon 这种垃圾题，用户根本没法答。 */
+let _curatedCache = null;
+function curatedWords(){
+  if(_curatedCache) return _curatedCache;
+  const set = new Set();
+  try{
+    const books = (typeof VOCAB_BOOKS === "function") ? (VOCAB_BOOKS() || {}) : {};
+    for(const list of Object.values(books)){
+      if(Array.isArray(list)) for(const w of list){
+        const low = String(w || "").toLowerCase().trim();
+        if(/^[a-z][a-z'-]{2,15}$/.test(low)) set.add(low);
+      }
+    }
+  }catch(e){}
+  try{
+    for(const x of (window.LZ_WQ_COMMON || [])){
+      const low = String((x && x.w) || "").toLowerCase().trim();
+      if(/^[a-z][a-z'-]{2,15}$/.test(low)) set.add(low);
+    }
+  }catch(e){}
+  _curatedCache = set;
+  return set;
+}
+
 function testPoolByTier(){
   const tiers = TIERS();
   const G = window.LIZ_DICT || {};
@@ -2967,22 +2993,22 @@ function testPoolByTier(){
     for(const t of tierList) if(pool[t] && pool[t].length < 400) pool[t].push({ w: low, zh: wqCleanGloss(zh) });
   };
 
+  const clean = curatedWords();
   for(const [bk, tierList] of Object.entries(map)){
-    for(const w of (books[bk] || [])) addWord(w, tierList);
+    for(const w of (books[bk] || [])){
+      if(clean.size && !clean.has(String(w || "").toLowerCase())) continue;
+      addWord(w, tierList);
+    }
   }
 
-  /* 词书没加载时兜底：用高频词 + 词典按词长分层 */
-  if(Object.values(pool).every(a => a.length < 20)){
-    const common = window.LZ_WQ_COMMON || [];
-    common.forEach(x => addWord(x.w, [tiers[0], tiers[1]]));
-    const keys = Object.keys(G).filter(k => /^[a-z]+$/.test(k));
-    for(let i = 0; i < 6000; i++){
-      const k = keys[Math.floor(Math.random() * keys.length)];
-      const len = k.length;
+  /* 词书太少时：只用「干净词池」按词长分层补，绝不从 25 万词典裸抽 */
+  if(Object.values(pool).every(a => a.length < 12)){
+    for(const w of clean){
+      const len = w.length;
       const t0 = len <= 4 ? tiers[0] : len <= 6 ? (tiers[1] || tiers[0])
                : len <= 8 ? (tiers[2] || tiers[0]) : len <= 10 ? (tiers[3] || tiers[0])
                : (tiers[4] || tiers[0]);
-      addWord(k, [t0]);
+      addWord(w, [t0]);
     }
   }
   return pool;
@@ -4369,7 +4395,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.0.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.0.1"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -9425,13 +9451,12 @@ function gameWords(n){
     push(x.w, x.zh);
     if(out.length >= n) break;
   }
-  /* ③ 还不够就放宽长度限制，从词典里按难度抽 */
+  /* ③ 还不够：只用干净词池（考试词书 + 高频词）补，别从大词典裸抽 */
   if(out.length < n){
     try{
       const G = window.LIZ_DICT || {};
-      const keys = Object.keys(G).filter(k => /^[a-z]+$/.test(k) && k.length >= L0.minLen && k.length <= Math.max(L0.maxLen, 12));
-      for(let i = 0; i < 3000 && out.length < n; i++){
-        const k = keys[Math.floor(Math.random() * keys.length)];
+      for(const k of curatedWords()){
+        if(out.length >= n) break;
         push(k, String((G[k] || [])[1] || ""));
       }
     }catch(e){}
