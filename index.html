@@ -40,7 +40,7 @@
 <script src="data/comics-pd.js?v=3" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
-<script src="ai.js?v=5"></script>
+<script src="ai.js?v=6"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <style>html.lz-mini .lz-no-mini{display:none !important}/* 底部章导航 / 收藏 / 筛选 */
@@ -260,7 +260,7 @@
 .nav4-fav:hover{background:var(--surface2)}
 .nav4-fav b{color:var(--accent)}
 
-.nav-panel{position:absolute;left:0;right:0;top:100%;z-index:400;
+.nav-panel{position:absolute;left:0;right:0;top:100%;z-index:9950;
   background:var(--surface);border-bottom:1px solid var(--border);
   box-shadow:0 12px 28px rgba(0,0,0,.08);animation:navIn .16s ease-out}
 @keyframes navIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
@@ -279,9 +279,18 @@ header>.nav{position:relative}
   .nav4{overflow-x:auto;scrollbar-width:none}
   .nav4::-webkit-scrollbar{display:none}
   .nav4-btn{padding:7px 11px;font-size:13px}
-  .nav-panel{position:fixed;top:auto;bottom:0;left:0;right:0;top:auto;
-    border-top:1px solid var(--border);border-bottom:none;border-radius:14px 14px 0 0;max-height:70vh;overflow-y:auto}
+  /* 手机端：底部抽屉。z-index 提到 9950，否则会被更新提示条(9000)/章节条(9000)盖住，
+     用户点了「更多」看起来没反应——其实就是被盖在下面了。 */
+  .nav-panel{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:9950;
+    border-top:1px solid var(--border);border-bottom:none;border-radius:16px 16px 0 0;
+    max-height:72vh;overflow-y:auto;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    animation:navSheet .18s ease-out}
+  @keyframes navSheet{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
   .np-grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+  /* 抽屉打开时给个遮罩，点空白处关闭 */
+  .nav-scrim{position:fixed;inset:0;background:rgba(8,14,10,.42);z-index:9940;
+    display:block;animation:fadeIn .15s ease-out}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 }
 /* ============ 学习游戏 ============ */
 .gm-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0;font-size:13px;color:var(--muted)}
@@ -518,6 +527,20 @@ html.rl-book .reader .body-flow .sent:first-child .en::first-letter{ }
 .rl-bar{height:4px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:3px}
 .rl-bar i{display:block;height:100%;background:var(--accent);border-radius:2px}
 .rl-meta{font-size:11px;color:var(--muted)}
+/* 全局 toast */
+.lz-toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));
+  transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:9800;
+  max-width:min(88vw,520px);padding:11px 18px;border-radius:24px;
+  background:rgba(24,32,28,.92);color:#fff;font-size:13.5px;line-height:1.5;text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);transition:opacity .18s,transform .18s}
+.lz-toast.in{opacity:1;transform:translate(-50%,0)}
+/* 导航面板打开时，底部固定条让位 */
+body.nav-open .lz-update-bar,
+body.nav-open .chap-bar,
+body.nav-open .speak-bar{display:none!important}
+.ai-diag{white-space:pre-wrap;font:11.5px/1.6 ui-monospace,Menlo,monospace;
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;margin-top:8px;max-height:220px;overflow:auto;color:var(--text)}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -3776,7 +3799,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.9.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.0.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -8558,11 +8581,29 @@ function navGrp(g){
         <span class="np-ic">${ic}</span><span class="np-lb">${escHtml(label)}</span></button>`).join("")}</div>
   </div>`;
   panel.hidden = false;
+  panel.style.display = "block";      /* 防止某些环境里 [hidden] 被 display 规则覆盖 */
+  /* 手机端加背景遮罩，避免误以为没反应，也方便点空白关闭 */
+  if(window.matchMedia && window.matchMedia("(max-width:760px)").matches){
+    let scrim = document.getElementById("navScrim");
+    if(!scrim){
+      scrim = document.createElement("div");
+      scrim.id = "navScrim";
+      scrim.className = "nav-scrim";
+      scrim.onclick = navClose;
+      document.body.appendChild(scrim);
+    }
+  }
   document.querySelectorAll(".nav4-btn").forEach(b => b.classList.toggle("on", b.dataset.grp === g));
+  /* 面板打开时把底部固定条压下去，别挡视线 */
+  document.body.classList.add("nav-open");
 }
 function navClose(){
   const panel = document.getElementById("navPanel");
-  if(panel) panel.hidden = true;
+  if(panel){ panel.hidden = true; panel.style.display = "none"; }
+  const scrim = document.getElementById("navScrim");
+  if(scrim) scrim.remove();
+  document.body.classList.remove("nav-open");
+  document.querySelectorAll(".nav4-btn").forEach(b => b.classList.remove("on"));
   _navOpen = null;
   const cur = ((document.querySelector(".view.on") || {}).id || "").replace(/^view-/, "");
   const g = VIEW_TO_GROUP[cur] || null;
@@ -13921,6 +13962,16 @@ function asmSubmit(){
   十一·C 个性化设置
 ===================================================== */
 /* 一键跳到 AI 配置（从任意 AI 页面的状态条触发） */
+async function runAiDiag(){
+  const out = document.getElementById("aiDiagOut");
+  if(out){ out.style.display="block"; out.textContent = "检测中…"; }
+  try{
+    const r = await window.LZ_AI.diagnose();
+    if(out) out.textContent = r;
+  }catch(e){
+    if(out) out.textContent = "检测失败：" + (e.message || e);
+  }
+}
 function toggleAiAdvanced(){
   const box = document.getElementById("aiAdvBox");
   if(!box) return;
@@ -14016,6 +14067,9 @@ function renderSettings(){
             <button class="btn ghost small" onclick="clearAiKey()">清除</button>
           </div>
           <div class="tip" style="margin-top:4px">获取：<a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a>（登录后左侧「API Keys」）</div>
+
+          <button class="btn ghost small" style="margin:10px 0 0" onclick="runAiDiag()">🔍 检测 AI 连接</button>
+          <pre id="aiDiagOut" class="ai-diag" style="display:none"></pre>
 
           <div style="font:600 13px var(--font);margin:16px 0 6px">方式二：填你自己部署的后端地址</div>
           <div class="lang-row">
@@ -14430,9 +14484,23 @@ function maybeShowOnboarding(){
 
 
 /* 全局轻提示（会员、搜索、分享共用） */
-function toast(msg){
-  if(window.AssemblyPanel && AssemblyPanel.toast) return AssemblyPanel.toast(msg);
-  console.log(msg);
+/* 全局提示：原来只写 console，用户完全看不到反馈（点了像没反应）。
+   现在真正显示在屏幕上。 */
+let _toastTimer = null;
+function toast(msg, ms){
+  if(!msg) return;
+  console.log("[toast]", msg);
+  let el = document.getElementById("lzToast");
+  if(!el){
+    el = document.createElement("div");
+    el.id = "lzToast";
+    el.className = "lz-toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = String(msg);
+  el.classList.add("in");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>{ el.classList.remove("in"); }, ms || 2600);
 }
 
 /* =====================================================
@@ -16739,7 +16807,7 @@ window.__cacheSentenceZh = function(sentence, zh){
 /* PWA：可安装到桌面/手机主屏（GitHub Pages 的 https 下可全局生效） */
 if("serviceWorker" in navigator && !isMiniProgram() && (location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1")){
   /* 自动更新：注册 SW 并监听更新；发现新版本时顶部出现「立即更新」条 */
-  navigator.serviceWorker.register("sw.js").then((reg) => {
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
     /* 每次打开都主动查一次有没有新版本 */
     try{ reg.update(); }catch(e){}
     const promptUpdate = (worker)=>{

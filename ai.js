@@ -181,7 +181,42 @@
     const sys = `你是英语新闻编辑。写一篇关于「${topic}」的短文，${level || "B1"} 难度，约 ${wordCount || 180} 词，客观中立，不使用真实人物姓名与可识别细节。只输出英文正文。`;
     return await ask([{ role:"system", content: sys }, { role:"user", content: "开始写" }], { maxTokens: 700, temperature: 0.7 });
   }
+  /* 自检：把每一步的真实结果都返回，方便定位"AI 用不了"到底是哪一环 */
+  async function diagnose(){
+    const lines = [];
+    lines.push("站点：" + location.origin + location.pathname);
+    lines.push("脚本版本：ai.js?v=6");
+    lines.push("是否填了本机 Key：" + (userKey() ? "是" : "否"));
+    lines.push("是否填了自定义后端：" + (userBase() || "否"));
+    try{
+      const reg = await navigator.serviceWorker?.getRegistration?.();
+      lines.push("Service Worker：" + (reg ? "已注册（可能缓存旧文件，建议强制刷新）" : "无"));
+    }catch(e){}
+    const eps = endpoints();
+    for(const ep of eps){
+      const label = ep.replace(/^https?:\/\//, "").slice(0, 60);
+      try{
+        const hdrs = { "Content-Type": "application/json" };
+        const uk = userKey(); if(uk) hdrs["x-user-key"] = uk;
+        const r = await fetch(ep, {
+          method:"POST", headers: hdrs,
+          body: JSON.stringify({ messages:[{role:"user",content:"ping"}], max_tokens: 4 }),
+          signal: AbortSignal.timeout(12000)
+        });
+        const txt = await r.text();
+        let j = null; try{ j = JSON.parse(txt); }catch(e){}
+        if(!r.ok) lines.push("· " + label + " → HTTP " + r.status);
+        else if(j && j.configured) lines.push("· " + label + " → ✅ 可用");
+        else lines.push("· " + label + " → ✗ " + ((j && j.message) || txt.slice(0, 60)));
+      }catch(e){
+        lines.push("· " + label + " → ✗ 连不上（" + (e.message || e) + "）");
+      }
+    }
+    return lines.join("\n");
+  }
+
   window.LZ_AI = {
+    diagnose,
     setUserKey, hasUserKey, userKey, setUserBase, userBase, mode, probe, ask, explainWord, chatAboutBook, chatTutor, writeChapter, reviewWriting, storyFromWords, makeNews,
     get enabled(){ return !!_probe; } };
 })();
