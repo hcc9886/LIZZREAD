@@ -6,7 +6,14 @@
      ① 同源后端代理（Cloudflare Worker / Vercel / 本地 server.js）—— Key 在服务端
      ② 用户自己填的 Key（存 localStorage，只在本机）—— 纯静态站也能用 AI
      ③ 都没有 → 各功能退回本地生成，不报错 */
-  const ENDPOINTS = ["api/ai/chat", "public/api/ai/chat"];
+  /* 同源后端优先；同源没有时（如 GitHub Pages 静态站）兜底用已部署的 Worker。
+     这个 Worker 地址可以在「设置 → AI 能力」里被用户自己的地址覆盖。 */
+  const FALLBACK_BACKEND = "https://lizzread.13585658272.workers.dev";
+  const ENDPOINTS = [
+    "api/ai/chat",
+    "public/api/ai/chat",
+    FALLBACK_BACKEND + "/api/ai/chat"
+  ];
   const ZHIPU_DIRECT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
   const KEY_STORE = "lz_ai_user_key";
   const BASE_STORE = "lz_ai_base";   /* 用户自填后端地址，如 https://lizzread.xxx.workers.dev */
@@ -44,8 +51,8 @@
   }
   function endpoints(){
     const b = userBase();
-    /* 用户填了后端就优先用他的 */
-    return b ? [b + "/api/ai/chat"] : ENDPOINTS;
+    /* 用户填了自己的后端 → 只走他的；否则 同源 → 已部署 Worker 兜底 */
+    return b ? [b + "/api/ai/chat", FALLBACK_BACKEND + "/api/ai/chat"] : ENDPOINTS;
   }
   /* 直接打智谱（浏览器端，Key 只在用户自己的机器上） */
   async function askDirect(messages, opt){
