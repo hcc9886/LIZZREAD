@@ -1815,77 +1815,32 @@ body.no-zh .sent .zh{display:none}
 
   <!-- ============ 内置浏览器 ============ -->
   <section class="view" id="view-browser">
-    <div class="br-bar">
-      <button class="icobtn" onclick="brBack()" title="返回">←</button>
-      <input class="search br-url" id="brUrl" placeholder="输入网址或搜索内容…" onkeydown="if(event.key==='Enter')brGo()">
-      <button class="btn small" onclick="brGo()">打开</button>
-    </div>
-    <!-- 三条真正好用的路，按可靠程度排序 -->
-    <div class="br-paths">
-      <div class="br-path on" id="brPathRead" onclick="brPathPick('read')">
-        <div class="br-path-t">📖 阅读模式</div>
-        <div class="br-path-d">输入网址 → 抓正文 → 站内排版<br>点词、翻译、朗读全可用</div>
-      </div>
-      <div class="br-path" id="brPathPaste" onclick="brPathPick('paste')">
-        <div class="br-path-t">📋 粘贴正文</div>
-        <div class="br-path-d">任何文章复制进来就能读<br>最稳，永远不受限制</div>
-      </div>
-      <div class="br-path" id="brPathExt" onclick="brPathPick('ext')">
-        <div class="br-path-t">🔖 书签小工具</div>
-        <div class="br-path-d">在任意网页选中词<br>跳回本站查词</div>
-      </div>
+    <div class="page-head">
+      <h2 class="sec">📋 粘贴正文精读</h2>
+      <div class="sub">把任意网页 / App / PDF 里的正文复制过来，粘进下面就能在站内精读：<b>点词查义、整段翻译、朗读、进生词本</b>。全部本地处理，不受网站限制。</div>
     </div>
 
-    <!-- 粘贴正文（选「粘贴」时出现） -->
-    <div id="brPasteBox" class="br-paste" style="display:none">
-      <textarea id="brPasteText" class="asm-type-input" placeholder="把网页正文粘贴到这里，然后点下面的按钮…"></textarea>
-      <div class="lang-row" style="margin-top:8px">
-        <button class="btn small" onclick="brPasteImport()">导入阅读器精读</button>
-        <button class="btn ghost small" onclick="brPasteRead()">在站内排版阅读</button>
+    <div class="br-paste-wrap">
+      <textarea id="brPasteArea" class="br-paste-area" placeholder="在这里粘贴正文…
+
+小技巧：手机上长按选中 → 复制 → 回来粘贴。整段小说、外刊、论文都可以。"></textarea>
+      <div class="br-paste-bar">
+        <button class="btn" onclick="brPasteImport()">📖 开始精读</button>
+        <button class="btn ghost small" onclick="brTryClipboard()">📋 从剪贴板读取</button>
+        <button class="btn ghost small" onclick="document.getElementById('brPasteArea').value='';document.getElementById('brPasteStat').textContent=''">清空</button>
+        <span class="tip" style="margin-left:auto" id="brPasteStat"></span>
       </div>
+      <div id="brPasteOut"></div>
     </div>
 
-    <!-- 书签小工具（选「书签」时出现） -->
-    <div id="brExtBox" class="br-paste" style="display:none">
-      <div class="sub" style="margin:0 0 8px">把下面这个按钮拖到浏览器书签栏。以后在任意网页选中词，点它就跳回这里查词。</div>
-      <div class="bm-row" id="brBmRow"></div>
-      <button class="btn ghost small" onclick="showBookmarklet()">看详细安装说明</button>
+    <div class="br-tips">
+      <b>怎么拿到正文？</b>
+      <ul>
+        <li>电脑：在网页上 <code>Ctrl/Cmd + A</code> 全选 → 复制 → 回来粘贴</li>
+        <li>手机：长按一段文字 → 选中全部 → 复制</li>
+        <li>PDF：用阅读器选中文字复制；扫描版请先 OCR</li>
+      </ul>
     </div>
-
-    <div class="br-row" style="margin-top:10px">
-      <span class="tip" style="margin:0">快速打开</span>
-      <button class="chip" onclick="brOpenUrl('https://zh.wikipedia.org/wiki/Special:Random')">维基百科随机</button>
-      <button class="chip" onclick="brOpenUrl('https://zh.wikisource.org/wiki/Wikisource:%E9%A6%96%E9%A1%B5')">维基文库</button>
-      <button class="chip" onclick="brOpenUrl('https://www.aozora.gr.jp/')">青空文库</button>
-      <button class="chip" onclick="brOpenUrl('https://gutenberg.pglaf.org/')">Gutenberg</button>
-    </div>
-    <div class="br-row">
-      <button class="btn small" onclick="brReadMode()">📖 用当前网址阅读</button>
-      <button class="btn ghost small" onclick="brOpenNewTab()">在新标签打开</button>
-      <label class="br-toggle"><input type="checkbox" id="brWordTr" checked onchange="brApplyWordTrans()"> 点词翻译</label>
-    </div>
-    <div id="brReadHost" class="br-read-host" style="display:none"></div>
-    <div class="br-frame-wrap">
-      <iframe id="brFrame" class="br-frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
-      <div id="brBlocked" class="br-blocked" style="display:none">
-        <b>这个网站不允许被嵌入</b>
-        <div class="sub" id="brBlockedWhy">这个网站不允许被别的页面嵌入。用「阅读模式」可以在站内读它的正文，点词、翻译、朗读都可用。</div>
-        <div class="lang-row" style="justify-content:center;margin-top:10px;flex-wrap:wrap">
-          <button class="btn small" onclick="brOpenNewTab()">在新标签打开</button>
-          <button class="btn ghost small" onclick="brReadability()">提取正文并精读</button>
-        </div>
-        <div class="br-ok-list">
-          <div class="tip" style="margin:10px 0 6px">这些站点可以站内打开：</div>
-          <div class="lang-row" style="justify-content:center;flex-wrap:wrap">
-            <button class="btn ghost small" onclick="brOpenUrl('https://zh.wikipedia.org/wiki/%E7%8C%AB')">维基百科</button>
-            <button class="btn ghost small" onclick="brOpenUrl('https://zh.wikisource.org/wiki/Wikisource:%E9%A6%96%E9%A1%B5')">维基文库</button>
-            <button class="btn ghost small" onclick="brOpenUrl('https://www.gutenberg.org/browse/recent/last1')">Gutenberg</button>
-            <button class="btn ghost small" onclick="brOpenUrl('https://www.aozora.gr.jp/')">青空文库</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="tip" style="margin-top:8px">提示：Google/Bing 等搜索引擎同样禁止内嵌。站内搜索建议用「百度」或用「外刊」页里已验证可读的源。</div>
   </section>
 
   <!-- ============ 考试词书 ============ -->
@@ -3799,7 +3754,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.0.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.1.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5142,59 +5097,87 @@ async function cxTapAt(e, pageIdx){
 }
 async function cxTranslateAt(img, rx, ry, screenX, screenY){
   cxShowHit(screenX, screenY, "识别中…");
-  let T;
-  try{ T = await ensureTesseract(); }
-  catch(err){ cxShowHit(screenX, screenY, "识别引擎加载失败，请检查网络"); return; }
-  /* 以点击点为中心取一块（宽 40%、高 13%），再放大 4 倍 */
+  /* 以点击点为中心取一块（宽 42%、高 14%），放大 2.5 倍后交给视觉模型 */
   const W = img.naturalWidth, H = img.naturalHeight;
-  const bw = Math.max(120, W * 0.40), bh = Math.max(40, H * 0.13);
+  const bw = Math.max(140, W * 0.42), bh = Math.max(50, H * 0.14);
   const sx = Math.max(0, Math.min(W - bw, rx * W - bw / 2));
   const sy = Math.max(0, Math.min(H - bh, ry * H - bh / 2));
-  const scale = Math.min(5, Math.max(2, 1400 / bw));
+  const scale = Math.min(3, Math.max(1.5, 1200 / bw));
   const cv = document.createElement("canvas");
   cv.width = Math.round(bw * scale); cv.height = Math.round(bh * scale);
-  const ctx = cv.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(img, sx, sy, bw, bh, 0, 0, cv.width, cv.height);
+  cv.getContext("2d").drawImage(img, sx, sy, bw, bh, 0, 0, cv.width, cv.height);
+  const dataUrl = cv.toDataURL("image/jpeg", 0.86);
+
+  /* 首选：GLM-4V 视觉模型（手写体也能认，比 tesseract 强太多） */
+  const target = (LANG_INFO[showLang()] && LANG_INFO[showLang()].native) || "中文";
+  let vres = null;
   try{
-    const d = ctx.getImageData(0,0,cv.width,cv.height); const px = d.data;
-    for(let i=0;i<px.length;i+=4){
-      let g = 0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
-      g = (g - 128) * 1.5 + 128;
-      px[i]=px[i+1]=px[i+2]=g;
-    }
-    ctx.putImageData(d,0,0);
-  }catch(err){}
+    const r = await fetch("api/vision", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataUrl, target }),
+      signal: AbortSignal.timeout(45000)
+    });
+    vres = await r.json();
+  }catch(e){ vres = null; }
+
+  if(vres && vres.ok && vres.orig && vres.orig !== "无"){
+    const orig = String(vres.orig).trim();
+    const trans = String(vres.trans || "").trim();
+    cxShowHit(screenX, screenY, `<div class="cx-orig">${escHtml(orig)}</div>
+      <div class="cx-zh">${escHtml(trans || "（暂无译文）")}</div>
+      <div class="cx-acts">
+        <button class="btn ghost small" onclick="cxSpeak('${escAttr(orig)}')">🔊</button>
+        <button class="btn ghost small" onclick="comicImportSnippet('${escAttr(orig)}','${escAttr(trans)}')">＋词句</button>
+        <button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">✕</button>
+      </div>`);
+    return;
+  }
+  if(vres && vres.ok && vres.orig === "无"){
+    cxShowHit(screenX, screenY, `<div class="cx-fail">这块没有文字。点在对话气泡上试试。</div>
+      <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
+    return;
+  }
+
+  /* 兜底：视觉模型不可用时，退回本地 OCR（对印刷体有效） */
+  let T = null;
+  try{ T = await ensureTesseract(); }catch(err){}
+  if(!T){
+    cxShowHit(screenX, screenY, `<div class="cx-fail">识别服务暂时没连上，稍后再点一次。</div>
+      <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
+    return;
+  }
   const lang = ({en:"eng",zh:"chi_sim",ja:"jpn",ko:"kor",fr:"fra",de:"deu",es:"spa",it:"ita"})[activeLang()] || "eng";
   let text = "";
   try{
     const { data } = await T.recognize(cv, lang, tessOpts(lang, { logger: ()=>{} }));
     text = (data.text || "").replace(/\s+/g, " ").trim();
   }catch(err){}
-  /* 判定是否是「像人话」的识别结果。老漫画手写体很容易吐出
-     "ry ¢ RITE ~~ T y ~~ NEMO =$LUM v rel" 这种乱码，宁可说没认出来也别给用户看垃圾。 */
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   const letters = (clean.match(/[A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g) || []).length;
   const totalCh = clean.replace(/\s/g, "").length || 1;
-  const words = clean.split(/\s+/).filter(w => /^[A-Za-z][A-Za-z'’-]*$/.test(w));
-  const longWords = words.filter(w => w.length >= 3);
-  const symbolRatio = 1 - (letters / totalCh);
-  const hasRealWords = longWords.length >= 2;
-  const goodEnough = hasRealWords && symbolRatio < 0.28 && letters >= 8;
-  if(!goodEnough){
-    cxShowHit(screenX, screenY, `<div class="cx-fail">这一小块没认清楚（老漫画是手写艺术字，引擎容易认错）。<br>试试：<b>点在对话气泡正中间</b>，或者框小一点。</div>
+  const longWords = clean.split(/\s+/).filter(w => /^[A-Za-z][A-Za-z'’-]*$/.test(w) && w.length >= 3);
+  if(!(longWords.length >= 3 && letters / totalCh > 0.7)){
+    cxShowHit(screenX, screenY, `<div class="cx-fail">这一小块没认清楚。<br>点在<b>对话气泡正中间</b>再试一次。</div>
       <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
     return;
   }
   let zh = "";
-  try{ zh = await mtTo(text, showLang()); }catch(err){}
-  cxShowHit(screenX, screenY, `<div class="cx-orig">${escHtml(text)}</div>
-    <div class="cx-zh">${escHtml(zh || "（翻译暂不可用）")}</div>
+  try{ zh = await mtTo(clean, showLang()); }catch(err){}
+  cxShowHit(screenX, screenY, `<div class="cx-orig">${escHtml(clean)}</div>
+    <div class="cx-zh">${escHtml(zh || "（暂无译文）")}</div>
     <div class="cx-acts">
-      <button class="btn ghost small" onclick="cxSpeak('${escAttr(text)}')">🔊</button>
-      <button class="btn ghost small" onclick="cxAddWord('${escAttr(text)}')">＋生词</button>
+      <button class="btn ghost small" onclick="cxSpeak('${escAttr(clean)}')">🔊</button>
       <button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">✕</button>
     </div>`);
+}
+/* 把漫画里读到的一句存成可读的文本，方便精读 */
+function comicImportSnippet(orig, trans){
+  try{
+    const txt = orig + "\n\n" + (trans || "");
+    importTextAsBook(txt, "漫画摘录");
+    document.getElementById("cxHit").style.display = "none";
+  }catch(e){ toast("保存失败"); }
 }
 function cxShowHit(x, y, html){
   const el = document.getElementById("cxHit");
@@ -6846,24 +6829,27 @@ const BR_SEARCH = {
   baidu:  "https://www.baidu.com/s?wd=",
   bing:   "https://www.bing.com/search?q="
 };
-/* 兼容层：外刊/RSS 等页面用的是 pressReadMode / pressPasteImport，
-   真正的实现在 brReadMode / brPasteImport。之前这两个名字没定义，点了会报错。 */
+/* 外刊 / RSS 里点「阅读模式」或「粘贴正文」，统一走「粘贴正文精读」。
+   在线抓取这条路已下线（抓不到、还慢）；外刊本身自己解析 RSS，不受影响。 */
 function pressReadMode(url, title){
   go("browser");
-  const inp = document.getElementById("brUrl");
-  if(inp && url) inp.value = url;
-  try{ brPathPick("read"); }catch(e){}
-  setTimeout(()=>{ try{ brReadMode(); }catch(e){ toast("抓取失败，可改用「粘贴正文」"); } }, 300);
+  setTimeout(()=>{
+    const area = document.getElementById("brPasteArea");
+    if(area) area.focus();
+    const out = document.getElementById("brPasteOut");
+    if(out) out.innerHTML = `<div class="br-hint">把「${escHtml(title || "这篇")}」的正文粘贴到上面，再点「开始精读」。<br>`
+      + (url ? `<a href="${escAttr(url)}" target="_blank" rel="noopener">→ 在新标签打开原文</a>` : "") + `</div>`;
+    if(url) try{ window.open(url, "_blank", "noopener"); }catch(e){}
+  }, 240);
 }
 function pressPasteImport(title){
   go("browser");
   setTimeout(()=>{
-    try{ brPathPick("paste"); }catch(e){}
-    const box = document.getElementById("brPasteBox");
-    if(box) box.style.display = "block";
-    const tip = document.getElementById("brPasteTip");
-    if(tip && title) tip.textContent = "把「" + title + "」的正文粘贴到下面";
-  }, 260);
+    const area = document.getElementById("brPasteArea");
+    if(area) area.focus();
+    const out = document.getElementById("brPasteOut");
+    if(out) out.innerHTML = `<div class="br-hint">把「${escHtml(title || "正文")}」粘贴到上面，点「开始精读」。</div>`;
+  }, 240);
 }
 
 function brNormalize(input){
