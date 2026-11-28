@@ -1302,12 +1302,12 @@ body.no-zh .sent .zh{display:none}
     <button class="lang-pill lz-hide-on-library" id="langPill" onclick="openLangPanel()" title="切换学习语言 / 展示语言">
       <span id="langPillMain">🌐 英语</span><span id="langPillSub">中文</span>
     </button>
-    <button class="nav-more" id="navMore" onclick="toggleNavMore()" aria-label="更多菜单">更多 ▾</button>
+    <button class="nav-more" id="navMore" onclick="toggleNavMore(event)" aria-label="更多菜单">更多 ▾</button>
     <nav id="mainNav" class="nav4">
-      <button class="nav4-btn on" data-grp="read" onclick="navGrp('read')">阅读</button>
-      <button class="nav4-btn" data-grp="learn" onclick="navGrp('learn')">学习</button>
-      <button class="nav4-btn" data-grp="play" onclick="navGrp('play')">游戏</button>
-      <button class="nav4-btn" data-grp="more" onclick="navGrp('more')">更多</button>
+      <button class="nav4-btn on" data-grp="read" onclick="navGrp('read',event)">阅读</button>
+      <button class="nav4-btn" data-grp="learn" onclick="navGrp('learn',event)">学习</button>
+      <button class="nav4-btn" data-grp="play" onclick="navGrp('play',event)">游戏</button>
+      <button class="nav4-btn" data-grp="more" onclick="navGrp('more',event)">更多</button>
       <span class="nav4-fav" onclick="go('favorites')" title="我的收藏">⭐ <b data-favcount>0</b></span>
     </nav>
   </div>
@@ -4047,7 +4047,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.4.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.4.1"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -9215,11 +9215,14 @@ for(const [g, cfg] of Object.entries(NAV_GROUPS)) for(const it of cfg.items) VIE
 VIEW_TO_GROUP.library = "read";
 
 let _navOpen = null;
-function navGrp(g){
+let _navOpenedAt = 0;
+function navGrp(g, ev){
+  if(ev && ev.stopPropagation) ev.stopPropagation();
   const panel = document.getElementById("navPanel");
   if(!panel) return;
   if(_navOpen === g){ navClose(); return; }
   _navOpen = g;
+  _navOpenedAt = Date.now();
   const cfg = NAV_GROUPS[g];
   const cur = (document.querySelector(".view.on") || {}).id || "";
   const curName = cur.replace(/^view-/, "");
@@ -9267,11 +9270,20 @@ document.addEventListener("click", e => {
   const panel = document.getElementById("navPanel");
   if(!panel || panel.hidden) return;
   if(panel.contains(e.target)) return;
+  /* 开面板的按钮本身不能被当成"点外面"：
+     桌面是 .nav4-btn，手机是 .nav-more —— 之前只排除了 .nav4-btn，
+     手机点「更多」会先打开面板、紧接着被这一句关掉，看起来就是"完全没反应"。 */
   if(e.target.closest(".nav4-btn")) return;
+  if(e.target.closest("#navMore")) return;
+  if(e.target.closest(".nav-more")) return;
+  if(e.target.closest("#navScrim")) return;          /* 遮罩自己处理关闭 */
+  /* 刚打开 250ms 内的点击一律忽略，避免同一事件的冒泡把面板关掉 */
+  if(Date.now() - (_navOpenedAt || 0) < 250) return;
   navClose();
 });
 
-function toggleNavMore(){
+function toggleNavMore(ev){
+  if(ev && ev.stopPropagation) ev.stopPropagation();
   const grp = document.getElementById("navGrpMore");
   const btn = document.getElementById("navMore");
   /* 新版导航（4 组下拉）里根本没有 #navGrpMore 这个元素，
