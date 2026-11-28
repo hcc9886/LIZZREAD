@@ -2552,16 +2552,21 @@ function dictReady(){ return !!window.LIZ_DICT; }
 /* 词形变化兜底：复数/过去式/进行式/副词/比较级 */
 function _baseForms(w){
   const c = [];
-  if(/ies$/.test(w)) c.push(w.slice(0,-3)+"y");
-  if(/ied$/.test(w)) c.push(w.slice(0,-3)+"y");
-  if(/es$/.test(w)) c.push(w.slice(0,-2));
-  if(/s$/.test(w) && !/ss$/.test(w)) c.push(w.slice(0,-1));
-  if(/ed$/.test(w)){ c.push(w.slice(0,-2)); c.push(w.slice(0,-1)); }
-  if(/ing$/.test(w)){ c.push(w.slice(0,-3)); c.push(w.slice(0,-3)+"e"); }
-  if(/ly$/.test(w)) c.push(w.slice(0,-2));
-  if(/er$/.test(w)){ c.push(w.slice(0,-2)); c.push(w.slice(0,-1)); }
-  if(/est$/.test(w)){ c.push(w.slice(0,-3)); c.push(w.slice(0,-2)); }
-  return c.filter(x=>x.length>2 && x!==w);
+  const add = x => { if(x && x.length > 2 && x !== w) c.push(x); };
+  /* 双写辅音还原：running → runn → run、stopped → stopp → stop */
+  const dedup = x => (/[bdgklmnprt]$/.test(x) && x[x.length-1] === x[x.length-2]) ? x.slice(0,-1) : "";
+  if(/ies$/.test(w)) add(w.slice(0,-3)+"y");
+  if(/ied$/.test(w)) add(w.slice(0,-3)+"y");
+  if(/ier$/.test(w)) add(w.slice(0,-3)+"y");
+  if(/iest$/.test(w)) add(w.slice(0,-4)+"y");
+  if(/es$/.test(w)) add(w.slice(0,-2));
+  if(/s$/.test(w) && !/ss$/.test(w)) add(w.slice(0,-1));
+  if(/ed$/.test(w)){ add(w.slice(0,-2)); add(w.slice(0,-1)); add(dedup(w.slice(0,-2))); }
+  if(/ing$/.test(w)){ const st = w.slice(0,-3); add(st); add(st+"e"); add(dedup(st)); if(/y$/.test(st)) add(st); }
+  if(/ly$/.test(w)) add(w.slice(0,-2));
+  if(/er$/.test(w)){ add(w.slice(0,-2)); add(w.slice(0,-1)); add(dedup(w.slice(0,-2))); }
+  if(/est$/.test(w)){ add(w.slice(0,-3)); add(w.slice(0,-2)); add(dedup(w.slice(0,-3))); }
+  return [...new Set(c)];
 }
 function _getDictEntry(w){
   const G = window.LIZ_DICT;
@@ -3678,7 +3683,8 @@ const _SUFFIX = [
   ["ous","形容词：有…性质的"],["ive","形容词：有…倾向的"],["al","形容词"],["ic","形容词"],
   ["er","名词：…的人/物"],["or","名词：…的人"],["ist","名词：…者"],["ly","副词或形容词"],
   ["ize","动词：使…化"],["ise","动词：使…化"],["ify","动词：使…"],["ate","动词或形容词"],
-  ["ing","现在分词/名词"],["ed","过去式/过去分词"]
+  ["ing","现在分词/名词"],["ed","过去式/过去分词"],
+  ["est","最高级：最…的"],["er","比较级：更…的"],["st","最高级：最…的"]
 ];
 /* ================= 助记：拆词 + 串联 + 落到词义 =================
    目标输出样式（always）：
@@ -4002,14 +4008,73 @@ function toggleMoreSenses(btn){
   const n = btn.dataset.total || "";
   btn.textContent = open ? "收起 ▴" : ("展开其余 " + n + " 个义项 ▾");
 }
+/* 从当前书 + 已缓存的书里找包含该词的真实句子（最多 n 条） */
+function bookExamplesOf(low, n){
+  const out = [];
+  const seen = new Set();
+  const push = (en, zh) => {
+    const t = String(en || "").trim();
+    if(!t || t.length < 12 || t.length > 200) return;
+    if(seen.has(t)) return;
+    seen.add(t);
+    out.push({ en: t, zh: zh || "" });
+  };
+  /* 当前书优先 */
+  try{
+    if(typeof curBook !== "undefined" && curBook){
+      const sents = getSents(curBook.id) || [];
+      const re = new RegExp("\\b" + low.replace(/[^a-z]/g, "") + "[a-z]*\\b", "i");
+      for(const x of sents){ if(out.length >= n) break; if(re.test(x.en || "")) push(x.en, x.zh); }
+    }
+  }catch(e){}
+  /* 其它已缓存的书 */
+  if(out.length < n){
+    try{
+      const ids = Object.keys(fullCache || {});
+      for(const id of ids){
+        if(out.length >= n) break;
+        if(typeof curBook !== "undefined" && curBook && id === curBook.id) continue;
+        const c = fullCache[id];
+        if(!c || !c.sents) continue;
+        const re = new RegExp("\\b" + low.replace(/[^a-z]/g, "") + "[a-z]*\\b", "i");
+        for(const x of c.sents.slice(0, 400)){ if(out.length >= n) break; if(re.test(x.en || "")) push(x.en, x.zh); }
+      }
+    }catch(e){}
+  }
+  return out;
+}
+/* 判断变形类型（用于词卡标签与说明） */
+function _formLabel(word, base){
+  const w = String(word || ""), b = String(base || "");
+  if(/est$/.test(w) && w.slice(0, -3) === b) return "最高级";
+  if(/st$/.test(w) && w.slice(0, -2) === b) return "最高级";
+  if(/er$/.test(w) && w.slice(0, -2) === b) return "比较级";
+  if(/ing$/.test(w) && (w.slice(0, -3) === b || w.slice(0, -3) === b.slice(0, -1))) return "现在分词";
+  if(/ed$/.test(w)) return "过去式/过去分词";
+  if(/ies$/.test(w) || (/s$/.test(w) && !/ss$/.test(w))) return "复数/三单";
+  if(/ly$/.test(w) && w.slice(0, -2) === b) return "副词";
+  return "变形（原形 " + b + "）";
+}
 function renderRichWordCard(word, low){
   const def = document.getElementById("shDef");
   if(!def) return;
   const _lang = (typeof activeLang === "function") ? activeLang() : "en";
   const _isEn = (_lang === "en");
   /* 非英语：英文词典查不到，用「离线释义 / 已缓存机翻」当作释义行 */
+  /* 词形还原：latest → late、running → run ……
+     变形词自己的词条往往只有一条释义，词卡看起来就"没内容"。
+     优先用原形的完整词条，再把变形自身的释义合并进来。 */
+  const _lem = (() => {
+    if(!_isEn) return null;
+    try{
+      const D = window.LIZ_DICT || {};
+      if(D[low]) return null;                       /* 本身就是原形 */
+      const b = (typeof _baseForms === "function") ? _baseForms(low).find(x => D[x]) : null;
+      return b ? { base: b, form: _formLabel(low, b) } : null;
+    }catch(e){ return null; }
+  })();
   const G = _isEn
-    ? ((typeof _getDictEntry === "function") ? _getDictEntry(low) : null)
+    ? ((_lem && window.LIZ_DICT[_lem.base]) || ((typeof _getDictEntry === "function") ? _getDictEntry(low) : null))
     : (function(){
         const zh = (typeof _zhCache !== "undefined" && _zhCache[low]) || "";
         const off = (()=>{ try{ return offlineWordHint(low, showLang()) || ""; }catch(e){ return ""; } })();
@@ -4018,11 +4083,43 @@ function renderRichWordCard(word, low){
         const pos = /^(n\.|v\.|adj\.|adv\.|prep\.|conj\.|pron\.|num\.)/.exec(txt);
         return [pos ? pos[1] : "", pos ? txt.slice(pos[1].length).trim() : txt];
       })();
-  const groups = G ? parseSenses(G[1]) : [];
+  let groups = G ? parseSenses(G[1]) : [];
+  /* 变形词：把自身的单条释义并到最前面，避免只显示一条 */
+  if(_lem && _isEn){
+    try{
+      const own = (window.LIZ_DICT || {})[low];
+      if(own){
+        const ownSenses = parseSenses(own[1]);
+        if(ownSenses.length){
+          const flat = groups.flatMap(g => g.senses);
+          for(const g of ownSenses){
+            const add = g.senses.filter(x => !flat.includes(x));
+            if(add.length) groups = [{ pos: g.pos || "（" + _lem.form + "）", senses: add }, ...groups];
+          }
+        }
+      }
+    }catch(e){}
+  }
   const cached = _zhCache[low] || "";
-  const exs = findExamples(low, 3);
+  let exs = [];
+  try{ exs = findExamples(low, 3) || []; }catch(e){ exs = []; }
+  /* 本地例句库没有时，从当前书/已缓存的书里找真实句子（更有语境） */
+  if(exs.length < 2){
+    try{
+      const extra = bookExamplesOf(low, 2);
+      const seenEn = new Set(exs.map(x => x.en));
+      for(const x of extra){ if(!seenEn.has(x.en)) exs.push(x); }
+      exs = exs.slice(0, 3);
+    }catch(e){}
+  }
   const cols = findCollocations(low);
-  const phon = _isEn ? ((_dictCache[low] && _dictCache[low].phon) || approxPhonetic(low)) : "";
+  let phon = _isEn ? ((_dictCache[low] && _dictCache[low].phon) || "") : "";
+  if(_isEn && !phon){
+    try{
+      const dc = _dictCache[low];
+      phon = (dc && dc.phon) || approxPhonetic(low) || "";
+    }catch(e){ phon = ""; }
+  }
   const allSenses = groups.flatMap(g => g.senses);
   const mnemo = _isEn ? mnemoOf(low, allSenses) : "";
 
@@ -4069,12 +4166,20 @@ function renderRichWordCard(word, low){
           if(BOOK_NAME[k] && Array.isArray(list) && list.some(w => String(w).toLowerCase() === low)) tags.push(BOOK_NAME[k]);
         }
       }catch(e){}
+      if(_lem && _lem.form) tags.push(_lem.form);
       if((w || "").length <= 4) tags.push("基础词");
       const uniq = [...new Set(tags)].slice(0, 4);
       if(!uniq.length) return "";
       return `<div class="rw-tags">${uniq.map(x => `<span class="rw-tag2">${escHtml(x)}</span>`).join("")}</div>`;
     })()}
-    ${mnemo ? `<div class="rw-block"><b>助记</b><div>${escHtml(mnemo)}</div></div>` : ""}
+    ${(()=>{
+      let m = mnemo;
+      if(!m && _lem){
+        const baseZh = (()=>{ try{ const e = window.LIZ_DICT[_lem.base]; return e ? String(e[1]).split(/[,，;；]/)[0] : ""; }catch(e){ return ""; } })();
+        m = word + " 是 " + _lem.base + " 的" + _lem.form + (baseZh ? "；" + _lem.base + "（" + baseZh + "）" : "");
+      }
+      return m ? `<div class="rw-block"><b>助记</b><div>${escHtml(m)}</div></div>` : "";
+    })()}
     <div class="rw-block rw-ai" id="rwAi"><b>AI 解析</b><div class="rw-ai-body">点下面按钮，让 AI 结合本句讲这个词</div>
       <button class="btn ghost small" style="margin-top:6px" onclick="requestAiExplain('${escAttr(String(word))}')">✨ AI 解析这个词</button>
     </div>
@@ -4120,7 +4225,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.7.2"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");

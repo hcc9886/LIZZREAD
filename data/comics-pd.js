@@ -1,6 +1,39 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 51 期。 */
+   由 scripts/gen-comics.py 自动生成，共 59 期。 */
 window.LZ_COMICS_PD = [
+ {
+  "id": "blondie-bumstead-family-blondie-1968",
+  "file": "comics/blondie-bumstead-family-blondie-1968.jpg",
+  "t": "Blondie",
+  "tzh": "白朗黛",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABumstead_Family_Blondie_1968.JPG"
+ },
+ {
+  "id": "blondie-jim-and-henny-backus-1969",
+  "file": "comics/blondie-jim-and-henny-backus-1969.jpg",
+  "t": "Blondie",
+  "tzh": "白朗黛",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AJim_and_Henny_Backus_1969.JPG"
+ },
+ {
+  "id": "blondie-pamelyn-ferdin-1968",
+  "file": "comics/blondie-pamelyn-ferdin-1968.jpg",
+  "t": "Blondie",
+  "tzh": "白朗黛",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APamelyn_Ferdin_%281968%29.jpg"
+ },
  {
   "id": "busterbrown-1908",
   "file": "comics/busterbrown-1908.jpg",
@@ -154,6 +187,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AMotion_Picture_Cocktails_%28advertisement%29.jpg"
+ },
+ {
+  "id": "lilabner-beth-howland",
+  "file": "comics/lilabner-beth-howland.jpg",
+  "t": "Li'l Abner",
+  "tzh": "小阿布纳",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABeth_Howland.JPG"
  },
  {
   "id": "muttjeff-1916",
@@ -539,6 +583,50 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ALittle_Orphan_Annie.jpg"
+ },
+ {
+  "id": "peanuts-cb1948",
+  "file": "comics/peanuts-cb1948.jpg",
+  "t": "Peanuts",
+  "tzh": "花生漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACB1948.jpg"
+ },
+ {
+  "id": "popeye-first-popeye-strip-east-liverpool-review-1929-01-17-p12",
+  "file": "comics/popeye-first-popeye-strip-east-liverpool-review-1929-01-17-p12.jpg",
+  "t": "Popeye",
+  "tzh": "大力水手",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AFirst_Popeye_Strip%2C_East_Liverpool_Review%2C_1929-01-17%2C_p12.jpg"
+ },
+ {
+  "id": "popeye-popeye-the-ace-of-space-1953-boxoffice-trade-advertiseme",
+  "file": "comics/popeye-popeye-the-ace-of-space-1953-boxoffice-trade-advertiseme.jpg",
+  "t": "Popeye",
+  "tzh": "大力水手",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3APopeye%2C_the_Ace_of_Space_%281953_Boxoffice_trade_advertisement%29.jpg"
+ },
+ {
+  "id": "princevaliant-only-the-valiant-1951-2",
+  "file": "comics/princevaliant-only-the-valiant-1951-2.jpg",
+  "t": "Prince Valiant",
+  "tzh": "瓦利安特王子",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AOnly_the_Valiant_%281951%29_2.jpg"
  },
  {
   "id": "rarebit-1904-12-10",
