@@ -281,7 +281,7 @@ header>.nav{position:relative}
   .nav4-btn{padding:7px 11px;font-size:13px}
   /* 手机端：底部抽屉。z-index 提到 9950，否则会被更新提示条(9000)/章节条(9000)盖住，
      用户点了「更多」看起来没反应——其实就是被盖在下面了。 */
-  .nav-panel{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:9950;
+  .nav-panel{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:9950;transform:none;
     border-top:1px solid var(--border);border-bottom:none;border-radius:16px 16px 0 0;
     max-height:72vh;overflow-y:auto;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
     animation:navSheet .18s ease-out}
@@ -599,6 +599,14 @@ body.nav-open .speak-bar{display:none!important}
   html.dv-phone .sec{font-size:19px;line-height:1.35}
   html.dv-phone .page-head .sub{font-size:12.5px}
 }
+/* 漫画选词翻译 */
+.cx-selbox{box-sizing:border-box}
+.cx-pick-h{font-size:11.5px;color:var(--muted);margin-bottom:6px}
+.cx-pick{font:15px/1.9 var(--read-font, Georgia, serif);max-height:130px;overflow-y:auto}
+.cx-word{display:inline;background:none;border:none;padding:1px 1px;margin:0;
+  font:inherit;color:var(--text);cursor:pointer;border-radius:3px;transition:.1s}
+.cx-word:hover{background:var(--brand-soft);color:var(--brand-deep)}
+.cx-img{cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:none}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1303,8 +1311,9 @@ body.no-zh .sent .zh{display:none}
       <span class="nav4-fav" onclick="go('favorites')" title="我的收藏">⭐ <b data-favcount>0</b></span>
     </nav>
   </div>
-  <div id="navPanel" class="nav-panel" hidden></div>
 </header>
+<!-- 导航面板放在 header 外：header 有 backdrop-filter，会把 fixed 子元素变成相对 header 定位 -->
+<div id="navPanel" class="nav-panel" hidden></div>
 
 <main>
   <!-- ============ 书城 ============ -->
@@ -4038,7 +4047,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.3.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.4.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5149,6 +5158,13 @@ async function rssFetch(url){
   const enc = encodeURIComponent(url);
   const tries = [
     (async()=>{
+      try{
+        const j = await fetchVia(url);
+        if(j && j.kind === "xml" && j.text) return { xml: j.text, via: "站内抓取" };
+      }catch(e){}
+      return null;
+    })(),
+    (async()=>{
       for(const ep of ["api/feed?url=" + enc, "public/api/feed?url=" + enc]){
         try{
           const r = await fetch(ep, { signal: AbortSignal.timeout(9000) });
@@ -5247,9 +5263,21 @@ async function rssRead(i){
   let body = it.desc;
   /* 尽量抓完整正文 */
   if(it.link){
+    /* 先走自建后端 */
+    try{
+      const j = await fetchVia(it.link);
+      if(j && j.kind === "html" && j.html){
+        let doc = null;
+        try{ doc = new DOMParser().parseFromString(j.html, "text/html"); }catch(e){}
+        const cand = doc && (doc.querySelector("article") || doc.querySelector("[class*='article-body'],[class*='articleBody']") || doc.body);
+        const t = mdToPlain(cand ? (cand.innerText || cand.textContent || "") : htmlTextFromHtml(j.html));
+        if(t && t.length > 300) body = t;
+      }
+    }catch(e){}
+    if(body.length < 300)
     for(const prox of ["https://r.jina.ai/" + it.link, "https://api.allorigins.win/raw?url=" + encodeURIComponent(it.link)]){
       try{
-        const r = await fetch(prox, { signal: AbortSignal.timeout(30000) });
+        const r = await fetch(prox, { signal: AbortSignal.timeout(25000) });
         if(!r.ok) continue;
         let t = await r.text();
         const cut = t.indexOf("Markdown Content:");
@@ -5407,17 +5435,19 @@ function cxRender(){
   if(CX.mode === "v"){
     host.className = "cx-scroll cx-v";
     host.innerHTML = CX.pages.map((f, i) =>
-      `<div class="cx-page" data-i="${i}"><img src="${escAttr(f)}" alt="第 ${i+1} 页" onclick="cxTapAt(event,${i})"></div>`).join("");
+      `<div class="cx-page" data-i="${i}"><img class="cx-img" src="${escAttr(f)}" alt="第 ${i+1} 页"></div>`).join("");
+    setTimeout(cxBindDrag, 30);
   } else {
     host.className = "cx-scroll cx-h";
     host.innerHTML = CX.pages.map((f, i) =>
-      `<div class="cx-page" data-i="${i}"><img src="${escAttr(f)}" alt="第 ${i+1} 页" onclick="cxTapAt(event,${i})"></div>`).join("")
+      `<div class="cx-page" data-i="${i}"><img class="cx-img" src="${escAttr(f)}" alt="第 ${i+1} 页"></div>`).join("")
       + `<div class="cx-nav"><button class="btn ghost small" onclick="cxPage(-1)">‹ 上一页</button>
          <span id="cxPageNo">1 / ${CX.pages.length}</span>
          <button class="btn ghost small" onclick="cxPage(1)">下一页 ›</button></div>`;
   }
   cxApplyZoom();
   cxPos();
+  setTimeout(cxBindDrag, 40);
 }
 /* 点字翻译开关 */
 function cxTap(mode){
@@ -5451,29 +5481,90 @@ function cxPos(){
   } else el.textContent = CX.pages.length + " 页 · 点画面上的字可翻译";
 }
 
-/* 点击漫画：以点击点为中心裁一小块做 OCR + 翻译 */
-async function cxTapAt(e, pageIdx){
+/* 漫画「选词翻译」：在画面上拖一个框，只识别框里的字；
+   识别结果里的每个词都可以单独点击，看词卡。 */
+let _cxDrag = null;
+function cxTapAt(e, pageIdx){
   if(!CX.tapOn) return;
-  const img = e.currentTarget;
-  const rect = img.getBoundingClientRect();
-  const rx = (e.clientX - rect.left) / rect.width;
-  const ry = (e.clientY - rect.top) / rect.height;
-  await cxTranslateAt(img, rx, ry, e.clientX, e.clientY);
+  /* 单击（没有拖动）→ 提示怎么用，不再瞎裁一块 */
+  if(!_cxDrag || !_cxDrag.moved){
+    toast("在要翻译的文字上拖一个框（按住拖一下）");
+    return;
+  }
 }
-async function cxTranslateAt(img, rx, ry, screenX, screenY){
-  cxShowHit(screenX, screenY, "识别中…");
-  /* 以点击点为中心取一块（宽 42%、高 14%），放大 2.5 倍后交给视觉模型 */
+function cxBindDrag(){
+  document.querySelectorAll("#cxScroll .cx-page img.cx-img").forEach(im => {
+    if(im.dataset.bound) return;
+    im.dataset.bound = "1";
+    let sx = 0, sy = 0, box = null, moved = false;
+    const rectOf = () => im.getBoundingClientRect();
+    const start = ev => {
+      if(!CX.tapOn) return;
+      const p = ev.touches ? ev.touches[0] : ev;
+      const r = rectOf();
+      sx = p.clientX - r.left; sy = p.clientY - r.top;
+      moved = false;
+      _cxDrag = { moved: false };
+      box = document.createElement("div");
+      box.className = "cx-selbox";
+      box.style.cssText = `position:absolute;left:${sx}px;top:${sy}px;width:0;height:0;` +
+        `border:2px solid #22C98A;background:rgba(34,201,138,.16);pointer-events:none;z-index:5;border-radius:3px`;
+      im.parentElement.style.position = "relative";
+      im.parentElement.appendChild(box);
+      ev.preventDefault();
+    };
+    const move = ev => {
+      if(!box) return;
+      const p = ev.touches ? ev.touches[0] : ev;
+      const r = rectOf();
+      const x = p.clientX - r.left, y = p.clientY - r.top;
+      if(Math.abs(x - sx) > 6 || Math.abs(y - sy) > 6){ moved = true; if(_cxDrag) _cxDrag.moved = true; }
+      box.style.left = Math.min(sx, x) + "px";
+      box.style.top = Math.min(sy, y) + "px";
+      box.style.width = Math.abs(x - sx) + "px";
+      box.style.height = Math.abs(y - sy) + "px";
+      ev.preventDefault();
+    };
+    const end = async ev => {
+      if(!box) return;
+      const bw = parseFloat(box.style.width) || 0;
+      const bh = parseFloat(box.style.height) || 0;
+      const left = parseFloat(box.style.left) || 0;
+      const top = parseFloat(box.style.top) || 0;
+      box.remove(); box = null;
+      if(!moved || bw < 30 || bh < 16){ return; }
+      const r = rectOf();
+      const rx = (left + bw / 2) / r.width;
+      const ry = (top + bh / 2) / r.height;
+      await cxTranslateRect(im, left / r.width, top / r.height, bw / r.width, bh / r.height,
+                            r.left + left + bw / 2, r.top + top);
+      ev.preventDefault();
+    };
+    im.addEventListener("mousedown", start);
+    im.addEventListener("mousemove", move);
+    im.addEventListener("mouseup", end);
+    im.addEventListener("touchstart", start, { passive: false });
+    im.addEventListener("touchmove", move, { passive: false });
+    im.addEventListener("touchend", end, { passive: false });
+  });
+}
+/* 按「相对比例」裁一块做识别 */
+async function cxTranslateRect(img, rx, ry, rw, rh, screenX, screenY){
   const W = img.naturalWidth, H = img.naturalHeight;
-  const bw = Math.max(140, W * 0.42), bh = Math.max(50, H * 0.14);
-  const sx = Math.max(0, Math.min(W - bw, rx * W - bw / 2));
-  const sy = Math.max(0, Math.min(H - bh, ry * H - bh / 2));
-  const scale = Math.min(3, Math.max(1.5, 1200 / bw));
+  const sx = Math.max(0, rx * W), sy = Math.max(0, ry * H);
+  const bw = Math.max(24, rw * W), bh = Math.max(14, rh * H);
+  await cxTranslateRegion(img, sx, sy, bw, bh, screenX, screenY);
+}
+/* 识别指定像素矩形 → 显示原文（每个词可点）+ 译文 */
+async function cxTranslateRegion(img, sx, sy, bw, bh, screenX, screenY){
+  cxShowHit(screenX, screenY, "识别中…");
+  const scale = Math.min(3, Math.max(1, 900 / bw));
   const cv = document.createElement("canvas");
-  cv.width = Math.round(bw * scale); cv.height = Math.round(bh * scale);
+  cv.width = Math.max(8, Math.round(bw * scale));
+  cv.height = Math.max(8, Math.round(bh * scale));
   cv.getContext("2d").drawImage(img, sx, sy, bw, bh, 0, 0, cv.width, cv.height);
-  const dataUrl = cv.toDataURL("image/jpeg", 0.86);
+  const dataUrl = cv.toDataURL("image/jpeg", 0.88);
 
-  /* 首选：GLM-4V 视觉模型（手写体也能认，比 tesseract 强太多） */
   const target = (LANG_INFO[showLang()] && LANG_INFO[showLang()].native) || "中文";
   let vres = null;
   try{
@@ -5486,56 +5577,43 @@ async function cxTranslateAt(img, rx, ry, screenX, screenY){
     vres = await r.json();
   }catch(e){ vres = null; }
 
-  if(vres && vres.ok && vres.orig && vres.orig !== "无"){
-    const orig = String(vres.orig).trim();
+  if(vres && vres.ok && vres.orig && String(vres.orig).trim() !== "无"){
+    const orig = String(vres.orig).trim().replace(/\s+/g, " ");
     const trans = String(vres.trans || "").trim();
-    cxShowHit(screenX, screenY, `<div class="cx-orig">${escHtml(orig)}</div>
+    /* 把原文拆成可点的词 */
+    const words = orig.split(/\s+/).map(w => {
+      const clean = w.replace(/[^A-Za-z'’-]/g, "");
+      if(!clean) return escHtml(w);
+      return `<button class="cx-word" onclick="cxWordLookup('${escAttr(clean)}')">${escHtml(w)}</button>`;
+    }).join(" ");
+    cxShowHit(screenX, screenY, `
+      <div class="cx-pick-h">点任意词查义</div>
+      <div class="cx-pick">${words}</div>
       <div class="cx-zh">${escHtml(trans || "（暂无译文）")}</div>
       <div class="cx-acts">
-        <button class="btn ghost small" onclick="cxSpeak('${escAttr(orig)}')">🔊</button>
-        <button class="btn ghost small" onclick="comicImportSnippet('${escAttr(orig)}','${escAttr(trans)}')">＋词句</button>
+        <button class="btn ghost small" onclick="comicImportSnippet('${escAttr(orig)}','${escAttr(trans)}')">＋整句</button>
         <button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">✕</button>
       </div>`);
     return;
   }
   if(vres && vres.ok && vres.orig === "无"){
-    cxShowHit(screenX, screenY, `<div class="cx-fail">这块没有文字。点在对话气泡上试试。</div>
+    cxShowHit(screenX, screenY, `<div class="cx-fail">框里没认出文字。<br>把框拖在<b>对话气泡</b>上再试。</div>
       <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
     return;
   }
-
-  /* 兜底：视觉模型不可用时，退回本地 OCR（对印刷体有效） */
-  let T = null;
-  try{ T = await ensureTesseract(); }catch(err){}
-  if(!T){
-    cxShowHit(screenX, screenY, `<div class="cx-fail">识别服务暂时没连上，稍后再点一次。</div>
-      <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
-    return;
-  }
-  const lang = ({en:"eng",zh:"chi_sim",ja:"jpn",ko:"kor",fr:"fra",de:"deu",es:"spa",it:"ita"})[activeLang()] || "eng";
-  let text = "";
-  try{
-    const { data } = await T.recognize(cv, lang, tessOpts(lang, { logger: ()=>{} }));
-    text = (data.text || "").replace(/\s+/g, " ").trim();
-  }catch(err){}
-  const clean = String(text || "").replace(/\s+/g, " ").trim();
-  const letters = (clean.match(/[A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g) || []).length;
-  const totalCh = clean.replace(/\s/g, "").length || 1;
-  const longWords = clean.split(/\s+/).filter(w => /^[A-Za-z][A-Za-z'’-]*$/.test(w) && w.length >= 3);
-  if(!(longWords.length >= 3 && letters / totalCh > 0.7)){
-    cxShowHit(screenX, screenY, `<div class="cx-fail">这一小块没认清楚。<br>点在<b>对话气泡正中间</b>再试一次。</div>
-      <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
-    return;
-  }
-  let zh = "";
-  try{ zh = await mtTo(clean, showLang()); }catch(err){}
-  cxShowHit(screenX, screenY, `<div class="cx-orig">${escHtml(clean)}</div>
-    <div class="cx-zh">${escHtml(zh || "（暂无译文）")}</div>
-    <div class="cx-acts">
-      <button class="btn ghost small" onclick="cxSpeak('${escAttr(clean)}')">🔊</button>
-      <button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">✕</button>
-    </div>`);
+  cxShowHit(screenX, screenY, `<div class="cx-fail">识别服务暂时没连上，稍后再试一次。</div>
+    <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
 }
+/* 点漫画识别结果里的词 → 打开词卡 */
+function cxWordLookup(w){
+  if(!w) return;
+  try{
+    openWordCard(w);
+  }catch(e){
+    try{ renderStandaloneCard(w); }catch(err){ toast("打不开词卡"); }
+  }
+}
+
 /* 把漫画里读到的一句存成可读的文本，方便精读 */
 function comicImportSnippet(orig, trans){
   try{
@@ -7312,16 +7390,54 @@ const BR_SEARCH = {
 };
 /* 外刊 / RSS 里点「阅读模式」或「粘贴正文」，统一走「粘贴正文精读」。
    在线抓取这条路已下线（抓不到、还慢）；外刊本身自己解析 RSS，不受影响。 */
-function pressReadMode(url, title){
-  go("browser");
-  setTimeout(()=>{
-    const area = document.getElementById("brPasteArea");
-    if(area) area.focus();
-    const out = document.getElementById("brPasteOut");
-    if(out) out.innerHTML = `<div class="br-hint">把「${escHtml(title || "这篇")}」的正文粘贴到上面，再点「开始精读」。<br>`
-      + (url ? `<a href="${escAttr(url)}" target="_blank" rel="noopener">→ 在新标签打开原文</a>` : "") + `</div>`;
-    if(url) try{ window.open(url, "_blank", "noopener"); }catch(e){}
-  }, 240);
+/* 外刊「阅读模式」：站内抓正文 → 直接进阅读器精读（不跳新标签） */
+async function pressReadMode(url, title){
+  if(!url){ go("browser"); return; }
+  toast("正在抓取正文…");
+  let text = "", headTitle = title || "外刊";
+  try{
+    const j = await fetchVia(url);
+    if(j && j.kind === "html" && j.html){
+      let doc = null;
+      try{ doc = new DOMParser().parseFromString(j.html, "text/html"); }catch(e){}
+      if(doc){
+        if(doc.title) headTitle = doc.title.split(/[|–—]/)[0].trim() || headTitle;
+        /* 优先取正文容器 */
+        const cand = doc.querySelector("article")
+          || doc.querySelector("[class*='article-body'],[class*='articleBody'],[class*='story-body'],[class*='post-content']")
+          || doc.body;
+        text = mdToPlain(cand ? cand.innerText || cand.textContent || "" : "");
+      }
+      if(!text) text = mdToPlain(htmlTextFromHtml(j.html));
+    }
+  }catch(e){}
+  if(!text || text.length < 200){
+    toast("这个站点抓不到正文，已跳到粘贴模式");
+    go("browser");
+    setTimeout(()=>{
+      const area = document.getElementById("brPasteArea"); if(area) area.focus();
+      const out = document.getElementById("brPasteOut");
+      if(out) out.innerHTML = `<div class="br-hint">抓不到「${escHtml(title || "这篇")}」的正文。`
+        + `请在原文里全选复制，粘贴到上面精读。<br><a href="${escAttr(url)}" target="_blank" rel="noopener">→ 打开原文</a></div>`;
+    }, 200);
+    return;
+  }
+  try{
+    await importTextAsBook(headTitle + "\n\n" + text, headTitle.slice(0, 34));
+    toast("已抓取 " + Math.round(text.length / 1000) + " 千字，正在精读");
+  }catch(e){
+    toast("导入失败：" + (e.message || e));
+  }
+}
+/* worker 里没有 DOMParser 时用的简易 HTML→文本 */
+function htmlTextFromHtml(html){
+  return String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, "\n")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#\d+;/g, " ")
+    .replace(/\n{2,}/g, "\n\n");
 }
 function pressPasteImport(title){
   go("browser");
@@ -7380,11 +7496,17 @@ function brPathPick(m){
 }
 async function brTryClipboard(){
   try{
-    if(!navigator.clipboard || !navigator.clipboard.readText) return;
+    if(!navigator.clipboard || !navigator.clipboard.readText){
+      toast("这个浏览器不支持自动读取，请手动粘贴");
+      return;
+    }
     const t = (await navigator.clipboard.readText() || "").trim();
-    const ta = document.getElementById("brPasteText");
-    if(ta && t.length > 40 && !ta.value) ta.value = t;
-  }catch(e){ /* 用户没授权就手动粘贴 */ }
+    const ta = document.getElementById("brPasteArea");
+    if(!t || t.length < 10){ toast("剪贴板里没有可用的正文"); return; }
+    if(ta){ ta.value = t; brPasteStat(); toast("已读取 " + t.length + " 字"); }
+  }catch(e){
+    toast("浏览器没给剪贴板权限，请手动长按粘贴");
+  }
 }
 function brFillBookmarklet(){
   const row = document.getElementById("brBmRow");
@@ -7939,10 +8061,32 @@ const PRESS_HOMES = [
   ["The Paris Review","https://www.theparisreview.org/","文学"],
   ["Poetry Foundation","https://www.poetryfoundation.org/","文学"]
 ];
+/* 统一的抓取入口：自建后端 → 第三方代理 */
+async function fetchVia(url){
+  const enc = encodeURIComponent(url);
+  for(const ep of ["api/fetch?url=" + enc, "https://lizzread.13585658272.workers.dev/api/fetch?url=" + enc]){
+    try{
+      const r = await fetch(ep, { signal: AbortSignal.timeout(20000) });
+      if(!r.ok) continue;
+      const j = await r.json();
+      if(j && j.ok) return j;
+    }catch(e){}
+  }
+  return null;
+}
 async function pressFetchHeadlines(url){
+  /* ① 自己的后端（快、稳） */
+  try{
+    const j = await fetchVia(url);
+    if(j && j.kind === "html" && j.html){
+      const items = pressParseHtml(j.html);
+      if(items.length) return items;
+    }
+  }catch(e){}
+  /* ② 兜底：第三方代理 */
   for(const prox of ["https://r.jina.ai/" + url, "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)]){
     try{
-      const r = await fetch(prox, { signal: AbortSignal.timeout(40000) });
+      const r = await fetch(prox, { signal: AbortSignal.timeout(25000) });
       if(!r.ok) continue;
       let t = await r.text();
       const cut = t.indexOf("Markdown Content:");
@@ -7981,6 +8125,45 @@ function pressRenderHomes(){
       <button class="btn ghost small" onclick="window.open('${escAttr(url)}','_blank','noopener')">官网</button>
     </div>`).join("");
 }
+/* 从网页 HTML 里抽新闻标题（<a> 文本 + 长度/大写过滤） */
+function pressParseHtml(html){
+  const out = [];
+  const seen = new Set();
+  let doc = null;
+  try{ doc = new DOMParser().parseFromString(html, "text/html"); }catch(e){}
+  const push = (title, href) => {
+    const t = String(title || "").replace(/\s+/g, " ").trim();
+    if(t.length < 22 || t.length > 120) return;
+    if(seen.has(t.toLowerCase())) return;
+    if(/^(Home|News|Subscribe|Sign in|Log in|Menu|Search|Advertisement|Share|Listen|Watch|Play|Skip)/i.test(t)) return;
+    if(/^[a-z]/.test(t)) return;
+    seen.add(t.toLowerCase());
+    out.push({ title: t, link: href || "" });
+  };
+  if(doc){
+    const anchors = [...doc.querySelectorAll("a[href]")];
+    for(const a of anchors){
+      if(out.length >= 24) break;
+      const h = a.getAttribute("href") || "";
+      if(!h || h.startsWith("#")) continue;
+      let abs = h;
+      try{ abs = new URL(h, "https://example.com/").href; }catch(e){}
+      const txt = (a.textContent || "").trim();
+      /* 只保留看起来像文章标题的链接 */
+      if(!/[A-Z]/.test(txt.slice(0, 1))) continue;
+      push(txt, abs);
+    }
+  }
+  if(!out.length){
+    const re = /<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>([\s\S]{20,180}?)<\/a>/gi;
+    let m;
+    while((m = re.exec(html)) && out.length < 24){
+      push(m[2].replace(/<[^>]+>/g, " "), m[1]);
+    }
+  }
+  return out;
+}
+
 async function pressHeadlines(url, name){
   const host = document.getElementById("pressList");
   if(host) host.innerHTML = `<div class="sub">正在抓 ${escHtml(name)} 的头条…</div>`;

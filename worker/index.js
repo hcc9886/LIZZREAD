@@ -5,6 +5,32 @@ export default {
   async fetch(request, env, ctx){
     const url = new URL(request.url);
 
+    /* ---- 通用网页抓取代理：外刊/头条/正文都走这里，不再依赖第三方代理 ---- */
+    if(url.pathname === "/api/fetch"){
+      if(request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
+      const target = url.searchParams.get("url") || "";
+      if(!/^https?:\/\//i.test(target)) return json({ ok: false, message: "url 参数不对" });
+      try{
+        const r = await fetch(target, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en,zh;q=0.9"
+          },
+          redirect: "follow"
+        });
+        if(!r.ok) return json({ ok: false, status: r.status, message: "目标站返回 " + r.status });
+        const ct = r.headers.get("content-type") || "";
+        const body = await r.text();
+        if(/xml|rss|atom/i.test(ct) || /^\s*<\?xml|<rss|<feed/i.test(body)){
+          return json({ ok: true, kind: "xml", text: body.slice(0, 800000) });
+        }
+        return json({ ok: true, kind: "html", html: body.slice(0, 1500000) });
+      }catch(e){
+        return json({ ok: false, message: e.message || String(e) });
+      }
+    }
+
     /* ---- 语音识别（视频没字幕时自动生成）：Cloudflare Workers AI Whisper ---- */
     if(url.pathname === "/api/asr"){
       if(request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
