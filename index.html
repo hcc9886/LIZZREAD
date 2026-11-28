@@ -4395,7 +4395,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.1.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.1.1"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5586,16 +5586,43 @@ function rssFromMarkdown(t){
   return out;
 }
 function rssParse(xml){
+  const clean = t => String(t || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ").trim();
+  /* ① 先用 DOMParser */
   try{
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const items = [...doc.querySelectorAll("item, entry")].slice(0, 40);
-    return items.map(it => {
-      const t = (it.querySelector("title") || {}).textContent || "";
-      const l = (it.querySelector("link") || {}).textContent || (it.querySelector("link") || {}).getAttribute?.("href") || "";
-      const d = (it.querySelector("pubDate, updated, published") || {}).textContent || "";
-      const desc = (it.querySelector("description, summary, content") || {}).textContent || "";
-      return { title: t.trim(), link: l.trim(), date: d.slice(0, 16), desc: desc.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) };
-    }).filter(x => x.title);
+    const out = items.map(it => {
+      const tEl = it.querySelector("title");
+      const lEl = it.querySelector("link");
+      const dEl = it.querySelector("pubDate, updated, published");
+      const rEl = it.querySelector("description, summary, content");
+      const l = (lEl && lEl.textContent) || (lEl && lEl.getAttribute && lEl.getAttribute("href")) || "";
+      const d = (dEl && dEl.textContent) || "";
+      return { title: clean(tEl && tEl.textContent), link: String(l).trim(),
+        date: String(d).slice(0, 16), desc: clean(rEl && rEl.textContent).slice(0, 200) };
+    }).filter(x => x.title && x.title.length > 2);
+    if(out.length) return out;
+  }catch(e){ /* 落到下面的正则兜底 */ }
+  /* ② 正则兜底：DOMParser 失败、命名空间异常、CDATA 畸形时也能出结果 */
+  try{
+    const blocks = xml.split(/<(?:item|entry)[\s>]/i).slice(1, 41);
+    const out = [];
+    for(const b of blocks){
+      const gt = (re) => { const m = b.match(re); return m ? clean(m[1]) : ""; };
+      const title = gt(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      if(!title) continue;
+      let link = gt(/<link[^>]*>([\s\S]*?)<\/link>/i);
+      if(!link){ const m = b.match(/<link[^>]*href=["']([^"']+)["']/i); if(m) link = m[1]; }
+      const date = gt(/<(?:pubDate|updated|published)[^>]*>([\s\S]*?)<\/(?:pubDate|updated|published)>/i);
+      const desc = gt(/<(?:description|summary|content)[^>]*>([\s\S]*?)<\/(?:description|summary|content)>/i);
+      out.push({ title, link, date: date.slice(0, 16), desc: desc.slice(0, 200) });
+    }
+    return out;
   }catch(e){ return []; }
 }
 async function rssLoad(){
