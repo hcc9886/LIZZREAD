@@ -427,6 +427,7 @@ header>.nav{position:relative}
 .ai-status-btn{margin-left:8px;background:none;border:1px solid currentColor;border-radius:20px;
   padding:1px 10px;font-size:12px;color:inherit;cursor:pointer}
 .ai-status-btn:hover{background:rgba(0,0,0,.05)}
+@keyframes tourPulse{0%{opacity:.9;transform:scale(1)}50%{opacity:.35;transform:scale(1.015)}100%{opacity:.9;transform:scale(1)}}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -2710,12 +2711,106 @@ function pickDistractors(pool, n){
   for(let i = arr.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
   return arr.slice(0, n);
 }
-function TEST(){
+/* 每次测试重新随机抽题，防止用户背住固定那几道题刷等级 */
+let _testSession = null;
+
+/* 各难度档的词池：用考试词书当"难度代理"，越靠后越难 */
+function testPoolByTier(){
+  const tiers = TIERS();
+  const G = window.LIZ_DICT || {};
+  const books = (typeof VOCAB_BOOKS === "function") ? (VOCAB_BOOKS() || {}) : {};
+  const pool = {};
+  tiers.forEach(t => pool[t] = []);
+
+  /* 把词书按难度映射到档位（近似的，够用） */
+  const map = {};
+  if(tiers.length >= 6){
+    map.cet4 = [tiers[0], tiers[1]];
+    map.kaoyan = [tiers[1], tiers[2]];
+    map.cet6 = [tiers[2], tiers[3]];
+    map.ielts = [tiers[3], tiers[4]];
+    map.toefl = [tiers[4], tiers[4]];
+    map.gmat  = [tiers[5], tiers[5]];
+    map.zhuan8 = [tiers[5], tiers[5]];
+    map.zhuan4 = [tiers[3], tiers[4]];
+    map.toeic = [tiers[2], tiers[3]];
+  }
+
+  const seen = new Set();
+  const addWord = (w, tierList) => {
+    const low = String(w || "").toLowerCase();
+    if(!low || seen.has(low)) return;
+    const e = G[low];
+    if(!e) return;
+    const zh = String(e[1] || "").split(/[,，;；]/)[0];
+    if(!zh || !/[\u4e00-\u9fff]/.test(zh)) return;
+    if(/[a-zA-Z]{3,}/.test(zh)) return;
+    if(zh.length > 12) return;
+    seen.add(low);
+    for(const t of tierList) if(pool[t] && pool[t].length < 400) pool[t].push({ w: low, zh: wqCleanGloss(zh) });
+  };
+
+  for(const [bk, tierList] of Object.entries(map)){
+    for(const w of (books[bk] || [])) addWord(w, tierList);
+  }
+
+  /* 词书没加载时兜底：用高频词 + 词典按词长分层 */
+  if(Object.values(pool).every(a => a.length < 20)){
+    const common = window.LZ_WQ_COMMON || [];
+    common.forEach(x => addWord(x.w, [tiers[0], tiers[1]]));
+    const keys = Object.keys(G).filter(k => /^[a-z]+$/.test(k));
+    for(let i = 0; i < 6000; i++){
+      const k = keys[Math.floor(Math.random() * keys.length)];
+      const len = k.length;
+      const t0 = len <= 4 ? tiers[0] : len <= 6 ? (tiers[1] || tiers[0])
+               : len <= 8 ? (tiers[2] || tiers[0]) : len <= 10 ? (tiers[3] || tiers[0])
+               : (tiers[4] || tiers[0]);
+      addWord(k, [t0]);
+    }
+  }
+  return pool;
+}
+
+function buildTestSession(){
+  const tiers = TIERS();
+  /* 表头来自语言自带的固定清单（有题目说明），但题目本身随机 */
   const code = activeLang();
-  const fromLang = ((window.LZ_L || {})[code] || {}).test;
-  const fromNew = (window.LZ_TEST || {})[code];
-  const src = fromLang || fromNew || TEST_EN;
-  return src.map(q => ({tier:q.t, w:q.w, o:q.o}));
+  const seedSrc = ((window.LZ_L || {})[code] || {}).test || (window.LZ_TEST || {})[code] || TEST_EN;
+  const seed = seedSrc.map(q => ({ tier: q.t, w: q.w, o: q.o }));
+
+  const pool = testPoolByTier();
+  const out = [];
+  const used = new Set();
+  const shuffle = a => { for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  /* 每档至少 2 题（判定等级要 2 题），再加 1 题提高区分度 */
+  const perTier = 3;
+  for(const t of tiers){
+    const cand = shuffle((pool[t] || []).filter(x => !used.has(x.w)));
+    let picked = 0;
+    for(const x of cand){
+      if(picked >= perTier) break;
+      used.add(x.w);
+      /* 干扰项：从同档其它词的释义里抽 3 个 */
+      const others = shuffle((pool[t] || []).filter(y => y.w !== x.w && y.zh !== x.zh)).slice(0, 3).map(y => y.zh);
+      const opts = [x.zh, ...others];
+      while(opts.length < 4) opts.push("以上都不是");
+      out.push({ tier: t, w: x.w, o: shuffle(opts) });
+      picked++;
+    }
+    /* 该档池子不够 → 用固定题补（保证每档都有题） */
+    if(picked === 0){
+      const fb = seed.filter(q => q.tier === t).slice(0, perTier);
+      for(const q of fb){ if(!used.has(q.w)){ used.add(q.w); out.push(q); } }
+    }
+  }
+  /* 极端情况：一个都没抽到 → 用固定题 */
+  return out.length ? out : seed;
+}
+
+function TEST(){
+  if(!_testSession) _testSession = buildTestSession();
+  return _testSession;
 }
 function langQuota(){ const L0 = LANG_INFO[activeLang()] || {}; return L0.quota || (activeLang()==='en'?120:30); }
 const ACCENTS = {
@@ -3477,7 +3572,7 @@ async function requestAiExplain(word){
   if(!en){ const ctx = document.getElementById("shCtx"); en = ctx ? ctx.textContent.replace("（本句暂无译文）","") : ""; }
   const out = await window.LZ_AI.explainWord(word, en, zh);
   if(out){ if(body) body.textContent = out; if(btn) btn.textContent = "✨ 重新解析"; }
-  else { if(body) body.innerHTML = "（AI 未启用：需要部署后端并配置 ZHIPU_API_KEY。本地助记与例句见上方。）"; if(btn) btn.textContent = "重试"; }
+  else { if(body) body.textContent = "AI 这次没回应，稍后再点一次试试。上方的助记和例句是本地生成的，照样能用。"; if(btn) btn.textContent = "重试"; }
   if(btn) btn.disabled = false;
 }
 function renderRichWordCard(word, low){
@@ -3562,7 +3657,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.6.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.7.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5192,13 +5287,13 @@ async function aitReview(){
   if(text.length < 20){ out.textContent = "至少写 20 个字符"; return; }
   out.textContent = "AI 批改中…";
   const r = await (window.LZ_AI ? window.LZ_AI.reviewWriting(text) : null);
-  out.textContent = r || "AI 未启用：需要部署后端并配置 ZHIPU_API_KEY";
+  out.textContent = r || "AI 这次没回应，稍后重试。";
 }
 async function aitNews(){
   const out = document.getElementById("aitOut");
   out.textContent = "生成中…";
   const r = await (window.LZ_AI ? window.LZ_AI.makeNews(_newsTopic, _newsLevel, 180) : null);
-  if(!r){ out.textContent = "AI 未启用：需要部署后端并配置 ZHIPU_API_KEY"; return; }
+  if(!r){ out.textContent = "AI 这次没回应，稍后重试。"; return; }
   out.innerHTML = `<div class="ait-article">${escHtml(r)}</div>
     <div class="lang-row" style="margin-top:8px"><button class="btn ghost small" onclick="importTextAsBook(this.closest('.ait-out').querySelector('.ait-article').innerText,'${escAttr(_newsTopic)}')">导入阅读器精读</button></div>`;
 }
@@ -5216,7 +5311,7 @@ async function aitStory(){
   if(tip) tip.textContent = "用到 " + words.length + " 个词";
   out.textContent = "生成中…";
   const r = await (window.LZ_AI ? window.LZ_AI.storyFromWords(words, "B1") : null);
-  if(!r){ out.textContent = "AI 未启用：需要部署后端并配置 ZHIPU_API_KEY"; return; }
+  if(!r){ out.textContent = "AI 这次没回应，稍后重试。"; return; }
   out.innerHTML = `<div class="ait-article">${escHtml(r)}</div>
     <div class="lang-row" style="margin-top:8px"><button class="btn ghost small" onclick="importTextAsBook(this.closest('.ait-out').querySelector('.ait-article').innerText,'生词故事')">导入阅读器精读</button></div>`;
 }
@@ -5241,39 +5336,17 @@ let _bcHistory = [];
 function bcBookName(){ const el = document.getElementById("bcBook"); if(el) el.textContent = "当前书：" + (curBook ? (curBook.t || curBook.id) : "（先打开一本书）"); }
 /* AI 不可用时的降级：给出这本书的真实信息 + 替代路径，而不是一句"未启用" */
 function buildAiFallback(question, ctx){
-  const title = curBook ? (curBook.t || curBook.id) : "当前这本书";
-  const lines = [];
-  lines.push("（AI 后端未启用 —— GitHub Pages 是纯静态站，跑不了 server.js）");
-  lines.push("");
-  lines.push("不过你可以直接用这些离线能力：");
-  /* 1) 书的信息 */
+  /* AI 偶尔连不上时的简短提示 + 本地至少还能做的事 */
   const sents = curBook ? (getSents(curBook.id) || []) : [];
-  lines.push("· 本书共 " + sents.length + " 句" + (fullMode && fullCache[curBook.id] ? "，" + fullCache[curBook.id].chapters.length + " 章" : ""));
-  /* 2) 关键句：挑最长的 3 句（通常信息量最大） */
+  const lines = ["AI 这次没回应，稍后再问一次。", ""];
+  if(sents.length) lines.push("这本书共 " + sents.length + " 句。你也可以直接在正文里点词看释义，或长按句子看整句翻译。");
   const top = sents.filter(s => s.en && s.en.length > 60).slice(0, 400)
-    .sort((a, b) => b.en.length - a.en.length).slice(0, 3);
+    .sort((a, b) => b.en.length - a.en.length).slice(0, 2);
   if(top.length){
     lines.push("");
-    lines.push("· 信息量最大的 3 句：");
-    top.forEach((s, i) => lines.push("  " + (i + 1) + ". " + s.en.slice(0, 120) + (s.en.length > 120 ? "…" : "")));
+    lines.push("句子比较长的两处，通常也是难点：");
+    top.forEach((s, i) => lines.push("  " + (i + 1) + ". " + s.en.slice(0, 110) + (s.en.length > 110 ? "…" : "")));
   }
-  /* 3) 核心词：出现频次最高的长词 */
-  const freq = {};
-  for(const s of sents.slice(0, 600)){
-    for(const w of (s.en || "").match(/[A-Za-z'’-]{6,}/g) || []){
-      const low = w.toLowerCase();
-      freq[low] = (freq[low] || 0) + 1;
-    }
-  }
-  const keys = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
-  if(keys.length){
-    lines.push("");
-    lines.push("· 本书高频词：" + keys.join("、"));
-  }
-  lines.push("");
-  lines.push("想要真正的 AI 问答，两种办法：");
-  lines.push("① 把项目部署到 Vercel（免费，能跑 server.js），配上 ZHIPU_API_KEY");
-  lines.push("② 或者用下面「更多 ▾」里的「📰 RSS 外刊」「🖼️ 漫画翻译」等不依赖 AI 的功能");
   return lines.join("\n");
 }
 function bcClear(){ _bcHistory = []; const l = aiLogEl("bcLog"); if(l) l.innerHTML = ""; }
@@ -5312,7 +5385,7 @@ async function tuStart(){
   const out = window.LZ_AI ? await window.LZ_AI.chatTutor(_tuScene, [{ role:"user", content:"我们开始" }], activeLang()) : null;
   if(tip) tip.remove();
   if(out){ aiPush("tuLog", "ai", out); _tuHistory.push({ role:"assistant", content: out }); }
-  else aiPush("tuLog", "ai", "本地陪读：先把你想说的句子打出来，我会用本地词典给你逐词解析。\n（要开启 AI 对话，在设置里填入自己的 Key）");
+  else aiPush("tuLog", "ai", "没连上，稍等一下再发一次。");
 }
 async function tuSend(){
   const inp = document.getElementById("tuInput");
@@ -5325,7 +5398,7 @@ async function tuSend(){
   const out = window.LZ_AI ? await window.LZ_AI.chatTutor(_tuScene, _tuHistory, activeLang()) : null;
   if(tip) tip.remove();
   if(out){ aiPush("tuLog", "ai", out); _tuHistory.push({ role:"assistant", content: out }); }
-  else aiPush("tuLog", "ai", "本地解析：这句话里的每个词都能点开词卡看释义与例句。");
+  else aiPush("tuLog", "ai", "没连上，稍等一下再发一次。");
 }
 const SERIAL_GENRES = ["悬疑","奇幻","冒险","科幻","爱情","校园"];
 const SERIAL_LEVELS = ["A2","B1","B2","C1","C2"];
@@ -5376,7 +5449,7 @@ function serialLocalChapter(){
   const woven = words.length ? words.join("、") : "几个还没学会的词";
   const body = head + "\n\n（本地模板 · 第 " + (_serial.chapters.length + 1) + " 章）\n\n这一章会带你把 " + woven +
     " 这些词用起来。先把它们各造一句：\n\n" + words.map((w,i) => (i+1) + ". " + w + " —— __________").join("\n") +
-    "\n\n把写好的句子贴进「三栏笔记」的「我的产出」，就能变成复习卡。\n\n（要生成真正的原创故事，在设置里填入 AI Key 即可。）";
+    "\n\n把写好的句子贴进「三栏笔记」的「我的产出」，就能变成复习卡。";
   _serial.chapters.push(body);
   _serial.summary = body.slice(0, 300);
   renderSerialControls();
@@ -11834,7 +11907,7 @@ async function probeLocalAPI(){
   }catch(e){ hasLocalAPI = false; }
   try{ localStorage.setItem(API_PROBE_KEY, JSON.stringify({ok: hasLocalAPI, at: Date.now()})); }catch(e){}
   if(!hasLocalAPI){
-    console.info("[LIZZREAD] 未连接后端：词典与翻译走浏览器直连（可在设置里填写服务端地址）");
+    console.info("[LIZZREAD] 未连接后端：词典与翻译走浏览器直连");
   }
   return hasLocalAPI;
 }
@@ -12233,6 +12306,7 @@ function resumeTest(){
   showQ();
 }
 function startTest(){
+  _testSession = null;            /* 每次开始都重新随机抽题，防止背题 */
   testQ = 0; testAns = TIERS().map(()=>0);
   clearTestProgress();
   document.getElementById("testIntro").style.display="none";
@@ -13390,6 +13464,12 @@ function asmSubmit(){
   十一·C 个性化设置
 ===================================================== */
 /* 一键跳到 AI 配置（从任意 AI 页面的状态条触发） */
+function toggleAiAdvanced(){
+  const box = document.getElementById("aiAdvBox");
+  if(!box) return;
+  const show = box.style.display === "none";
+  box.style.display = show ? "block" : "none";
+}
 function openAiConfig(){
   go("settings");
   setTimeout(()=>{
@@ -13398,6 +13478,8 @@ function openAiConfig(){
       card.scrollIntoView({ behavior:"smooth", block:"center" });
       card.style.boxShadow = "0 0 0 3px var(--brand-soft)";
       setTimeout(()=>{ card.style.boxShadow = ""; }, 1600);
+      const box = document.getElementById("aiAdvBox");
+      if(box) box.style.display = "block";
       const inp = document.getElementById("aiKeyInput");
       if(inp) setTimeout(()=>inp.focus(), 400);
     } else {
@@ -13440,7 +13522,7 @@ async function refreshAiStatus(){
   const m = window.LZ_AI ? await window.LZ_AI.mode() : false;
   const txt = m === "server" ? "✅ AI 已连接（服务端）"
             : m === "user"   ? "✅ AI 已连接（你的本机 Key）"
-            : "⚠️ AI 未开启：点「设置 → AI 能力」填一个 Key，或继续用本地替代方案";
+            : "⚠️ AI 暂时连不上，稍后会自动重试";
   document.querySelectorAll(".ai-status").forEach(el => {
     el.className = "ai-status " + (m ? "ok" : "off");
     el.innerHTML = escHtml(txt) + (m ? "" : ` <button class="ai-status-btn" onclick="openAiConfig()">去配置 →</button>`);
@@ -13460,32 +13542,29 @@ function renderSettings(){
       const card0 = document.createElement("div");
       card0.id = "aiKeyCard";
       card0.className = "settings-card";
+      card0.dataset.collapsed = "1";
       const cur = (window.LZ_AI && window.LZ_AI.hasUserKey && window.LZ_AI.hasUserKey()) ? "已设置 ✓" : "未设置";
-      card0.innerHTML = `<b>🤖 AI 能力（可选）</b>
-        <div class="sub">填一个智谱 GLM-4-Flash 的 Key 就能开启 AI 解析 / 陪读 / 连载 / 批改 / 定制新闻。
-        Key 只存在你自己的浏览器里，不上传服务器；不填也不影响其他功能（会走本地替代）。</div>
-        <div class="ai-key-state" id="aiKeyState">当前状态：<b>${cur}</b></div>
+      const ready = (window.LZ_AI && window.LZ_AI.hasUserKey && window.LZ_AI.hasUserKey());
+      card0.innerHTML = `<b>🤖 AI 功能</b>
+        <div class="sub">AI 解析、陪读、批改、定制新闻由站点统一提供，<b>无需任何设置</b>即可使用。</div>
+        <div class="ai-key-state" id="aiKeyState">状态：正在检查…</div>
+        <button class="btn ghost small" style="margin-top:8px" onclick="toggleAiAdvanced()">高级选项（一般不用动）</button>
+        <div id="aiAdvBox" style="display:none;margin-top:12px;border-top:1px dashed var(--border);padding-top:12px">
+          <div class="sub">如果你自己部署了后端，或想用自己的 Key，在下面填。填了会优先用你的。</div>
 
-        <div style="font:600 13px var(--font);margin:12px 0 6px">方式一（最简单）：填 API Key，立刻就能用</div>
-        <div class="lang-row">
-          <input class="ai-input" id="aiKeyInput" type="password" placeholder="粘贴智谱 API Key（GLM-4-Flash 免费）" style="flex:1;min-width:220px">
-          <button class="btn small" onclick="saveAiKey()">保存并启用</button>
-          <button class="btn ghost small" onclick="clearAiKey()">清除</button>
-        </div>
-        <div class="tip" style="margin-top:4px">
-          获取：<a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a>（登录后左侧菜单找「API Keys / API 密钥」）。
-          Key 存在你自己的浏览器里，请求时随同发给站点后端转发（不会写进代码，也不会被其他用户看到）。
-        </div>
+          <div style="font:600 13px var(--font);margin:10px 0 6px">方式一：填 API Key</div>
+          <div class="lang-row">
+            <input class="ai-input" id="aiKeyInput" type="password" placeholder="粘贴智谱 API Key" style="flex:1;min-width:220px">
+            <button class="btn small" onclick="saveAiKey()">保存并启用</button>
+            <button class="btn ghost small" onclick="clearAiKey()">清除</button>
+          </div>
+          <div class="tip" style="margin-top:4px">获取：<a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a>（登录后左侧「API Keys」）</div>
 
-        <div style="font:600 13px var(--font);margin:16px 0 6px">方式二：填你自己部署的后端地址</div>
-        <div class="lang-row">
-          <input class="ai-input" id="aiBaseInput" placeholder="https://lizzread.你的子域.workers.dev" style="flex:1;min-width:220px">
-          <button class="btn small" onclick="saveAiBase()">保存地址</button>
-        </div>
-        <div class="tip" style="margin-top:4px">把 Cloudflare Workers 部署后得到的域名粘进来即可。这样 GitHub Pages 上的站点也能用 AI。</div>
-
-        <div class="tip" style="margin-top:4px">
-          如有自己的 Cloudflare Worker / Vercel 后端，把域名粘在这里（不带末尾斜杠），前端就会优先走它。
+          <div style="font:600 13px var(--font);margin:16px 0 6px">方式二：填你自己部署的后端地址</div>
+          <div class="lang-row">
+            <input class="ai-input" id="aiBaseInput" placeholder="https://你的域名" style="flex:1;min-width:220px">
+            <button class="btn small" onclick="saveAiBase()">保存地址</button>
+          </div>
         </div>`;
       host0.appendChild(card0);
     }
@@ -13690,37 +13769,39 @@ const GUIDE_STEPS = [
 ];
 /* ================= 新人引导（带用户一步步走完核心功能） ================= */
 const TOUR_STEPS = [
-  { id:"lang",   title:"① 选一门要学的语言",
-    text:"右上角「🌐 语言」里可以切换 16 门语言：英语、中文、德语、法语、意大利语、西班牙语、日语、韩语，以及荷兰语、葡萄牙语、拉丁语、希腊语、芬兰语、匈牙利语、瑞典语、世界语。每门语言有自己的书库和等级标准（CEFR / HSK / JLPT / TOPIK）。",
-    sel:"#langChips", action:"点击语言按钮切换" },
-  { id:"level",  title:"② 认准自己的等级",
-    text:"书城顶部会显示你当前等级（如 CEFR B1、JLPT N3、HSK3），并给出「这个等级读什么」的推荐。不确定等级？点「📜 升级考试」做 8 道题，系统会自动判定。",
-    sel:"#recBanner", action:"看推荐，或点「升级考试」" },
-  { id:"open",   title:"③ 点开一本书开始读",
-    text:"点击任意书卡进入阅读器。第一句上方会显示「已读进度」；没下载过的整本书首次打开会自动联网取全文（几十秒）。",
-    sel:"#gridTitle", action:"点一本书试试" },
-  { id:"word",   title:"④ 点任意单词查释义",
-    text:"阅读时点正文里的任何一个词，会立刻弹出：常用义、本句语境义、英英释义与音标、多语言对照（可折叠）、熟练度标记。这是本软件最核心的功能。",
-    sel:"#view-reader", action:"在正文里点一个词" },
-  { id:"trans",  title:"⑤ 整章翻译",
-    text:"阅读器顶部有「🌐 翻译本章」，一键把整章中文填到每句下面；也可以点单句旁的小按钮只翻那一句。译文会缓存，断网也能看。",
-    sel:"#view-reader", action:"点「翻译本章」" },
-  { id:"asm",    title:"⑥ 句子拼装（练语序）",
-    text:"点词弹窗里的「🧩 在句中练」，把打乱的意群按正确顺序拼回去——这是练语感最有效的方式。答案默认隐藏，看过答案就不计分。",
-    sel:"#view-reader", action:"点词的弹窗里选「在句中练」" },
-  { id:"vocab",  title:"⑦ 生词本与复习",
-    text:"点词时可以一键加入生词本。生词本里有「生词模式」，用间隔重复（SRS）帮你反复记；颜色标记帮你区分「陌生 / 学习中 / 已掌握」。",
-    sel:"#nav-vocab", action:"打开生词本看看" },
-  { id:"import", title:"⑧ 导入自己的书 / 网址",
-    text:"书城上方有「📥 导入书籍」（支持 EPUB/PDF/TXT/DOCX 等 16 种格式）、「🔗 网址导入」（Gutenberg、青空文库、维基文库、RSS、任意网页）、「📋 粘贴正文」。导入后一样可以点词和翻译。",
-    sel:"#view-library", action:"试一次网址导入" },
-  { id:"done",   title:"⑨ 你已上手",
-    text:"剩下的都可以慢慢探索：书单归类、金句收藏、学习报告、等级考试、会员订阅。随时可以点右上角「❓ 新手教程」重新看这套引导。",
-    sel:"#mainNav", action:"完成" }
+  { id:"lang", title:"① 先选你要学的语言",
+    text:"点右上角这个「语言」按钮。里面有 16 门语言，每门语言有自己的书库和等级标准。选好之后，整个站点的书、词、游戏都会跟着切过去。",
+    sel:"#langPill", action:"点它 → 选一门语言", go:"library" },
+  { id:"start", title:"② 点「开始阅读」",
+    text:"主页就这一个主按钮。它会自动打开你上次读的书；没读过就打开第一本能离线读的书。不想让它决定？往下滑自己挑也行。",
+    sel:".home-hero-cta", action:"点「开始阅读」", go:"library" },
+  { id:"book", title:"③ 从书城挑一本",
+    text:"下面是全部书目。卡片左上角是等级（A1–C2），标着「📶 已内置全文」的能完全离线读。想按等级筛选就点上面的筛选按钮。",
+    sel:"#bookGrid", action:"点任意一本书的封面", go:"library" },
+  { id:"word", title:"④ 正文里点任何一个词",
+    text:"这是全站最核心的动作。点一下词，就会弹出词卡：音标、多义项、例句、词根词族，还能一键加入生词本、听读音、让 AI 结合本句讲解。",
+    sel:"#view-reader .sent", action:"进入阅读器后点一个词" },
+  { id:"vocab", title:"⑤ 生词本会自动长大",
+    text:"你点过的词会自动进生词本，分成「不熟悉 / 学习中 / 已掌握」三态。之后所有游戏、复习、测试都从生词本取词——点得越多，练得越准。",
+    sel:"[data-grp='learn']", action:"点顶部「学习」→「生词本」看看" },
+  { id:"game", title:"⑥ 用游戏把词记牢",
+    text:"顶部「游戏」里有 5 个小游戏：打怪、消消乐、记忆翻牌、听音拼写、单词五子棋。难度会跟着你的词汇量自动调，答错会告诉你为什么错。",
+    sel:"[data-grp='play']", action:"点「游戏」挑一个试试" },
+  { id:"done", title:"🎉 你已学会全部核心操作",
+    text:"剩下两个常用入口：「更多」里是漫画、外刊、浏览器、AI 工具；主页的「今天做点什么」每天会给你 2–3 条建议。以后想重看教程：更多 → 教程。",
+    sel:"[data-grp='more']", action:"点「更多」看看还有什么" }
 ];
 let tourIdx = 0;
 function tourState(){ try{ return JSON.parse(localStorage.getItem("lz_tour") || "{}"); }catch(e){ return {}; } }
-function tourSave(){ try{ localStorage.setItem("lz_tour", JSON.stringify(tourState())); }catch(e){} }
+/* 之前这里写的是 tourSave() 不带参数 → 重新读旧值再存回去，改动全丢 → 每次刷新都弹教程 */
+function tourSave(obj){
+  try{
+    const cur = tourState();
+    const next = Object.assign({}, cur, obj || {});
+    localStorage.setItem("lz_tour", JSON.stringify(next));
+    return next;
+  }catch(e){ return {}; }
+}
 function startTour(from){
   tourIdx = Math.max(0, Math.min(TOUR_STEPS.length - 1, Number(from) || 0));
   renderTour();
@@ -13735,35 +13816,51 @@ function renderTour(){
     target.scrollIntoView({ block:"center", behavior:"smooth" });
     rect = target.getBoundingClientRect();
   }
+  /* 如果这一步指定了页面，先跳过去再高亮 */
+  if(st.go){ try{ const cur = ((document.querySelector(".view.on")||{}).id||"").replace(/^view-/,""); if(cur !== st.go) go(st.go); }catch(e){} }
   const box = document.createElement("div");
   box.id = "lzTour";
-  box.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(8,14,10,.45);backdrop-filter:blur(1px)";
-  box.onclick = e => { if(e.target === box) endTour(); };
+  /* 遮罩不拦截点击（pointer-events:none），让用户能真的去点被高亮的按钮 */
+  box.style.cssText = "position:fixed;inset:0;z-index:9999;pointer-events:none";
+  box.onclick = null;
   const cardTop = rect ? Math.min(window.innerHeight - 300, rect.bottom + 14) : (window.innerHeight/2 - 150);
   const cardLeft = rect ? Math.max(16, Math.min(window.innerWidth - 380, rect.left)) : 16;
   box.innerHTML = `
-    ${rect ? `<div style="position:absolute;left:${Math.max(0,rect.left-8)}px;top:${Math.max(0,rect.top-8)}px;width:${rect.width+16}px;height:${rect.height+16}px;border:2px solid var(--brand);border-radius:12px;box-shadow:0 0 0 9999px rgba(8,14,10,.45);pointer-events:none"></div>` : ""}
-    <div class="box" style="position:absolute;left:${cardLeft}px;top:${cardTop}px;width:min(360px, calc(100vw - 32px));background:var(--surface);border-radius:14px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25)">
+    ${rect
+      ? `<div style="position:absolute;left:${Math.max(0,rect.left-8)}px;top:${Math.max(0,rect.top-8)}px;width:${rect.width+16}px;height:${rect.height+16}px;border:2px solid #22C98A;border-radius:12px;box-shadow:0 0 0 9999px rgba(8,14,10,.55);pointer-events:none"></div>
+         <div style="position:absolute;left:${Math.max(0,rect.left-8)}px;top:${Math.max(0,rect.top-8)}px;width:${rect.width+16}px;height:${rect.height+16}px;pointer-events:none">
+           <span class="tour-pulse" style="position:absolute;left:-6px;top:-6px;right:-6px;bottom:-6px;border:2px solid #22C98A;border-radius:14px;animation:tourPulse 1.4s infinite"></span>
+         </div>`
+      : `<div style="position:absolute;inset:0;background:rgba(8,14,10,.55)"></div>`}
+    <div class="box" style="position:absolute;left:${cardLeft}px;top:${cardTop}px;width:min(360px, calc(100vw - 32px));background:var(--surface);border-radius:14px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25);pointer-events:auto">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <b style="font:700 16px var(--serif)">${escHtml(st.title)}</b>
         <span class="tip" style="margin-left:auto">${tourIdx+1}/${TOUR_STEPS.length}</span>
-        <button style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer" onclick="endTour()">×</button>
+        <button style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer" onclick="endTour(false)">×</button>
       </div>
       <p style="font-size:13.5px;line-height:1.75;color:var(--text);margin:6px 0 10px">${escHtml(st.text)}</p>
       <div class="tip" style="margin:0 0 10px;color:var(--brand-deep)">👉 ${escHtml(st.action)}</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn small" onclick="tourNext()">${tourIdx === TOUR_STEPS.length-1 ? "完成" : "下一步 →"}</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn small" onclick="tourNext()">${tourIdx === TOUR_STEPS.length-1 ? "完成 ✓" : "我做好了，下一步 →"}</button>
         ${tourIdx>0 ? `<button class="btn ghost small" onclick="tourPrev()">← 上一步</button>` : ""}
-        <button class="btn ghost small" onclick="endTour()" style="margin-left:auto">跳过</button>
+        <button class="btn ghost small" onclick="endTour(false)" style="margin-left:auto">跳过，以后再说</button>
       </div>
+      <div class="tip" style="margin:8px 0 0;font-size:11.5px">点「跳过」以后也不会再自动弹；想重看去「更多 → 教程」。</div>
     </div>`;
   document.body.appendChild(box);
 }
-function tourNext(){ if(tourIdx >= TOUR_STEPS.length-1){ endTour(); return; } tourIdx++; renderTour(); }
+function tourNext(){
+  if(tourIdx >= TOUR_STEPS.length-1){ endTour(true); toast("教程完成 🎉 以后在「更多 → 教程」可随时重看"); return; }
+  tourIdx++; tourSave({ at: tourIdx }); renderTour();
+}
 function tourPrev(){ tourIdx = Math.max(0, tourIdx-1); renderTour(); }
+let _tourCompleted = false;
 function endTour(completed){
   document.getElementById("lzTour")?.remove();
-  const s = tourState(); s.done = completed !== false; s.at = tourIdx; tourSave();
+  _tourCompleted = (completed !== false);
+  /* 不管「完成」还是「跳过」都记下来，绝不再自动打扰；教程页永远能重看 */
+  tourSave({ done: true, at: tourIdx, skipped: completed === false, at2: Date.now() });
+  try{ renderOnboardCard(); }catch(e){}
 }
 function langGuideIntro(){
   const code = activeLang();
