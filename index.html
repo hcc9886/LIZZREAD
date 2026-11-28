@@ -1607,6 +1607,7 @@ body.no-zh .sent .zh{display:none}
       <button class="chip" id="aitTabNews" onclick="aitTab('news')">📰 定制新闻</button>
       <button class="chip" id="aitTabPersona" onclick="aitTab('persona')">🧑‍🏫 老师人设</button>
       <button class="chip" id="aitTabStory" onclick="aitTab('story')">📝 生词故事</button>
+      <button class="chip" id="aitTabZh2en" onclick="aitTab('zh2en')">🀄 中文书转英文</button>
     </div>
     <div id="aitBody"></div>
   </section>
@@ -4047,7 +4048,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.4.1"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.5.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -6112,15 +6113,131 @@ async function mangaRun(){
 let _ait = "review";
 function aitTab(t){
   _ait = t;
-  ["review","news","persona","story"].forEach(k => {
-    const el = document.getElementById("aitTab" + (k[0].toUpperCase() + k.slice(1)));
+  ["review","news","persona","story","zh2en"].forEach(k => {
+    const el = document.getElementById("aitTab" + (k === "zh2en" ? "Zh2en" : (k[0].toUpperCase() + k.slice(1))));
     if(el) el.classList.toggle("on", k === t);
   });
   renderAitBody();
 }
+/* ================= 中文书 → 分级英文 =================
+   把你导入的中文书按目标等级改写成英文，生成一本可以在站内精读的新书。 */
+let _z2e = { bookId:"", level:"B1", running:false, done:0, total:0 };
+function renderZh2en(){
+  const zhBooks = (store.imports || []).filter(b => {
+    const t = (b.t || "") + (b.title || "");
+    return /[\u4e00-\u9fff]/.test(t) || (b.lang === "zh");
+  });
+  const opts = zhBooks.map(b => `<option value="${escAttr(b.id)}">${escHtml(b.t || b.title || b.id)}</option>`).join("");
+  return `<div class="settings-card">
+    <b>中文书 → 分级英文</b>
+    <div class="sub">选一本你在站内导入的中文书（或直接粘贴中文），按你的等级改写成**读得下去的英文**，生成一本新书直接精读。</div>
+    <div class="lang-row" style="margin-top:10px">
+      <select class="chip" id="z2eBook" style="width:auto;max-width:60%">
+        <option value="">— 选一本已导入的中文书 —</option>${opts}
+      </select>
+      <select class="chip" id="z2eLevel" style="width:auto">
+        ${["A1","A2","B1","B2","C1","C2"].map(l => `<option value="${l}" ${l===(store.level||"B1")?"selected":""}>${l}</option>`).join("")}
+      </select>
+    </div>
+    <textarea id="z2eText" class="asm-type-input" style="margin-top:10px;min-height:120px"
+      placeholder="也可以直接在这里粘贴中文原文（几百字以内最稳）…"></textarea>
+    <div class="lang-row" style="margin-top:10px">
+      <button class="btn" id="z2eGo" onclick="zh2enRun()">开始改写</button>
+      <span class="tip" style="margin:0" id="z2eStat"></span>
+    </div>
+    <div class="tip" style="margin-top:8px">
+      说明：AI 会按等级控制词汇和句长，不是逐字直译——目的是让你读得懂、读得下去。
+      长篇分多次生成，每次约 1–2 分钟。
+    </div>
+    <div id="z2eOut" class="ait-out"></div>
+  </div>`;
+}
+function zh2enSourceText(){
+  const ta = document.getElementById("z2eText");
+  const typed = (ta && ta.value || "").trim();
+  if(typed.length > 40) return { text: typed, title: "我的中文片段" };
+  const sel = document.getElementById("z2eBook");
+  const id = sel && sel.value;
+  if(!id) return null;
+  const b = (store.imports || []).find(x => x.id === id);
+  if(!b) return null;
+  let text = "";
+  try{
+    const sents = getSents(id) || [];
+    text = sents.map(x => x.zh || x.en || "").join("");
+  }catch(e){}
+  if(!text || text.length < 40){
+    try{
+      const c = fullCache[id];
+      text = c && c.plain ? c.plain : "";
+    }catch(e){}
+  }
+  return text && text.length > 40 ? { text, title: (b.t || b.title || id) } : null;
+}
+async function zh2enRun(){
+  if(_z2e.running){ toast("正在改写中，请稍等"); return; }
+  const src = zh2enSourceText();
+  if(!src){ toast("先选一本中文书，或粘贴一段中文"); return; }
+  const level = document.getElementById("z2eLevel")?.value || "B1";
+  const stat = document.getElementById("z2eStat");
+  const out = document.getElementById("z2eOut");
+  const btn = document.getElementById("z2eGo");
+  /* 按句号/问号切块，每块约 600 字，避免单次 prompt 过长 */
+  const chunks = [];
+  const parts = src.text.split(/(?<=[。！？!?\n])/);
+  let cur = "";
+  for(const p of parts){
+    if((cur + p).length > 600 && cur){ chunks.push(cur); cur = p; }
+    else cur += p;
+  }
+  if(cur) chunks.push(cur);
+  const use = chunks.slice(0, 12);            /* 最多 12 块，控制时长 */
+  _z2e = { running: true, done: 0, total: use.length };
+  if(btn){ btn.disabled = true; btn.textContent = "改写中…"; }
+  const results = [];
+  try{
+    for(let i = 0; i < use.length; i++){
+      if(stat) stat.textContent = "第 " + (i+1) + " / " + use.length + " 段…";
+      const prompt = `把下面的中文改写成 **${level} 水平** 的英文故事文本。要求：
+1. 只用 ${level} 级别的常用词和句型，句子短、结构清楚；
+2. 保留原意与情节，不要逐字直译，读起来要像正常的英文读物；
+3. 只输出英文正文，不要标题、不要解释、不要 Markdown。
+中文原文：
+${use[i]}`;
+      const r = await window.LZ_AI.ask(
+        [{ role:"system", content:"你是英语分级读物作者，擅长把中文内容改写成指定 CEFR 等级的地道英文。" },
+         { role:"user", content: prompt }],
+        { temperature: 0.7, maxTokens: 900, noCache: true }
+      );
+      if(r && r.trim()) results.push(r.trim());
+      else results.push("");
+      _z2e.done = i + 1;
+    }
+  }finally{
+    _z2e.running = false;
+    if(btn){ btn.disabled = false; btn.textContent = "开始改写"; }
+  }
+  const en = results.filter(Boolean).join("\n\n");
+  if(!en){ if(stat) stat.textContent = "失败了"; toast("AI 没返回内容，稍后再试"); return; }
+  const title = (src.title || "改写") + " · " + level;
+  try{
+    await importTextAsBook(title + "\n\n" + en, title.slice(0, 34));
+    if(stat) stat.textContent = "已生成 " + en.length + " 字符";
+    if(out) out.innerHTML = `<div class="br-hint ok">已生成《${escHtml(title)}》，正在打开阅读器…</div>`;
+    toast("英文版已生成，可以直接精读");
+  }catch(e){
+    if(out) out.innerHTML = `<div class="br-hint">生成成功但导入失败：${escHtml(e.message || String(e))}</div>
+      <div class="sub" style="white-space:pre-wrap;margin-top:8px">${escHtml(en.slice(0, 2000))}</div>`;
+  }
+}
+
 function renderAitBody(){
   const host = document.getElementById("aitBody");
   if(!host) return;
+  if(_ait === "zh2en"){
+    host.innerHTML = renderZh2en();
+    return;
+  }
   if(_ait === "review"){
     host.innerHTML = `<div class="settings-card">
       <b>写作批改</b><div class="sub">贴一段你写的英文（或任意目标语言），AI 会逐条指出语法、用词、地道性问题。</div>
