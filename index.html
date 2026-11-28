@@ -40,7 +40,7 @@
 <script src="data/comics-pd.js?v=2" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
-<script src="ai.js?v=3"></script>
+<script src="ai.js?v=4"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <style>html.lz-mini .lz-no-mini{display:none !important}/* 底部章导航 / 收藏 / 筛选 */
@@ -413,6 +413,20 @@ header>.nav{position:relative}
   border-radius:4px;padding:1px 6px}
 .comic-card{cursor:pointer;transition:.15s}
 .comic-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.1)}
+/* 错题解释卡 */
+.we-card{border:1px solid #E8B4AE;background:#FFF8F6;border-radius:12px;padding:12px 14px;margin-top:10px;text-align:left}
+.we-h{font:600 14px var(--font);margin-bottom:8px;color:#8A2B22}
+.we-h b{font-size:16px;letter-spacing:.02em}
+.we-row{display:flex;gap:10px;padding:5px 0;font-size:13px;line-height:1.65;border-top:1px dashed rgba(0,0,0,.06)}
+.we-row:first-of-type{border-top:none}
+.we-k{flex:0 0 46px;color:var(--muted);font-size:12px}
+.we-v{flex:1;min-width:0;word-break:break-word}
+.we-v.we-bad{color:#C0392B;text-decoration:line-through}
+.we-zh{color:var(--muted);font-size:12px}
+.we-acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.ai-status-btn{margin-left:8px;background:none;border:1px solid currentColor;border-radius:20px;
+  padding:1px 10px;font-size:12px;color:inherit;cursor:pointer}
+.ai-status-btn:hover{background:rgba(0,0,0,.05)}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1457,6 +1471,7 @@ body.no-zh .sent .zh{display:none}
     </div>
 
     <div class="wq-src">
+      <span class="tip" style="margin:0" id="wqLevel"></span>
       <span class="tip" style="margin:0">词库来源</span>
       <button class="chip on" data-wqsrc="vocab" onclick="wqSetSrc('vocab')">我的生词本</button>
       <button class="chip" data-wqsrc="mine" onclick="wqSetSrc('mine')">我的错词本</button>
@@ -3547,7 +3562,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.4.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.5.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5441,6 +5456,7 @@ const WQ = { hp:3, combo:0, right:0, round:0, queue:[], cur:null, src:"vocab", r
 function wqSetSrc(src){
   WQ.src = src;
   wqSyncSrcChips();
+  wqRefreshLevel();
   const n = wqPickQueue().length;
   const st = document.getElementById("wqSrcStat");
   if(st) st.textContent = n ? "这组有 " + n + " 个可练的词" : "这组暂时没有可练的词";
@@ -5496,6 +5512,10 @@ function wqIsGoodWord(w, zh){
   if(g.length < 1) return false;
   if(/^(的|地|得|了|着)$/.test(g)) return false;
   return true;
+}
+function wqRefreshLevel(){
+  const el = document.getElementById("wqLevel");
+  if(el) el.textContent = vocabLevelText();
 }
 function wqSyncSrcChips(){
   document.querySelectorAll("[data-wqsrc]").forEach(b => {
@@ -5573,6 +5593,7 @@ function wqPickQueue(){
   return pool.sort(() => Math.random() - 0.5).slice(0, 100);
 }
 function wqStart(){
+  wqRefreshLevel();
   WQ.queue = wqPickQueue();
   /* 生词本空 → 自动回退到考试词书，并明确告诉用户 */
   if(!WQ.queue.length && WQ.src === "vocab"){
@@ -5718,6 +5739,8 @@ function wqSubmit(){
   } else {
     WQ.combo = 0; WQ.hp--;
     wqAddWrong(want, WQ.cur.zh);
+    const tipW = document.getElementById("wqTip");
+    if(tipW) tipW.innerHTML = wrongExplainHTML(want, got);
     if(monster){ monster.textContent = "🛡️"; setTimeout(()=>{ monster.textContent = "👾"; }, 260); }
     toast("❌ 是 " + want + "，扣一格血");
   }
@@ -7520,35 +7543,138 @@ function loopHintAfterChapter(){
 }
 
 /* ================= 学习游戏（消消乐 / 翻牌 / 拼写 / 五子棋） ================= */
-/* 游戏词库：优先当前语言生词本 → 生词本为空用高频词表 */
-function gameWords(n){
-  const out = [];
-  const seen = new Set();
+/* ================= 错题解释卡（错了就告诉你为什么） ================= */
+/* 返回可插入的 HTML：释义 / 例句 / 词根词族 / 你打的是什么 */
+function wrongExplainHTML(word, yourAnswer, extraTip){
+  const low = String(word || "").toLowerCase();
+  const rows = [];
+  /* 释义 */
+  let zh = "";
   try{
-    for(const v of (store.vocab || [])){
-      const w = String(v.w || "").toLowerCase();
-      if(!w || seen.has(w)) continue;
-      const d = (typeof dictEntry === "function") ? dictEntry(w) : null;
-      const zh = d ? String(d[1]).split(/[,，;；]/)[0] : (v.zh || "");
-      const g = wqCleanGloss(zh);
-      if(!g || !/[\u4e00-\u9fff]/.test(g)) continue;
-      seen.add(w);
-      out.push({ w, zh: g });
-      if(out.length >= n) return out;
+    const d = (typeof dictEntry === "function") ? dictEntry(low) : null;
+    zh = d ? String(d[1]) : "";
+  }catch(e){}
+  if(!zh){ try{ zh = offlineWordHint(low, showLang()) || ""; }catch(e){} }
+  if(zh) rows.push(`<div class="we-row"><span class="we-k">释义</span><span class="we-v">${escHtml(wqCleanGloss(zh))}</span></div>`);
+  /* 你打的 */
+  if(yourAnswer != null && yourAnswer !== ""){
+    rows.push(`<div class="we-row"><span class="we-k">你打的</span><span class="we-v we-bad">${escHtml(String(yourAnswer))}</span></div>`);
+  }
+  /* 例句 */
+  try{
+    const ex = (typeof findExamples === "function") ? findExamples(low, 1) : [];
+    if(ex.length && ex[0].en){
+      rows.push(`<div class="we-row"><span class="we-k">例句</span><span class="we-v"><i>${escHtml(ex[0].en)}</i>${ex[0].zh ? `<br><span class="we-zh">${escHtml(ex[0].zh)}</span>` : ""}</span></div>`);
     }
   }catch(e){}
+  /* 词根词族 */
+  try{
+    const fam = (typeof wordFamilyOf === "function") ? wordFamilyOf(low) : null;
+    if(fam && fam.words && fam.words.length){
+      rows.push(`<div class="we-row"><span class="we-k">同根</span><span class="we-v">${fam.words.slice(0,5).map(x => escHtml(x.w) + "（" + escHtml(x.zh) + "）").join("、")}</span></div>`);
+    }
+  }catch(e){}
+  /* 记忆点 */
+  try{
+    const G = (typeof _getDictEntry === "function") ? _getDictEntry(low) : null;
+    const m = (G && typeof mnemoOf === "function") ? mnemoOf(low, [String(G[1]||"")]) : "";
+    if(m) rows.push(`<div class="we-row"><span class="we-k">记忆</span><span class="we-v">${escHtml(m)}</span></div>`);
+  }catch(e){}
+  if(extraTip) rows.push(`<div class="we-row"><span class="we-k">提示</span><span class="we-v">${escHtml(extraTip)}</span></div>`);
+  if(!rows.length) return `<div class="we-card"><div class="we-h">「${escHtml(word)}」</div><div class="we-v dim">这个字本地没有更多信息，可以在阅读器里点它看完整词卡。</div></div>`;
+  return `<div class="we-card">
+    <div class="we-h">❌ 正确答案：<b>${escHtml(word)}</b></div>
+    ${rows.join("")}
+    <div class="we-acts">
+      <button class="btn ghost small" onclick="gameSpeak('${escAttr(word)}')">🔊 听读音</button>
+      <button class="btn ghost small" onclick="openWordCard('${escAttr(word)}')">看完整词卡</button>
+    </div>
+  </div>`;
+}
+
+/* ================= 游戏难度：按当前语言的词汇量自动分级 ================= */
+/* 词汇量 = 该语言生词本里所有词的条数（含已掌握），决定出什么难度的词 */
+function vocabLevel(){
+  const st = wordStates() || {};
+  let known = 0, learning = 0;
+  for(const [k, v] of Object.entries(st)){
+    if(!v) continue;
+    if(v.st === -1) continue;         /* 忽略的不算 */
+    known++;
+    if(v.st === 1) learning++;
+  }
+  const n = known;
+  let level, label, minLen, maxLen;
+  if(n < 30){        level = 1; label = "入门";  minLen = 3; maxLen = 5; }
+  else if(n < 100){  level = 2; label = "初级";  minLen = 3; maxLen = 6; }
+  else if(n < 300){  level = 3; label = "中级";  minLen = 4; maxLen = 8; }
+  else if(n < 800){  level = 4; label = "中高级"; minLen = 5; maxLen = 10; }
+  else {             level = 5; label = "高级";  minLen = 6; maxLen = 14; }
+  return { n, learning, level, label, minLen, maxLen };
+}
+function vocabLevelText(){
+  const L0 = vocabLevel();
+  return L0.n ? ("词汇量 " + L0.n + " · " + L0.label) : ("词汇量 0 · " + L0.label + "（还没点过词）");
+}
+
+/* 游戏词库：按词汇量分级；优先当前语言生词本（learning 态优先）→ 高频词表 */
+function gameWords(n){
+  const L0 = vocabLevel();
+  const out = [];
+  const seen = new Set();
+  const push = (w, zh) => {
+    const low = String(w || "").toLowerCase();
+    if(!low || seen.has(low)) return;
+    if(low.length < L0.minLen || low.length > L0.maxLen) return;
+    const g = wqCleanGloss(zh);
+    if(!g || !/[\u4e00-\u9fff]/.test(g)) return;
+    seen.add(low);
+    out.push({ w: low, zh: g });
+  };
+
+  /* ① 生词本里「学习中」的词优先（这些正是该练的） */
+  try{
+    const st = wordStates() || {};
+    const learning = [];
+    const mastered = [];
+    for(const [k, v] of Object.entries(st)){
+      if(!v || v.st === -1) continue;
+      const w = String(v.w || k || "").toLowerCase();
+      const d = (typeof dictEntry === "function") ? dictEntry(w) : null;
+      const zh = d ? String(d[1]).split(/[,，;；]/)[0] : (v.zh || "");
+      (v.st === 1 ? learning : mastered).push({ w, zh });
+    }
+    for(const x of learning) push(x.w, x.zh);
+    for(const x of mastered) push(x.w, x.zh);
+  }catch(e){}
+
+  if(out.length >= n) return out.slice(0, n);
+
+  /* ② 高频词表按难度补足 */
   const common = window.LZ_WQ_COMMON || [];
   for(const x of common){
-    if(!x || !x.w || seen.has(x.w)) continue;
-    seen.add(x.w);
-    out.push({ w: x.w, zh: wqCleanGloss(x.zh) });
+    if(!x || !x.w) continue;
+    push(x.w, x.zh);
     if(out.length >= n) break;
   }
-  return out;
+  /* ③ 还不够就放宽长度限制，从词典里按难度抽 */
+  if(out.length < n){
+    try{
+      const G = window.LIZ_DICT || {};
+      const keys = Object.keys(G).filter(k => /^[a-z]+$/.test(k) && k.length >= L0.minLen && k.length <= Math.max(L0.maxLen, 12));
+      for(let i = 0; i < 3000 && out.length < n; i++){
+        const k = keys[Math.floor(Math.random() * keys.length)];
+        push(k, String((G[k] || [])[1] || ""));
+      }
+    }catch(e){}
+  }
+  return out.slice(0, n);
 }
+
 function gameSourceLabel(){
-  const n = (store.vocab || []).length;
-  return n ? "词库：我的生词本（" + n + " 词）" : "词库：高频词（生词本为空）";
+  const L0 = vocabLevel();
+  const base = L0.n ? ("生词本 " + L0.n + " 词") : "高频词表";
+  return "词库：" + base + " · 难度 " + L0.label + "（" + L0.minLen + "–" + L0.maxLen + " 字母）";
 }
 function gameSpeak(word){
   try{
@@ -7620,6 +7746,12 @@ function gmPick(i){
     }
   } else {
     GM.miss++; gmHud();
+    /* 错配的词给解释 */
+    try{
+      const wrongC = a.c.side === "en" ? a.c : b.c;
+      const gmTip = document.getElementById("gmTip");
+      if(gmTip) gmTip.innerHTML = wrongExplainHTML(wrongC.text, "");
+    }catch(e){}
     a.el.classList.add("bad"); b.el.classList.add("bad");
     setTimeout(() => {
       a.el.classList.remove("sel","bad"); b.el.classList.remove("sel","bad");
@@ -7733,7 +7865,7 @@ function spSubmit(){
     /* 指出第一个不同的位置 */
     let k = 0; while(k < got.length && k < want.length && got[k] === want[k]) k++;
     const mark = want.split("").map((ch, i) => i === k ? `<b style="color:#C0392B">${escHtml(ch)}</b>` : escHtml(ch)).join("");
-    if(fb) fb.innerHTML = `❌ 差一点。正确答案是：${mark}<br><span class="tip">你打的是 ${escHtml(got)}</span>`;
+    if(fb) fb.innerHTML = wrongExplainHTML(want, got, "正确答案：" + want);
     try{ if(typeof recordLookup === "function") recordLookup(want); }catch(e){}
     const s = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
     s("spWrong", SP.wrong); s("spRight", SP.right);
@@ -7796,6 +7928,10 @@ function gkAnswer(picked, correct){
     setTimeout(gkAiMove, 500);
   } else {
     toast("❌ 答错了，这步让给对手");
+    try{
+      const ans2 = document.getElementById("gkTip");
+      if(ans2) ans2.innerHTML = wrongExplainHTML(correct, picked);
+    }catch(e){}
     try{ if(typeof recordLookup === "function") recordLookup(String(correct).toLowerCase()); }catch(e){}
     GK.turn = "ai";
     setTimeout(gkAiMove, 400);
@@ -13242,6 +13378,23 @@ function asmSubmit(){
 /* =====================================================
   十一·C 个性化设置
 ===================================================== */
+/* 一键跳到 AI 配置（从任意 AI 页面的状态条触发） */
+function openAiConfig(){
+  go("settings");
+  setTimeout(()=>{
+    const card = document.getElementById("aiKeyCard");
+    if(card){
+      card.scrollIntoView({ behavior:"smooth", block:"center" });
+      card.style.boxShadow = "0 0 0 3px var(--brand-soft)";
+      setTimeout(()=>{ card.style.boxShadow = ""; }, 1600);
+      const inp = document.getElementById("aiKeyInput");
+      if(inp) setTimeout(()=>inp.focus(), 400);
+    } else {
+      try{ renderSettings(); }catch(e){}
+      setTimeout(()=>{ const c2 = document.getElementById("aiKeyCard"); if(c2) c2.scrollIntoView({behavior:"smooth",block:"center"}); }, 300);
+    }
+  }, 260);
+}
 function saveAiBase(){
   const v = (document.getElementById("aiBaseInput")?.value || "").trim();
   if(!v){ toast("先粘贴后端地址"); return; }
@@ -13279,7 +13432,9 @@ async function refreshAiStatus(){
             : "⚠️ AI 未开启：点「设置 → AI 能力」填一个 Key，或继续用本地替代方案";
   document.querySelectorAll(".ai-status").forEach(el => {
     el.className = "ai-status " + (m ? "ok" : "off");
-    el.textContent = txt;
+    el.innerHTML = escHtml(txt) + (m ? "" : ` <button class="ai-status-btn" onclick="openAiConfig()">去配置 →</button>`);
+    el.style.cursor = m ? "default" : "pointer";
+    el.onclick = m ? null : openAiConfig;
   });
   const st = document.getElementById("aiKeyState");
   if(st) st.textContent = txt;
@@ -13298,24 +13453,28 @@ function renderSettings(){
       card0.innerHTML = `<b>🤖 AI 能力（可选）</b>
         <div class="sub">填一个智谱 GLM-4-Flash 的 Key 就能开启 AI 解析 / 陪读 / 连载 / 批改 / 定制新闻。
         Key 只存在你自己的浏览器里，不上传服务器；不填也不影响其他功能（会走本地替代）。</div>
-        <div class="ai-key-state">当前状态：<b>${cur}</b></div>
+        <div class="ai-key-state" id="aiKeyState">当前状态：<b>${cur}</b></div>
 
-        <div style="font:600 13px var(--font);margin:12px 0 6px">方式一（推荐）：填你自己部署的后端地址</div>
+        <div style="font:600 13px var(--font);margin:12px 0 6px">方式一（最简单）：填 API Key，立刻就能用</div>
+        <div class="lang-row">
+          <input class="ai-input" id="aiKeyInput" type="password" placeholder="粘贴智谱 API Key（GLM-4-Flash 免费）" style="flex:1;min-width:220px">
+          <button class="btn small" onclick="saveAiKey()">保存并启用</button>
+          <button class="btn ghost small" onclick="clearAiKey()">清除</button>
+        </div>
+        <div class="tip" style="margin-top:4px">
+          获取：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → API Keys</a>。
+          Key 存在你自己的浏览器里，请求时随同发给站点后端转发（不会写进代码，也不会被其他用户看到）。
+        </div>
+
+        <div style="font:600 13px var(--font);margin:16px 0 6px">方式二：填你自己部署的后端地址</div>
         <div class="lang-row">
           <input class="ai-input" id="aiBaseInput" placeholder="https://lizzread.你的子域.workers.dev" style="flex:1;min-width:220px">
           <button class="btn small" onclick="saveAiBase()">保存地址</button>
         </div>
         <div class="tip" style="margin-top:4px">把 Cloudflare Workers 部署后得到的域名粘进来即可。这样 GitHub Pages 上的站点也能用 AI。</div>
 
-        <div style="font:600 13px var(--font);margin:14px 0 6px">方式二：本机填 API Key（仅部分服务商允许浏览器直连）</div>
-        <div class="lang-row">
-          <input class="ai-input" id="aiKeyInput" type="password" placeholder="粘贴 API Key" style="flex:1;min-width:200px">
-          <button class="btn small" onclick="saveAiKey()">保存 Key</button>
-          <button class="btn ghost small" onclick="clearAiKey()">清除</button>
-        </div>
         <div class="tip" style="margin-top:4px">
-          ⚠️ 智谱等多数服务商<b>不允许浏览器直连</b>（CORS 限制），会提示「Failed to fetch」。这种情况请用方式一。
-          Key 获取：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → API Keys</a>
+          如有自己的 Cloudflare Worker / Vercel 后端，把域名粘在这里（不带末尾斜杠），前端就会优先走它。
         </div>`;
       host0.appendChild(card0);
     }

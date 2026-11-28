@@ -9,8 +9,15 @@ export default {
     if(url.pathname === "/api/ai/chat"){
       if(request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
       if(request.method !== "POST") return json({ ok: false, message: "只支持 POST" }, 405);
-      const key = env.ZHIPU_API_KEY || "";
-      if(!key) return json({ ok: false, configured: false, message: "服务端未配置 ZHIPU_API_KEY" });
+      /* Key 来源（按优先级）：
+         ① 服务端环境变量 ZHIPU_API_KEY（推荐，用户无感）
+         ② 请求头 x-user-key / Authorization —— 用户在站内自己填的 Key
+         这样即使没配环境变量，用户也能在「设置 → AI 能力」里填自己的 Key 直接用 */
+      const hdr = request.headers.get("x-user-key") || "";
+      const auth = request.headers.get("authorization") || "";
+      const userKey = (hdr || (/^Bearer\s+/i.test(auth) ? auth.replace(/^Bearer\s+/i, "") : "")).trim();
+      const key = (env.ZHIPU_API_KEY || userKey || "").trim();
+      if(!key) return json({ ok: false, configured: false, message: "服务端未配置 ZHIPU_API_KEY，也没有用户 Key" });
       let body = {};
       try{ body = await request.json(); }catch(e){ body = {}; }
       const messages = Array.isArray(body.messages) ? body.messages.slice(-12) : [];
@@ -73,7 +80,7 @@ export default {
 function cors(){
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-key",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS"
   };
 }

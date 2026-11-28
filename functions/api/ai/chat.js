@@ -3,9 +3,12 @@
    Key 只从环境变量 ZHIPU_API_KEY 读取（Pages 后台配置），前端拿不到。 */
 export async function onRequestPost(context){
   const { request, env } = context;
-  const key = env.ZHIPU_API_KEY || "";
+  const hdr = request.headers.get("x-user-key") || "";
+  const auth = request.headers.get("authorization") || "";
+  const userKey = (hdr || (/^Bearer\s+/i.test(auth) ? auth.replace(/^Bearer\s+/i, "") : "")).trim();
+  const key = (env.ZHIPU_API_KEY || userKey || "").trim();
   if(!key){
-    return json({ ok:false, configured:false, message:"服务端未配置 ZHIPU_API_KEY" });
+    return json({ ok:false, configured:false, message:"服务端未配置 ZHIPU_API_KEY，也没有用户 Key" });
   }
   let body = {};
   try{ body = await request.json(); }catch(e){ body = {}; }
@@ -44,7 +47,7 @@ export async function onRequestOptions(){
 function cors(){
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-key",
     "Access-Control-Allow-Methods": "POST, OPTIONS"
   };
 }

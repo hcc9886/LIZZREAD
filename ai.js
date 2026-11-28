@@ -82,9 +82,12 @@
     _probe = false;
     for(const ep of endpoints()){
       try{
-        const r = await fetch(ep, { method:"POST", headers:{"Content-Type":"application/json"},
+        const hdrs = { "Content-Type": "application/json" };
+        const uk0 = userKey();
+        if(uk0) hdrs["x-user-key"] = uk0;
+        const r = await fetch(ep, { method:"POST", headers: hdrs,
           body: JSON.stringify({ messages:[{ role:"user", content:"ping" }], max_tokens: 4 }),
-          signal: AbortSignal.timeout(8000) });
+          signal: AbortSignal.timeout(10000) });
         if(!r.ok) continue;
         const j = await r.json();
         if(j && j.configured){ _probe = "server"; return _probe; }
@@ -107,7 +110,11 @@
     if(m === "server"){
       for(const ep of endpoints()){
         try{
-          const r = await fetch(ep, { method:"POST", headers:{"Content-Type":"application/json"},
+          const hdrs = { "Content-Type": "application/json" };
+          /* 用户填了自己的 Key 就带上，后端没有环境变量时会用它 */
+          const uk = userKey();
+          if(uk) hdrs["x-user-key"] = uk;
+          const r = await fetch(ep, { method:"POST", headers: hdrs,
             body: JSON.stringify({ messages, temperature: opt.temperature ?? 0.7, max_tokens: opt.maxTokens || 800 }),
             signal: AbortSignal.timeout(opt.timeout || 45000) });
           if(!r.ok) continue;

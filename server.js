@@ -662,8 +662,11 @@ const server = http.createServer(async (req, res) => {
   /* /api/ai/chat —— AI 代理（智谱 GLM-4-Flash，免费）
      Key 只放在服务端环境变量 ZHIPU_API_KEY，前端拿不到。 */
   if(u.pathname === '/api/ai/chat' && req.method === 'POST'){
-    const key = process.env.ZHIPU_API_KEY || '';
-    if(!key){ sendJSON(res, 200, { ok:false, configured:false, message:'服务端未配置 ZHIPU_API_KEY' }); return; }
+    const hdr = String(req.headers['x-user-key'] || '');
+    const auth = String(req.headers['authorization'] || '');
+    const userKey = (hdr || (/^Bearer\s+/i.test(auth) ? auth.replace(/^Bearer\s+/i, '') : '')).trim();
+    const key = (process.env.ZHIPU_API_KEY || userKey || '').trim();
+    if(!key){ sendJSON(res, 200, { ok:false, configured:false, message:'服务端未配置 ZHIPU_API_KEY，也没有用户 Key' }); return; }
     let body = '';
     try{
       body = await new Promise(resolve => {
