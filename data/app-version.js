@@ -1,1 +1,1 @@
-window.LZ_BUILD={version:"3.8.0",build:"2026-11-29"};
+window.LZ_BUILD={version:"3.8.1",build:"2026-11-29"};

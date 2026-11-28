@@ -4129,7 +4129,10 @@ function renderRichWordCard(word, low){
     <div class="rw-phon">${escHtml(phon)}</div>
     ${(()=>{
       if(!groups.length){
-        return cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "";
+        if(cached) return `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>`;
+        /* 词典没收录 → 先放骨架，随后异步补「机翻释义 + 英英定义」 */
+        return `<div class="rw-pos-row" id="rwAutoFill"><span class="rw-pos">—</span>
+          <span class="rw-sense dim">正在查这个词…</span></div>`;
       }
       /* 每个词性一行，但只显示前 2 个义项，其余折叠起来 */
       const rows = [];
@@ -4197,8 +4200,58 @@ function renderRichWordCard(word, low){
     })()}
     ${cols.length ? `<div class="rw-block"><b>词组</b>${cols.map(c => `
       <div class="rw-col"><span>${escHtml(c.phrase)}</span><span class="dim">${escHtml(c.zh)}</span></div>`).join("")}</div>` : ""}
-    ${!groups.length && !cached && !exs.length ? `<div class="rw-block dim">这一步没取到释义，点下方「更多释义」可再翻一次。</div>` : ""}
   `;
+
+  /* 词典没收录：异步用「机翻 + 英英词典」补上，并刷新音标 */
+  if(!groups.length && !cached){
+    autoFillWordCard(low);
+  }
+}
+
+/* 词典未收录时的兜底：机翻中文释义 + dictionaryapi 英英定义与音标 */
+async function autoFillWordCard(low){
+  const box = () => document.getElementById("rwAutoFill");
+  let zh = "";
+  try{
+    zh = (_zhCache && _zhCache[low]) || (await mtFetch(low)) || "";
+    if(zh) { _zhCache[low] = zh; try{ _saveZhCache(); }catch(e){} }
+  }catch(e){}
+  let en = "", phon = "";
+  try{
+    const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(low),
+      { signal: AbortSignal.timeout(7000) });
+    if(r.ok){
+      const j = await r.json();
+      const e0 = (j && j[0]) || {};
+      phon = e0.phonetic || ((e0.phonetics || []).find(p => p.text) || {}).text || "";
+      const defs = [];
+      for(const m of (e0.meanings || [])){
+        for(const d of (m.definitions || [])){
+          if(d.definition) defs.push((m.partOfSpeech ? m.partOfSpeech + ". " : "") + d.definition);
+          if(defs.length >= 3) break;
+        }
+        if(defs.length >= 3) break;
+      }
+      en = defs[0] || "";
+      if(phon && _dictCache) {
+        _dictCache[low] = _dictCache[low] || {};
+        _dictCache[low].phon = _dictCache[low].phon || phon;
+        try{ _saveEnCache && _saveEnCache(); }catch(e){}
+      }
+    }
+  }catch(e){}
+  const el = box();
+  if(el){
+    const rows = [];
+    if(zh) rows.push(`<div class="rw-pos-row"><span class="rw-pos">释义</span><span class="rw-sense">${escHtml(zh)}</span></div>`);
+    if(en) rows.push(`<div class="rw-pos-row"><span class="rw-pos">英英</span><span class="rw-sense">${escHtml(en)}</span></div>`);
+    el.innerHTML = rows.length ? rows.join("")
+      : `<div class="rw-pos-row"><span class="rw-pos">—</span><span class="rw-sense dim">这个词本地词典和在线词典都没查到，点下方「✨ AI 解析」让 AI 讲。</span></div>`;
+  }
+  if(phon){
+    const ph = document.querySelector("#shDef .rw-phon");
+    if(ph && !ph.textContent.trim()) ph.textContent = phon;
+  }
 }
 
 /* ================= 更新记录 + 立即更新 ================= */
@@ -4225,7 +4278,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.1"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -12050,8 +12103,9 @@ function wordClick(e){
   const localZhDef = d ? `${d[0]} ${d[1]}`
     : (_offHint ? `（离线例句）${_offHint}`
     : (lc === "en" ? "（本地词典未收录，以下为自动生成的参考信息）" : ""));
-  if(localZhDef || (zhCached && lc !== "en")){
-    /* 富词卡：任何语言都走这里——音标 / 多义项 / 助记 / 例句 / 词组 / 词族 / AI 解析 */
+  if(lc === "en" || localZhDef || (zhCached && lc !== "en")){
+    /* 富词卡：任何语言都走这里——音标 / 多义项 / 助记 / 例句 / 词组 / 词族 / AI 解析。
+       英语词典没收录时也不降级成纯文本，而是先渲染骨架再异步补齐。 */
     try{ renderRichWordCard(sheetWord, low); }
     catch(e){ zhEl.textContent = localZhDef || zhCached || ""; }
     try{ renderVbButtons(low); }catch(e){}

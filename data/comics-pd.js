@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 59 期。 */
+   由 scripts/gen-comics.py 自动生成，共 62 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "blondie-bumstead-family-blondie-1968",
@@ -44,6 +44,39 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Buster%20Brown"
+ },
+ {
+  "id": "calvinhobbes-bill-watterson-at-kenyon",
+  "file": "comics/calvinhobbes-bill-watterson-at-kenyon.jpg",
+  "t": "Calvin and Hobbes",
+  "tzh": "卡尔文与霍布斯",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ABill_Watterson_at_Kenyon.jpg"
+ },
+ {
+  "id": "calvinhobbes-calvin-ellis",
+  "file": "comics/calvinhobbes-calvin-ellis.jpg",
+  "t": "Calvin and Hobbes",
+  "tzh": "卡尔文与霍布斯",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ACalvin_ellis.jpg"
+ },
+ {
+  "id": "calvinhobbes-thomas-hobbes-portrait",
+  "file": "comics/calvinhobbes-thomas-hobbes-portrait.jpg",
+  "t": "Calvin and Hobbes",
+  "tzh": "卡尔文与霍布斯",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AThomas_Hobbes_%28portrait%29.jpg"
  },
  {
   "id": "hooligan-1905-04-09",
