@@ -37,7 +37,7 @@
 <script src="data/books-pg-multi2.js?v=1" defer></script>
 <script src="data/books-zh-classics.js?v=1" defer></script>
 <script src="data/wq-common.js?v=1" defer></script>
-<script src="data/comics-pd.js?v=1" defer></script>
+<script src="data/comics-pd.js?v=2" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
 <script src="ai.js?v=3"></script>
@@ -385,6 +385,34 @@ header>.nav{position:relative}
   box-shadow:0 14px 40px rgba(0,0,0,.16);max-width:92vw;transition:.25s}
 .loop-hint.in{opacity:1;transform:translate(-50%,0)}
 .lh-sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+/* ============ 漫画阅读器 ============ */
+.cx-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.cx-stage{position:relative;border:1px solid var(--border);border-radius:12px;background:#111;overflow:hidden}
+.cx-scroll.cx-v{max-height:78vh;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.cx-scroll.cx-v .cx-page{line-height:0}
+.cx-scroll.cx-v .cx-page img{width:100%;height:auto;display:block;cursor:crosshair}
+.cx-scroll.cx-h{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0}
+.cx-scroll.cx-h .cx-page{flex:0 0 100%;scroll-snap-align:center;line-height:0}
+.cx-scroll.cx-h .cx-page img{width:100%;height:auto;display:block;cursor:crosshair}
+.cx-nav{position:absolute;left:0;right:0;bottom:8px;display:flex;align-items:center;justify-content:center;gap:12px;
+  background:rgba(0,0,0,.6);color:#fff;padding:6px 12px;border-radius:20px;width:max-content;margin:0 auto;font-size:12.5px}
+.cx-nav .btn{background:rgba(255,255,255,.15);color:#fff;border:none}
+.cx-stage{position:relative}
+.cx-nav{pointer-events:auto}
+
+.cx-hit{position:fixed;z-index:9400;display:none}
+.cx-hit-box{background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.28);font-size:13px;line-height:1.65}
+.cx-orig{font:15px/1.6 var(--read-font, Georgia, serif);margin-bottom:6px}
+.cx-zh{color:var(--muted);border-top:1px dashed var(--border);padding-top:6px}
+.cx-acts{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
+
+/* 漫画书架卡片 */
+.comic-thumb{position:relative}
+.comic-lic-tag{position:absolute;left:6px;top:6px;font-size:10px;background:rgba(11,110,79,.9);color:#fff;
+  border-radius:4px;padding:1px 6px}
+.comic-card{cursor:pointer;transition:.15s}
+.comic-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.1)}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1251,8 +1279,8 @@ body.no-zh .sent .zh{display:none}
 
   <!-- ============ AI 原创连载 ============ -->
   <section class="view" id="view-serial">
-    <h2 class="sec">📖 AI 原创连载</h2>
-    <div class="sub">按题材和等级生成原创英文故事，读完接着下一章。</div>
+    <h2 class="sec">📖 AI 原创连载（已下线）</h2>
+    <div class="sub">这个功能已从导航移除。如果你之前生成过章节，仍可在下面查看；要写故事建议用「AI 工具 → 生词故事」。</div>
     <div class="lang-row" style="margin:10px 0;flex-wrap:wrap" id="serialGenres"></div>
     <div class="lang-row" style="margin-bottom:10px;flex-wrap:wrap" id="serialLevels"></div>
     <div class="lang-row" style="margin-bottom:12px">
@@ -1279,6 +1307,27 @@ body.no-zh .sent .zh{display:none}
     </div>
     <div class="tip" id="rssTip">点「刷新」即可抓取最新内容。抓不到时可以直接用「📖 阅读模式」看官网。</div>
     <div id="rssList" class="rss-list"></div>
+  </section>
+
+  <!-- ============ 漫画阅读器（封面 → 翻页/滚动 → 点字翻译） ============ -->
+  <section class="view" id="view-comic">
+    <div class="page-head">
+      <button class="back" onclick="comicExit()">← 返回漫画书架</button>
+      <h2 class="sec" id="cxTitle">漫画</h2>
+      <div class="sub" id="cxMeta"></div>
+    </div>
+    <div class="cx-bar">
+      <button class="chip on" id="cxModeV" onclick="comicMode('v')">↕ 上下滚动</button>
+      <button class="chip" id="cxModeH" onclick="comicMode('h')">↔ 左右翻页</button>
+      <button class="chip" onclick="cxTap('toggle')" id="cxTapBtn">👆 点字翻译：开</button>
+      <span class="tip" style="margin:0" id="cxPos"></span>
+      <button class="btn ghost small" style="margin-left:auto" onclick="cxZoom(1)">＋</button>
+      <button class="btn ghost small" onclick="cxZoom(-1)">－</button>
+    </div>
+    <div class="cx-stage" id="cxStage">
+      <div class="cx-scroll" id="cxScroll"></div>
+    </div>
+    <div class="cx-hit" id="cxHit" style="display:none"></div>
   </section>
 
   <!-- ============ 漫画翻译 ============ -->
@@ -1543,10 +1592,8 @@ body.no-zh .sent .zh{display:none}
     <h2 class="sec">🎬 看视频学</h2>
     <div class="sub">导入自己的视频和字幕（SRT / VTT），画面下方逐句中英对照，点句子跳转、点词查义，全部在本机处理，不上传。</div>
     <div class="lang-row" style="margin:10px 0">
-      <button class="btn small" onclick="document.getElementById('vidFile').click()">选择视频/音频</button>
-      <input type="file" id="vidFile" accept="video/*,audio/*" multiple style="display:none" onchange="loadVideoFile(this)">
-      <button class="btn ghost small" onclick="document.getElementById('subFile').click()">导入字幕 SRT/VTT</button>
-      <input type="file" id="subFile" accept=".srt,.vtt,text/plain" style="display:none" onchange="loadSubtitleFile(this)">
+      <button class="btn small" onclick="document.getElementById('vidAll').click()">📁 一次导入（视频 + 字幕一起选）</button>
+      <input type="file" id="vidAll" accept="video/*,audio/*,.srt,.vtt,text/plain" multiple style="display:none" onchange="loadMediaAll(this)">
       <button class="btn ghost small" onclick="loadDemoSubs()">载入示例字幕试试</button>
     </div>
     <div class="tip" id="vidTip">① 先「选择视频/音频」（可多选：视频 + 同名字幕会自动配对）② 再「导入字幕」③ 字幕列表出现后即可逐句点、逐句听。</div>
@@ -3500,7 +3547,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.3.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.4.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -4422,37 +4469,42 @@ function rssFill(){
   }
 }
 async function rssFetch(url){
-  /* 三条路，全部不依赖自建后端就能跑：
-     ① 同源后端（Cloudflare Worker / Vercel / 本地 server.js）
-     ② r.jina.ai 公开文本代理（浏览器里可直接 fetch，返回 Markdown）
-     ③ allorigins 公开 CORS 代理（返回原始 XML）
-     只有三条都失败才提示。 */
-  for(const ep of ["api/feed?url=" + encodeURIComponent(url), "public/api/feed?url=" + encodeURIComponent(url)]){
-    try{
-      const r = await fetch(ep, { signal: AbortSignal.timeout(20000) });
-      if(!r.ok) continue;
-      const j = await r.json();
-      if(j && j.ok && j.xml) return { xml: j.xml, via: "后端" };
-    }catch(e){}
-  }
-  /* ② r.jina.ai：返回 Markdown，转成可解析的条目 */
+  /* 三条路同时竞速，谁先成功用谁；总等待上限 12 秒，避免一直「加载中」 */
+  const enc = encodeURIComponent(url);
+  const tries = [
+    (async()=>{
+      for(const ep of ["api/feed?url=" + enc, "public/api/feed?url=" + enc]){
+        try{
+          const r = await fetch(ep, { signal: AbortSignal.timeout(9000) });
+          if(!r.ok) continue;
+          const j = await r.json();
+          if(j && j.ok && j.xml) return { xml: j.xml, via: "后端" };
+        }catch(e){}
+      }
+      return null;
+    })(),
+    (async()=>{
+      try{
+        const r = await fetch("https://r.jina.ai/" + url, { signal: AbortSignal.timeout(11000) });
+        if(!r.ok) return null;
+        const items = rssFromMarkdown(await r.text());
+        return items.length ? { json: items, via: "在线代理" } : null;
+      }catch(e){ return null; }
+    })(),
+    (async()=>{
+      try{
+        const r = await fetch("https://api.allorigins.win/raw?url=" + enc, { signal: AbortSignal.timeout(11000) });
+        if(!r.ok) return null;
+        const xml = await r.text();
+        return /<rss|<feed|<channel/i.test(xml) ? { xml, via: "在线代理" } : null;
+      }catch(e){ return null; }
+    })()
+  ];
   try{
-    const r = await fetch("https://r.jina.ai/" + url, { signal: AbortSignal.timeout(35000) });
-    if(r.ok){
-      const t = await r.text();
-      const items = rssFromMarkdown(t);
-      if(items.length) return { json: items, via: "在线代理" };
-    }
+    const winner = await Promise.any(tries.map(p => p.then(v => { if(!v) throw new Error("no"); return v; })));
+    if(winner) return winner;
   }catch(e){}
-  /* ③ allorigins：拿原始 XML */
-  try{
-    const r = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url), { signal: AbortSignal.timeout(30000) });
-    if(r.ok){
-      const xml = await r.text();
-      if(/<rss|<feed|<channel/i.test(xml)) return { xml, via: "在线代理" };
-    }
-  }catch(e){}
-  return { error: "这个源暂时抓不到（可能需要登录或被限流）。可以点「📖 阅读模式」直接看官网首页。" };
+  return { error: "这个源暂时抓不到。可以点「📖 阅读模式」直接看官网。" };
 }
 /* 从 r.jina.ai 的 Markdown 里抽标题列表 */
 function rssFromMarkdown(t){
@@ -4552,6 +4604,172 @@ function mangaFillSelects(){
   if(s && !s.options.length) s.innerHTML = MANGA_OCR_LANGS.map(([k, n]) => `<option value="${k}" ${k==="eng"?"selected":""}>${n}</option>`).join("");
   if(d && !d.options.length) d.innerHTML = MANGA_TARGETS.map(([k, n]) => `<option value="${k}" ${k===(activeLang()||"zh")?"selected":""}>${n}</option>`).join("");
 }
+/* ================= 漫画阅读器（封面 → 翻页 → 点字翻译） ================= */
+let CX = { id: null, mode: "v", tapOn: true, zoom: 1, page: 0, pages: [] };
+
+function comicShelfRender(){
+  const host = document.getElementById("comicsGrid");
+  if(!host) return;
+  const list = window.LZ_COMICS_PD || [];
+  if(!list.length){ host.innerHTML = `<div class="empty-state"><div class="empty-t">漫画未加载</div></div>`; return; }
+  host.innerHTML = list.map(c => `
+    <div class="comic-card" onclick="comicOpen('${escAttr(c.id)}')">
+      <div class="comic-thumb">
+        <img loading="lazy" width="200" height="270" src="${escAttr(c.file)}" alt="${escAttr(c.t)}">
+        <span class="comic-lic-tag">${escHtml(c.license)}</span>
+      </div>
+      <div class="comic-meta">
+        <div class="comic-t">${escHtml(c.tzh || c.t)}</div>
+        <div class="comic-d">${escHtml(c.date)} · ${escHtml(c.author)}</div>
+        <div class="comic-acts">
+          <button class="btn small" onclick="event.stopPropagation();comicOpen('${escAttr(c.id)}')">阅读</button>
+          <button class="btn ghost small" onclick="event.stopPropagation();comicTranslate('${escAttr(c.id)}')">整页翻译</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+/* 打开一部漫画：进入阅读器 */
+function comicOpen(id){
+  const c = (window.LZ_COMICS_PD || []).find(x => x.id === id);
+  if(!c){ toast("找不到这部漫画"); return; }
+  CX.id = id; CX.page = 0; CX.zoom = 1;
+  /* 同一部作品的多期合并成一个"章节"列表 */
+  const same = (window.LZ_COMICS_PD || []).filter(x => (x.tzh||x.t) === (c.tzh||c.t));
+  CX.pages = same.length > 1 ? same.map(x => x.file) : [c.file];
+  CX.issues = same;
+  const t = document.getElementById("cxTitle"); if(t) t.textContent = c.tzh || c.t;
+  const m = document.getElementById("cxMeta");
+  if(m) m.textContent = c.date + " · " + c.author + " · " + c.license + (same.length > 1 ? " · 共 " + same.length + " 期" : "");
+  go("comic");
+  setTimeout(()=>{ cxRender(); }, 60);
+}
+function comicExit(){
+  go("manga");
+  const hit = document.getElementById("cxHit"); if(hit) hit.style.display = "none";
+}
+function comicMode(m){
+  CX.mode = m;
+  const v = document.getElementById("cxModeV"), h = document.getElementById("cxModeH");
+  if(v) v.classList.toggle("on", m === "v");
+  if(h) h.classList.toggle("on", m === "h");
+  cxRender();
+}
+function cxZoom(d){
+  CX.zoom = Math.max(0.6, Math.min(3, CX.zoom + d * 0.2));
+  cxApplyZoom();
+}
+function cxApplyZoom(){
+  const imgs = document.querySelectorAll("#cxScroll .cx-page img");
+  imgs.forEach(im => { im.style.width = (CX.zoom * 100) + "%"; });
+}
+function cxRender(){
+  const host = document.getElementById("cxScroll");
+  if(!host || !CX.pages.length){ return; }
+  if(CX.mode === "v"){
+    host.className = "cx-scroll cx-v";
+    host.innerHTML = CX.pages.map((f, i) =>
+      `<div class="cx-page" data-i="${i}"><img src="${escAttr(f)}" alt="第 ${i+1} 页" onclick="cxTapAt(event,${i})"></div>`).join("");
+  } else {
+    host.className = "cx-scroll cx-h";
+    host.innerHTML = CX.pages.map((f, i) =>
+      `<div class="cx-page" data-i="${i}"><img src="${escAttr(f)}" alt="第 ${i+1} 页" onclick="cxTapAt(event,${i})"></div>`).join("")
+      + `<div class="cx-nav"><button class="btn ghost small" onclick="cxPage(-1)">‹ 上一页</button>
+         <span id="cxPageNo">1 / ${CX.pages.length}</span>
+         <button class="btn ghost small" onclick="cxPage(1)">下一页 ›</button></div>`;
+  }
+  cxApplyZoom();
+  cxPos();
+}
+function cxPage(d){
+  CX.page = Math.max(0, Math.min(CX.pages.length - 1, CX.page + d));
+  const el = document.querySelector(`#cxScroll .cx-page[data-i="${CX.page}"]`);
+  if(el) el.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" });
+  cxPos();
+}
+function cxPos(){
+  const el = document.getElementById("cxPos");
+  if(!el) return;
+  if(CX.mode === "h"){
+    el.textContent = (CX.page + 1) + " / " + CX.pages.length;
+    const no = document.getElementById("cxPageNo");
+    if(no) no.textContent = (CX.page + 1) + " / " + CX.pages.length;
+  } else el.textContent = CX.pages.length + " 页 · 点画面上的字可翻译";
+}
+
+/* 点击漫画：以点击点为中心裁一小块做 OCR + 翻译 */
+async function cxTapAt(e, pageIdx){
+  if(!CX.tapOn) return;
+  const img = e.currentTarget;
+  const rect = img.getBoundingClientRect();
+  const rx = (e.clientX - rect.left) / rect.width;
+  const ry = (e.clientY - rect.top) / rect.height;
+  await cxTranslateAt(img, rx, ry, e.clientX, e.clientY);
+}
+async function cxTranslateAt(img, rx, ry, screenX, screenY){
+  cxShowHit(screenX, screenY, "识别中…");
+  let T;
+  try{ T = await ensureTesseract(); }
+  catch(err){ cxShowHit(screenX, screenY, "识别引擎加载失败，请检查网络"); return; }
+  /* 以点击点为中心取一块（宽 40%、高 13%），再放大 4 倍 */
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const bw = Math.max(120, W * 0.40), bh = Math.max(40, H * 0.13);
+  const sx = Math.max(0, Math.min(W - bw, rx * W - bw / 2));
+  const sy = Math.max(0, Math.min(H - bh, ry * H - bh / 2));
+  const scale = Math.min(5, Math.max(2, 1400 / bw));
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(bw * scale); cv.height = Math.round(bh * scale);
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, sx, sy, bw, bh, 0, 0, cv.width, cv.height);
+  try{
+    const d = ctx.getImageData(0,0,cv.width,cv.height); const px = d.data;
+    for(let i=0;i<px.length;i+=4){
+      let g = 0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+      g = (g - 128) * 1.5 + 128;
+      px[i]=px[i+1]=px[i+2]=g;
+    }
+    ctx.putImageData(d,0,0);
+  }catch(err){}
+  const lang = ({en:"eng",zh:"chi_sim",ja:"jpn",ko:"kor",fr:"fra",de:"deu",es:"spa",it:"ita"})[activeLang()] || "eng";
+  let text = "";
+  try{
+    const { data } = await T.recognize(cv, lang, tessOpts(lang, { logger: ()=>{} }));
+    text = (data.text || "").replace(/\s+/g, " ").trim();
+  }catch(err){}
+  if(!text || text.replace(/[^A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g,"").length < 3){
+    cxShowHit(screenX, screenY, "这块没认出字，换个位置点点看");
+    return;
+  }
+  let zh = "";
+  try{ zh = await mtTo(text, showLang()); }catch(err){}
+  cxShowHit(screenX, screenY, `<div class="cx-orig">${escHtml(text)}</div>
+    <div class="cx-zh">${escHtml(zh || "（翻译暂不可用）")}</div>
+    <div class="cx-acts">
+      <button class="btn ghost small" onclick="cxSpeak('${escAttr(text)}')">🔊</button>
+      <button class="btn ghost small" onclick="cxAddWord('${escAttr(text)}')">＋生词</button>
+      <button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">✕</button>
+    </div>`);
+}
+function cxShowHit(x, y, html){
+  const el = document.getElementById("cxHit");
+  if(!el) return;
+  el.style.display = "block";
+  el.innerHTML = `<div class="cx-hit-box">${html}</div>`;
+  const w = 340;
+  let left = Math.min(window.innerWidth - w - 12, Math.max(12, x - w / 2));
+  let top = y + 16;
+  if(top + 200 > window.innerHeight) top = Math.max(12, y - 200);
+  el.style.left = left + "px";
+  el.style.top = top + "px";
+  el.style.width = w + "px";
+}
+function cxSpeak(t){ try{ gameSpeak(t); }catch(e){} }
+function cxAddWord(t){
+  const w = String(t).split(/\s+/).find(x => /^[A-Za-z'’-]{3,}$/.test(x)) || "";
+  if(w){ try{ openWordCard(w); }catch(e){ toast("先打开一本书再来加词"); } }
+}
+
 /* ================= 框选区域识别（老漫画救命功能） ================= */
 let _cropSel = null;
 function cropShow(file){
@@ -4645,7 +4863,7 @@ async function cropRun(){
   const lang = document.getElementById("cropLang")?.value || "eng";
   let text = "";
   try{
-    const { data } = await T.recognize(cv, lang, { logger: ()=>{} });
+    const { data } = await T.recognize(cv, lang, tessOpts(lang, { logger: ()=>{} }));
     text = (data.text || "").replace(/\s+/g, " ").trim();
   }catch(e){ text = ""; }
   if(!text){
@@ -4664,28 +4882,7 @@ async function cropRun(){
 }
 
 /* ================= 内置公有领域漫画 ================= */
-function renderComics(){
-  const host = document.getElementById("comicsGrid");
-  if(!host) return;
-  const list = window.LZ_COMICS_PD || [];
-  if(!list.length){ host.innerHTML = `<div class="empty-state"><div class="empty-t">内置漫画未加载</div></div>`; return; }
-  host.innerHTML = list.map(c => `
-    <div class="comic-card">
-      <div class="comic-thumb" onclick="comicOpen('${escAttr(c.id)}')">
-        <img loading="lazy" width="200" height="270" src="${escAttr(c.file)}" alt="${escAttr(c.t)}"
-          onerror="this.parentElement.innerHTML='<div class=&quot;comic-miss&quot;>图片载入失败</div>'">
-      </div>
-      <div class="comic-meta">
-        <div class="comic-t">${escHtml(c.tzh || c.t)}</div>
-        <div class="comic-d">${escHtml(c.date)} · ${escHtml(c.author)}</div>
-        <div class="comic-lic">${escHtml(c.license)}</div>
-        <div class="comic-acts">
-          <button class="btn small" onclick="comicTranslate('${escAttr(c.id)}')">翻译这一页</button>
-          <button class="btn ghost small" onclick="comicRead('${escAttr(c.id)}')">看图读</button>
-        </div>
-      </div>
-    </div>`).join("");
-}
+/* 旧版封面渲染已被 comicShelfRender 取代 */
 /* 看图读：全屏看图，点图放大 */
 function comicRead(id){
   const c = (window.LZ_COMICS_PD || []).find(x => x.id === id);
@@ -4790,16 +4987,47 @@ function mangaProgress(txt){
   el.textContent = txt;
 }
 /** 懒加载 tesseract.js（CDN，首次 ~2MB，之后浏览器缓存） */
+/* 识别引擎：本地包优先（vendor/tesseract），CDN 只做兜底。
+   这样国内网络也能用，不依赖 jsdelivr。 */
+const TESS_PATHS = [
+  { base: "vendor/tesseract/", lang: "vendor/tesseract-lang/", local: true },
+  { base: "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/", lang: "https://tessdata.projectnaptha.com/4.0.0", local: false }
+];
+let _tessPathIdx = 0;
 function ensureTesseract(){
   if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  const p = TESS_PATHS[_tessPathIdx];
   return new Promise((res, rej) => {
     const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-    s.onload = () => res(window.Tesseract);
-    s.onerror = () => rej(new Error("识别引擎加载失败（网络受限）"));
+    s.src = p.base + "tesseract.min.js";
+    s.onload = () => {
+      if(!window.Tesseract) return rej(new Error("引擎脚本没有初始化"));
+      /* 立即配置本地 worker / core / 语言包路径 */
+      try{
+        window.Tesseract.workerBlobURL = true;
+        window.__LZ_TESS = p;
+      }catch(e){}
+      res(window.Tesseract);
+    };
+    s.onerror = () => {
+      /* 本地包坏了 → 退到 CDN 再试一次 */
+      if(_tessPathIdx === 0){ _tessPathIdx = 1; ensureTesseract().then(res).catch(rej); return; }
+      rej(new Error("识别引擎加载失败（本地包和 CDN 都没成功）"));
+    };
     document.head.appendChild(s);
-    setTimeout(() => { if(!window.Tesseract) rej(new Error("识别引擎加载超时")); }, 30000);
+    setTimeout(() => { if(!window.Tesseract) rej(new Error("识别引擎加载超时")); }, 25000);
   });
+}
+/* 统一生成 recognize 的选项，带上本地路径 */
+function tessOpts(src, extra){
+  const p = window.__LZ_TESS || TESS_PATHS[0];
+  return Object.assign({
+    langPath: p.lang,
+    workerPath: p.base + "worker.min.js",
+    corePath: p.base,
+    cacheMethod: "none",
+    gzip: true
+  }, extra || {});
 }
 async function mangaTranslateTexts(texts, dst){
   const out = [];
@@ -4828,7 +5056,7 @@ async function mangaRun(){
     const url = URL.createObjectURL(_mangaFiles[i]);
     try{
       const img = await new Promise((res, rej) => { const im = new Image(); im.onload = ()=>res(im); im.onerror = rej; im.src = url; });
-      const { data } = await T.recognize(img, src, { logger: m => { if(m.status === "recognizing text") mangaProgress(`第 ${i+1} 页识别中 ${Math.round(m.progress*100)}%`); } });
+      const { data } = await T.recognize(img, src, tessOpts(src, { logger: m => { if(m.status === "recognizing text") mangaProgress(`第 ${i+1} 页识别中 ${Math.round(m.progress*100)}%`); } }));
       const W = img.naturalWidth, H = img.naturalHeight;
       /* 按行识别 → 再按纵向间距聚成"对话气泡"。
          直接用 paragraphs/blocks 会把相邻气泡粘成一段，按行聚类更准。 */
@@ -5931,6 +6159,38 @@ function loadSubtitleFile(input){
   };
   rd.readAsText(f, "utf-8");
 }
+/* 一次导入：同时接视频、音频、字幕，自动按文件名配对 */
+async function loadMediaAll(input){
+  const files = [...(input.files || [])];
+  if(!files.length){ toast("没有选到文件"); return; }
+  const isSub = f => /\.(srt|vtt|txt)$/i.test(f.name) || /^text\//.test(f.type || "");
+  const media = files.filter(f => !isSub(f));
+  const subs = files.filter(isSub);
+  const tip = document.getElementById("vidTip");
+  if(media.length){
+    await loadVideoFile({ files: media, target: { files: media } });
+  }
+  if(subs.length){
+    /* 多个字幕时，优先挑与视频同名的那个 */
+    let pick = subs[0];
+    if(media.length > 1 || media.length === 1){
+      const base = media[0] ? media[0].name.replace(/\.[^.]+$/, "").toLowerCase() : "";
+      const hit = subs.find(f => f.name.replace(/\.[^.]+$/, "").toLowerCase() === base);
+      if(hit) pick = hit;
+    }
+    await loadSubtitleFile({ files: [pick], target: { files: [pick] } });
+    if(tip) tip.textContent = "已导入 " + media.length + " 个媒体 + " + subs.length + " 条字幕（用 " + pick.name + "）";
+  } else {
+    if(tip) tip.textContent = media.length
+      ? "已导入媒体。没有字幕文件？可以点下面「用示例字幕练听写」，或以后再补字幕。"
+      : "只选了字幕，没有媒体文件。";
+  }
+  /* 没有字幕但有媒体：直接进影子跟读（可单句循环听） */
+  if(media.length && !subs.length){
+    setTimeout(()=>{ try{ setVideoTab("shadow"); }catch(e){} }, 400);
+  }
+}
+
 function setSubMode(m){
   _subMode = m;
   document.querySelectorAll("#view-video .chip").forEach(c => c.classList.remove("on"));
@@ -6394,7 +6654,7 @@ async function brReadMode(){
   try{
     const doc = frame && frame.contentDocument;
     if(doc && doc.body && doc.body.innerText.length > 300){
-      text = htmlToText(doc.documentElement.innerHTML); title = doc.title || "";
+      text = mdToPlain(htmlToText(doc.documentElement.innerHTML)); title = doc.title || "";
     }
   }catch(e){}
   if(!text || text.length < 100){
@@ -6408,7 +6668,8 @@ async function brReadMode(){
         const cut = t.indexOf("Markdown Content:");
         if(cut >= 0) t = t.slice(cut + 17);
         t = t.replace(/^\s*(Title:|URL Source:)[^\n]*\n/gi, "").trim();
-        if(t && t.length > 40 && !/^\s*<(!DOCTYPE|html)/i.test(t)){ text = t; break; }
+        t = mdToPlain(t);
+        if(t && t.length > 40) { text = t; break; }
       }catch(e){}
     }
   }
@@ -6423,6 +6684,30 @@ async function brReadMode(){
   renderBrRead();
   toast("已进入阅读模式：" + text.length + " 字");
 }
+/* Markdown → 干净正文（去掉链接语法、图片、标记符号） */
+function mdToPlain(t){
+  let x = String(t || "");
+  x = x.replace(/!\[[^\]]*\]\([^)]*\)/g, "");                    /* 图片 */
+  x = x.replace(/\[([^\]]*)\]\((https?:\/\/[^)]*)\)/g, "$1");      /* 链接 → 只要文字 */
+  x = x.replace(/^\s*#{1,6}\s*/gm, "");                            /* 标题符号 */
+  x = x.replace(/\*\*([^*]+)\*\*/g, "$1");                        /* 粗体 */
+  x = x.replace(/\*([^*]+)\*/g, "$1");                             /* 斜体 */
+  x = x.replace(/`([^`]+)`/g, "$1");                                /* 行内代码 */
+  x = x.replace(/^\s*[-*+]\s+/gm, "");                             /* 列表符号 */
+  x = x.replace(/^\s*\d+\.\s+/gm, "");                           /* 有序列表 */
+  x = x.replace(/^\s*>\s?/gm, "");                                 /* 引用 */
+  x = x.replace(/\[([^\]]{1,8})\]\([^)]*\)/g, "");               /* 残留空链接 */
+  x = x.replace(/\(\s*https?:\/\/[^)]*\)/g, "");                  /* 裸括号链接 */
+  x = x.replace(/https?:\/\/\S+/g, "");                           /* 裸 URL */
+  /* 丢掉"导航噪音"短行 */
+  const lines = x.split(/\n+/)
+    .map(l => l.trim())
+    .filter(l => l.length > 12)
+    .filter(l => !/^(Home|Menu|Search|Subscribe|Sign in|Log in|Share|Tweet|Advertisement)\b/i.test(l))
+    .filter(l => (l.match(/[A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g) || []).length / l.length > 0.45);
+  return lines.join("\n\n").trim();
+}
+
 function renderBrRead(){
   const host = document.getElementById("brReadHost");
   if(!host) return;
@@ -7575,7 +7860,7 @@ const NAV_GROUPS = {
   more: { name: "更多", items: [
     ["🖼️","漫画阅读","manga"], ["🎬","看视频学","video"], ["🌐","站内浏览","browser"],
     ["🤖","AI 工具","aitools"], ["💬","与书对话","bookchat"], ["🗣️","AI 陪读","tutor"],
-    ["📖","AI 连载","serial"], ["💎","会员","plan"], ["👤","账号","account"],
+    ["💎","会员","plan"], ["👤","账号","account"],
     ["🎨","个性化","settings"], ["🎓","教程","guide"], ["🆕","更新记录","changelog"],
     ["📮","反馈","feedback"]
   ]}
@@ -7701,7 +7986,7 @@ function go(name){
   if(name==="bookchat") bcBookName();
   if(name==="tutor"){ renderTutorScenes(); if(!_tuHistory.length) tuStart(); }
   if(name==="serial") renderSerialControls();
-  if(name==="manga"){ mangaFillSelects(); renderComics(); }
+  if(name==="manga"){ mangaFillSelects(); comicShelfRender(); }
   if(name==="rss"){ rssFill(); if(!_rssItems.length) rssLoad(); }
   if(name==="aitools") renderAitBody();
   if(name==="game-match") gmNew();

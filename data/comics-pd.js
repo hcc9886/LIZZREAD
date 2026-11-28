@@ -43,5 +43,47 @@ window.LZ_COMICS_PD = [
     date: "1904-12-10", author: "Winsor McCay",
     lang: "en", license: "Public Domain",
     src: "https://commons.wikimedia.org/wiki/File:Dream-of-the-Rarebit-Fiend-12-10-1904.jpg"
-  }
+  },
+  {
+    id: "nemo-1908-03-01", file: "comics/nemo-1908-03-01.jpg",
+    t: "Little Nemo in Slumberland", tzh: "小尼莫梦游记",
+    date: "1908-03-01", author: "Winsor McCay",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1908-03-01.jpg"
+  },
+  {
+    id: "nemo-1908-07-19", file: "comics/nemo-1908-07-19.jpg",
+    t: "Little Nemo in Slumberland", tzh: "小尼莫梦游记",
+    date: "1908-07-19", author: "Winsor McCay",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1908-07-19.jpg"
+  },
+  {
+    id: "nemo-1906-10-21", file: "comics/nemo-1906-10-21.jpg",
+    t: "Little Nemo in Slumberland", tzh: "小尼莫梦游记",
+    date: "1906-10-21", author: "Winsor McCay",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1906-10-21.jpg"
+  },
+  {
+    id: "nemo-1907-05-19", file: "comics/nemo-1907-05-19.jpg",
+    t: "Little Nemo in Slumberland", tzh: "小尼莫梦游记",
+    date: "1907-05-19", author: "Winsor McCay",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1907-05-19.jpg"
+  },
+  {
+    id: "nemo-1909-07-25", file: "comics/nemo-1909-07-25.jpg",
+    t: "Little Nemo in Slumberland", tzh: "小尼莫梦游记",
+    date: "1909-07-25", author: "Winsor McCay",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1909-07-25.jpg"
+  },
+  {
+    id: "nemo-1907-11-10", file: "comics/nemo-1907-11-10.jpg",
+    t: "Little Nemo in Slumberland", tzh: "小尼莫梦游记",
+    date: "1907-11-10", author: "Winsor McCay",
+    lang: "en", license: "Public Domain",
+    src: "https://commons.wikimedia.org/wiki/File:Little_Nemo_1907-11-10.jpg"
+  },
 ];
