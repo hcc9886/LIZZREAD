@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 44 期。 */
+   由 scripts/gen-comics.py 自动生成，共 48 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "busterbrown-1908",
@@ -68,15 +68,26 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Krazy%20Kat"
  },
  {
+  "id": "krazykat-1922-0121-krazykat-det-650",
+  "file": "comics/krazykat-1922-0121-krazykat-det-650.jpg",
+  "t": "Krazy Kat",
+  "tzh": "疯狂猫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3A1922_0121_krazykat_det_650.jpg"
+ },
+ {
   "id": "krazykat-krazy-kat-1",
   "file": "comics/krazykat-krazy-kat-1.jpg",
   "t": "Krazy Kat",
   "tzh": "疯狂猫",
   "date": "—",
-  "author": "George Herriman",
+  "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Krazy%20Kat"
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1.png"
  },
  {
   "id": "krazykat-krazy-kat-1916-07-09",
@@ -84,10 +95,32 @@ window.LZ_COMICS_PD = [
   "t": "Krazy Kat",
   "tzh": "疯狂猫",
   "date": "—",
-  "author": "George Herriman",
+  "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Krazy%20Kat"
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1916-07-09.jpg"
+ },
+ {
+  "id": "krazykat-krazy-kat-1918-09-07",
+  "file": "comics/krazykat-krazy-kat-1918-09-07.jpg",
+  "t": "Krazy Kat",
+  "tzh": "疯狂猫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1918-09-07.png"
+ },
+ {
+  "id": "krazykat-krazy-kat-by-herriman-1921-top-hat",
+  "file": "comics/krazykat-krazy-kat-by-herriman-1921-top-hat.jpg",
+  "t": "Krazy Kat",
+  "tzh": "疯狂猫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_by_Herriman_1921_-_Top_Hat.jpg"
  },
  {
   "id": "krazykat-motion-picture-cocktails-advertisement",
@@ -165,6 +198,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AMutt_and_Jeff_-_Strip_dated_10-9-24.jpg"
+ },
+ {
+  "id": "muttjeff-nestor-films-group-shot-00013616",
+  "file": "comics/muttjeff-nestor-films-group-shot-00013616.jpg",
+  "t": "Mutt and Jeff",
+  "tzh": "墨特与杰夫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ANestor_Films_group_shot_%2800013616%29.jpg"
  },
  {
   "id": "nemo-1905-10-22",

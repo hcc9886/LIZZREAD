@@ -611,6 +611,25 @@ body.nav-open .speak-bar{display:none!important}
 .lz-errbar{display:none;position:fixed;left:10px;right:10px;top:10px;z-index:9999;
   background:#8A2B22;color:#fff;font-size:12.5px;line-height:1.5;padding:10px 14px;
   border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);cursor:pointer}
+/* 📑 段落对照：一段英文 + 一段中文 */
+html.rv-para .reader{max-width:40em;margin:0 auto}
+.para-pair{margin:0 0 22px;padding-bottom:16px;border-bottom:1px dashed var(--border)}
+.para-pair:last-child{border-bottom:none}
+.pp-en{font-family:var(--read-font, Georgia, serif);font-size:calc(var(--read-size,17px) + 0.5px);
+  line-height:1.95;text-align:justify;color:var(--text)}
+.pp-en .sent{display:inline;border:none;background:none;padding:0;margin:0;box-shadow:none}
+.pp-en .sent .en{display:inline}
+.pp-en .sent .tools,.pp-en .sent .zh,.pp-en .sent .sent-tr{display:none!important}
+.pp-zh{margin-top:9px;font-size:calc(var(--read-size,17px) - 2px);line-height:1.85;
+  color:var(--muted);text-align:justify;padding-left:2px;border-left:2px solid var(--brand-soft);padding-left:10px}
+/* 词卡：词频标签 + 多义项折叠 */
+.rw-tags{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 8px}
+.rw-tag2{font-size:10.5px;line-height:1.6;border:1px solid var(--border);color:var(--muted);
+  border-radius:5px;padding:0 7px;background:var(--surface2)}
+.rw-more-senses{margin:4px 0 2px}
+.rw-more-senses .linkbtn{font-size:12.5px;color:var(--brand-deep);background:none;border:none;cursor:pointer;padding:2px 0}
+.rw-extra{margin-top:4px}
+.gr-main{font-size:14px;line-height:1.8;margin-top:3px;color:var(--text)}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -3973,6 +3992,15 @@ function wcFeedback(){
   toast("已复制词条信息，粘贴到反馈框即可");
 }
 
+function toggleMoreSenses(btn){
+  const box = btn.parentElement.querySelector(".rw-extra");
+  if(!box) return;
+  const open = btn.dataset.open === "1";
+  box.style.display = open ? "none" : "block";
+  btn.dataset.open = open ? "0" : "1";
+  const n = btn.dataset.total || "";
+  btn.textContent = open ? "展开其余义项 ▾" : "收起 ▴";
+}
 function renderRichWordCard(word, low){
   const def = document.getElementById("shDef");
   if(!def) return;
@@ -4003,11 +4031,50 @@ function renderRichWordCard(word, low){
     <div class="rw-phon">${escHtml(phon)}${phon.indexOf("ˈ") === 0 ? "" : ""}
       ${phon && /^\/ˈ?/.test(phon) ? "" : ""}${(window.LZ_LEVEL_TAG || {})[low] ? `<span class="rw-tag">${escHtml(window.LZ_LEVEL_TAG[low])}</span>` : ""}
     </div>
-    ${groups.length ? groups.map(g => `
-      <div class="rw-pos-row">
-        ${g.pos ? `<span class="rw-pos">${escHtml(g.pos)}</span>` : ""}
-        <span class="rw-sense">${g.senses.map(x => escHtml(x)).join("；")}</span>
-      </div>`).join("") : (cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "")}
+    ${(()=>{
+      if(!groups.length){
+        return cached ? `<div class="rw-pos-row"><span class="rw-sense">${escHtml(cached)}</span></div>` : "";
+      }
+      /* 每个词性一行，但只显示前 2 个义项，其余折叠起来 */
+      const rows = [];
+      let hiddenCount = 0;
+      for(const g of groups){
+        const shown = g.senses.slice(0, 2);
+        hiddenCount += Math.max(0, g.senses.length - 2);
+        rows.push(`<div class="rw-pos-row">
+          ${g.pos ? `<span class="rw-pos">${escHtml(g.pos)}</span>` : ""}
+          <span class="rw-sense">${shown.map(x => escHtml(x)).join("；")}</span>
+        </div>`);
+      }
+      if(hiddenCount > 0){
+        rows.push(`<div class="rw-more-senses">
+          <button class="linkbtn" onclick="toggleMoreSenses(this)" data-open="0">展开其余 ${hiddenCount} 个义项 ▾</button>
+          <div class="rw-extra" style="display:none">
+            ${groups.map(g => g.senses.length > 2 ? `<div class="rw-pos-row">
+              ${g.pos ? `<span class="rw-pos">${escHtml(g.pos)}</span>` : ""}
+              <span class="rw-sense">${g.senses.slice(2).map(x => escHtml(x)).join("；")}</span></div>` : "").join("")}
+          </div></div>`);
+      }
+      return rows.join("");
+    })()}
+
+    ${(()=>{
+      /* 词频标签：四级/小学/基础词 这类 */
+      const tags = [];
+      const t1 = (window.LZ_LEVEL_TAG || {})[low];
+      if(t1) tags.push(t1);
+      try{
+        const books = (typeof VOCAB_BOOKS === "function") ? (VOCAB_BOOKS() || {}) : {};
+        const BOOK_NAME = { cet4:"四级", cet6:"六级", kaoyan:"考研", ielts:"雅思", toefl:"托福", gmat:"GMAT", zhuan4:"专四", zhuan8:"专八", toeic:"托业" };
+        for(const [k, list] of Object.entries(books)){
+          if(BOOK_NAME[k] && Array.isArray(list) && list.some(w => String(w).toLowerCase() === low)) tags.push(BOOK_NAME[k]);
+        }
+      }catch(e){}
+      if((w || "").length <= 4) tags.push("基础词");
+      const uniq = [...new Set(tags)].slice(0, 4);
+      if(!uniq.length) return "";
+      return `<div class="rw-tags">${uniq.map(x => `<span class="rw-tag2">${escHtml(x)}</span>`).join("")}</div>`;
+    })()}
     ${mnemo ? `<div class="rw-block"><b>助记</b><div>${escHtml(mnemo)}</div></div>` : ""}
     <div class="rw-block rw-ai" id="rwAi"><b>AI 解析</b><div class="rw-ai-body">点下面按钮，让 AI 结合本句讲这个词</div>
       <button class="btn ghost small" style="margin-top:6px" onclick="requestAiExplain('${escAttr(String(word))}')">✨ AI 解析这个词</button>
@@ -4054,7 +4121,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.6.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.7.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -4847,6 +4914,20 @@ function findPhrases(sentence){
   return out;
 }
 
+/* 用中文一句话概括主干（配合参考图那种「主干：进步必须被阻止。」） */
+function grammarMainIdea(g, sent){
+  const subj = g && g.subj ? g.subj : "";
+  const verb = g && g.verb ? g.verb : "";
+  const zh = (sent && sent.zh) ? String(sent.zh).trim() : "";
+  if(zh){
+    /* 有译文时截取第一小句作为主干意思 */
+    const first = zh.split(/[，,；;。]/)[0].trim();
+    if(first && first.length <= 30) return first + "。";
+    return zh.slice(0, 30) + "…";
+  }
+  if(subj && verb) return subj + " " + verb + " …（把修饰成分划掉，剩下的就是主干）";
+  return "先找主语和谓语，其它成分都是修饰。";
+}
 function openGrammarSheet(){
   if(!curBook) return;
   const all = getSents(curBook.id);
@@ -4860,12 +4941,18 @@ function openGrammarSheet(){
   el.onclick = e => { if(e.target === el) el.style.display = "none"; };
   el.innerHTML = `<div class="box" style="max-height:86vh;overflow-y:auto">
     <div style="display:flex;align-items:center;gap:8px">
-      <div style="font:600 18px var(--serif)">句子精讲</div>
+      <div>
+        <div style="font:600 18px var(--serif)">长难句精讲，再绕也拆得开</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">点一下，主干、从句、时态、连藏着的语气，都讲明白</div>
+      </div>
       <button class="icobtn" style="margin-left:auto" onclick="document.getElementById('gramSheet').style.display='none'">✕</button>
     </div>
     <div class="gr-sent">${escHtml(s.en)}</div>
     <div class="gr-zh">${escHtml(s.zh || "（暂无译文，可先点「翻译这句」）")}</div>
-    <div class="gr-row"><b>主干</b><span>主语 <b>${escHtml(g.subj || "?")}</b> · 谓语 <b>${escHtml(g.verb || "?")}</b> · 共 ${g.words} 词</span></div>
+    <div class="gr-block"><b>主干</b>
+      <div class="gr-main">${escHtml(grammarMainIdea(g, s))}</div>
+      <div class="tip" style="margin:4px 0 0">主语 <b>${escHtml(g.subj || "?")}</b> · 谓语 <b>${escHtml(g.verb || "?")}</b> · 共 ${g.words} 词</div>
+    </div>
     <div class="gr-row"><b>时态</b><span>${escHtml(g.tense)}</span></div>
     <div class="gr-row"><b>语气</b><span>${escHtml(g.mood)}</span></div>
     <div class="gr-row"><b>结构</b><span>${g.hits.length ? g.hits.map(h => escHtml(h.name)).join(" · ") : "简单句（无复杂从句）"}</span></div>
@@ -4922,6 +5009,7 @@ function readerToolExtras(){
     ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
     <button class="btn ghost small" data-favbtn="${(curBook&&curBook.id)||''}" onclick="toggleFav()">${(curBook&&isFav(curBook.id))?"★":"☆"}</button>
+    <button class="btn ghost small" onclick="openGrammarSheet()">🔍 长难句精讲</button>
     <button class="btn ghost small" onclick="toggleReaderMore()">${moreOpen ? "⋯ 收起" : "⋯ 更多"}</button>
   </div>
   <div id="rdMore" class="rd-more" style="display:${moreOpen ? 'block' : 'none'}">
@@ -4987,7 +5075,7 @@ function viewSwitcherHTML(){
   const v = readView();
   return `<div class="rd-view">
     <span class="tip" style="margin:0">视图</span>
-    ${[["immersive","沉浸"],["bilingual","双语对照"],["wordwise","Word Wise"]].map(([k,n]) =>
+    ${[["immersive","沉浸"],["bilingual","双语对照"],["para","📑 段落对照"],["wordwise","Word Wise"]].map(([k,n]) =>
       `<button class="chip ${v===k?'on':''}" onclick="setReadView('${k}')">${n}</button>`).join("")}
   </div>`;
 }
@@ -11140,6 +11228,26 @@ function openReader(id){
         </div>
       </div>`;
     }
+  }else if(readView() === "para"){
+    /* ===== 段落对照：先整段英文，再整段中文，交替排列 =====
+       和「双语对照」的区别：那个是逐句翻译，读起来被打断；
+       这个是按段（4 句）成块，先读英文再读中文，适合通读。 */
+    const PER = 4;
+    const blocks = [];
+    for(let i = rng[0]; i < rng[1]; i += PER){
+      const segEnd = Math.min(rng[1], i + PER);
+      const enParts = [], zhParts = [];
+      for(let j = i; j < segEnd; j++){
+        enParts.push(`<span class="sent" data-si="${j}" id="sent-${j}"><span class="en" onclick="wordClick(event)">${wordSpans(sents[j], j)}</span></span>`);
+        const zh = sents[j].zh || "";
+        if(zh) zhParts.push(zh);
+      }
+      blocks.push(`<div class="para-pair">
+        <div class="pp-en">${enParts.join(" ")}</div>
+        ${zhParts.length ? `<div class="pp-zh">${escHtml(zhParts.join(""))}</div>` : `<div class="pp-zh dim">（这段还没翻译，点上方「翻译本章」）</div>`}
+      </div>`);
+    }
+    html = `<div class="body-flow para-flow">${blocks.join("")}</div>`;
   }else if(readLayout() === "book" || readLayout() === "ebook"){
     /* ===== 连排渲染：整章流成连续正文，不带每句卡片和工具条 =====
        每 4 句分一段（用块级 break 制造段落），段首缩进由 .body-flow 的 text-indent 控制 */
