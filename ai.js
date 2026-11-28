@@ -84,9 +84,16 @@
     }
   }
 
-  async function probe(){
-    if(_probe !== null) return _probe;
+  let _probeAt = 0;
+  async function probe(force){
+    if(_probe !== null && !force){
+      /* 负结果不永久缓存：30 秒后允许重试，避免一次网络抖动导致 AI 永久不可用 */
+      if(_probe !== false) return _probe;
+      if(Date.now() - _probeAt < 30000) return _probe;
+      _probe = null;
+    }
     _probe = false;
+    _probeAt = Date.now();
     for(const ep of endpoints()){
       try{
         const hdrs = { "Content-Type": "application/json" };
@@ -97,19 +104,19 @@
           signal: AbortSignal.timeout(10000) });
         if(!r.ok) continue;
         const j = await r.json();
-        if(j && j.configured){ _probe = "server"; return _probe; }
+        if(j && j.configured){ _probe = "server"; _probeAt = Date.now(); return _probe; }
       }catch(e){}
     }
-    if(userKey()){ _probe = "user"; return _probe; }
+    if(userKey()){ _probe = "user"; _probeAt = Date.now(); return _probe; }
     return _probe;
   }
   /* 当前 AI 通道：server / user / false */
-  async function mode(){ return await probe(); }
+  async function mode(force){ return await probe(force); }
 
   async function ask(messages, opt){
     opt = opt || {};
     const m = await probe();
-    if(!m) return null;
+    if(!m){ _probe = null; return null; }   /* 别把失败缓存成永久结果 */
     const ck = keyOf(messages);
     if(!opt.noCache && _cache.has(ck)) return _cache.get(ck);
 

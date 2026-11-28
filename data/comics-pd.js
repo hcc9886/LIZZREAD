@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 71 期。 */
+   由 scripts/gen-comics.py 自动生成，共 76 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "blondie-bumstead-family-blondie-1968",
@@ -719,13 +719,13 @@ window.LZ_COMICS_PD = [
  {
   "id": "strip-1930-10-28-mickey-mouse-comic",
   "file": "comics/strip-1930-10-28-mickey-mouse-comic.jpg",
-  "t": "strip 1930 10 28 mickey mouse comic",
-  "tzh": "strip 1930 10 28 mickey mouse comic",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
   "date": "—",
   "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=strip%201930%2010%2028%20mickey%20mouse%20comic"
+  "src": "https://commons.wikimedia.org/wiki/File%3A1930-10-28_Mickey_Mouse_comic.jpg"
  },
  {
   "id": "strip-clarence-the-cop-and-the-infernal-machine",
@@ -772,6 +772,50 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1918-09-07.png"
  },
  {
+  "id": "strip-mickey-mouse-color-stock-poster-celebrity-productions-er",
+  "file": "comics/strip-mickey-mouse-color-stock-poster-celebrity-productions-er.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMickey_Mouse_Color_Stock_Poster_%28Celebrity_Productions_era%2C_1928%29.jpg"
+ },
+ {
+  "id": "strip-mickey-mouse-friends-logo",
+  "file": "comics/strip-mickey-mouse-friends-logo.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMickey_Mouse_%26_Friends_logo.png"
+ },
+ {
+  "id": "strip-mickey-mouse-funhouse",
+  "file": "comics/strip-mickey-mouse-funhouse.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMickey_Mouse_Funhouse.png"
+ },
+ {
+  "id": "strip-mr-slicker-panel",
+  "file": "comics/strip-mr-slicker-panel.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMr_slicker_panel.png"
+ },
+ {
   "id": "strip-program-for-the-dedication-of-the-confederate-monument-s",
   "file": "comics/strip-program-for-the-dedication-of-the-confederate-monument-s.jpg",
   "t": "Comic strip",
@@ -781,5 +825,16 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AProgram_for_the_dedication_of_the_Confederate_Monument_Silent_Sam%2C_1913.jpg"
+ },
+ {
+  "id": "strip-walt-disney-mickey-mouse-building-a-building-1",
+  "file": "comics/strip-walt-disney-mickey-mouse-building-a-building-1.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AWalt_Disney_Mickey_Mouse%2C_Building_a_Building%2C_1.jpg"
  }
 ];

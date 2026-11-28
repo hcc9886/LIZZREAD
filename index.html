@@ -40,7 +40,7 @@
 <script src="data/comics-pd.js?v=4" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
-<script src="ai.js?v=6"></script>
+<script src="ai.js?v=7"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <style>html.lz-mini .lz-no-mini{display:none !important}/* 底部章导航 / 收藏 / 筛选 */
@@ -3990,9 +3990,29 @@ async function requestAiExplain(word){
   if(/\b(transcribed|copyright|project gutenberg|ebook|edition by|editorial)\b/i.test(en)){ en = ""; zh = ""; }
   if(!en){ const ctx = document.getElementById("shCtx"); en = ctx ? ctx.textContent.replace("（本句暂无译文）","") : ""; }
   if(!window.LZ_AI){ if(body) body.textContent = "AI 模块没加载上，刷新页面再试。"; if(btn) btn.disabled = false; return; }
-  const out = await window.LZ_AI.explainWord(word, en, zh);
-  if(out){ if(body) body.textContent = out; if(btn) btn.textContent = "✨ 重新解析"; }
-  else { if(body) body.textContent = "AI 这次没回应，稍后再点一次试试。上方的助记和例句是本地生成的，照样能用。"; if(btn) btn.textContent = "重试"; }
+  let out = null;
+  try{
+    out = await window.LZ_AI.explainWord(word, en, zh);
+  }catch(e){ out = null; }
+  if(!out){
+    /* 第一次失败 → 强制重新探测后端后重试一次（避免一次网络抖动就永久失败） */
+    try{
+      await window.LZ_AI.mode(true);
+      out = await window.LZ_AI.explainWord(word, en, zh);
+    }catch(e){ out = null; }
+  }
+  if(out){
+    if(body) body.textContent = out;
+    if(btn) btn.textContent = "✨ 重新解析";
+  }else{
+    const mode = window.LZ_AI && (await window.LZ_AI.mode(true).catch(()=>false));
+    if(body){
+      body.innerHTML = (mode
+        ? "AI 这次没回应（已连上，但请求超时），再点一次「重试」。"
+        : "AI 暂时连不上。可以检查网络后点「重试」；上方的助记和例句是本地生成的，照样能用。");
+    }
+    if(btn) btn.textContent = "重试";
+  }
   if(btn) btn.disabled = false;
 }
 /* ================= 词卡底部工具栏动作 ================= */
@@ -4348,7 +4368,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.2"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.3"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
