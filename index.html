@@ -40,7 +40,7 @@
 <script src="data/comics-pd.js?v=1" defer></script>
 <script src="covers/index.js?v=1" defer onload="setTimeout(()=>{try{_coverSet=null;renderLibrary&&renderLibrary();}catch(e){}},50)"></script>
 <script src="data/app-version.js?v=2"></script>
-<script src="ai.js?v=1"></script>
+<script src="ai.js?v=3"></script>
 <script src="data/local-books.js?v=1" defer onload="setTimeout(()=>{try{_LOCAL_SET.set=null;renderLibrary&&renderLibrary();}catch(e){}},60)"></script>
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <style>html.lz-mini .lz-no-mini{display:none !important}/* 底部章导航 / 收藏 / 筛选 */
@@ -359,6 +359,32 @@ header>.nav{position:relative}
 .crop-res{border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--surface)}
 .crop-orig{font:15px/1.7 var(--read-font, Georgia, serif)}
 .crop-zh{font-size:13.5px;color:var(--muted);margin-top:6px;line-height:1.7}
+.ai-key-state{font-size:13px;margin:6px 0}
+.ai-key-state b{color:var(--accent)}
+/* 今日建议 / 学习币 / 阅读闭环 */
+.study-path{margin:18px 0 6px}
+.sp-card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--surface)}
+.sp-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sp-head b{font:600 14px var(--font)}
+.sp-lang{font-size:11.5px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:1px 8px}
+.sp-coins{margin-left:auto;font-size:13px;color:var(--text)}
+.sp-coins b{color:var(--accent)}
+.sp-list{display:grid;gap:8px}
+.sp-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px dashed var(--border);
+  border-radius:10px;background:transparent;color:var(--text);cursor:pointer;text-align:left;transition:.15s}
+.sp-item:hover{border-style:solid;border-color:var(--accent);background:var(--brand-soft)}
+.sp-ic{font-size:18px;line-height:1}
+.sp-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sp-t{font:600 13.5px var(--font)}
+.sp-d{font-size:12px;color:var(--muted);line-height:1.4}
+.sp-tag{font-size:10.5px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:1px 7px;white-space:nowrap}
+.sp-stat{margin-top:10px;font-size:11.5px;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px}
+
+.loop-hint{position:fixed;left:50%;bottom:24px;transform:translate(-50%,24px);opacity:0;z-index:9300;
+  background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px 18px;
+  box-shadow:0 14px 40px rgba(0,0,0,.16);max-width:92vw;transition:.25s}
+.loop-hint.in{opacity:1;transform:translate(-50%,0)}
+.lh-sub{font-size:12.5px;color:var(--muted);margin-top:4px}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1083,6 +1109,7 @@ body.no-zh .sent .zh{display:none}
         <button class="btn ghost" onclick="go('favorites')">⭐ 收藏 <span data-favcount>0</span></button>
       </div>
     </div>
+    <div id="studyPath" class="study-path" style="min-height:200px"></div>
     <div class="home-sections">
       <a class="home-sec" href="#library" onclick="event.preventDefault();homeScrollToBooks()">
         <div class="home-sec-t">阅读</div>
@@ -3473,7 +3500,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.2.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.3.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5439,6 +5466,7 @@ function wqSubmit(){
   const monster = document.getElementById("wqMonster");
   if(got === want){
     WQ.right++; WQ.combo++;
+    coinAdd(1, "打怪");
     WQ.mHp = (WQ.mHp == null ? 3 : WQ.mHp) - 1;
     if(WQ.mHp <= 0){
       WQ.kills = (WQ.kills || 0) + 1;
@@ -7062,6 +7090,150 @@ function shareLangLink(){
   copyText(u);
   toast("已复制直达链接：" + u);
 }
+/* ================= 学习币 + 阅读闭环 + 今日建议 ================= */
+/* 学习币按学习语言隔离，存在 localStorage */
+function coinKey(){ return pk(langKey("coins")); }
+function coinGet(){
+  try{
+    const o = JSON.parse(localStorage.getItem(coinKey()) || "null") || { n: 0, log: [] };
+    return o;
+  }catch(e){ return { n: 0, log: [] }; }
+}
+function coinAdd(n, reason){
+  if(!n) return;
+  const o = coinGet();
+  o.n = Math.max(0, (o.n || 0) + n);
+  o.log = (o.log || []).slice(-99);
+  o.log.push({ n, r: reason || "", at: Date.now() });
+  try{ localStorage.setItem(coinKey(), JSON.stringify(o)); }catch(e){}
+  const el = document.getElementById("coinCount");
+  if(el) el.textContent = o.n;
+  if(n > 0 && reason) toast("🪙 +" + n + "（" + reason + "）");
+}
+function coinRender(){
+  const el = document.getElementById("coinCount");
+  if(el) el.textContent = coinGet().n || 0;
+}
+
+/* ---------- 学习数据聚合（近 7 天） ---------- */
+function studyStats(){
+  const lang = activeLang();
+  const out = { lang, vocab: 0, learning: 0, mastered: 0, due: 0, coins: 0,
+    reads7: 0, games7: 0, words7: 0, lastBook: null };
+  try{
+    const vs = wordStates() || {};
+    for(const [k, v] of Object.entries(vs)){
+      if(!v) continue;
+      if(v.st === 0) out.learning++;
+      else if(v.st === 2) out.mastered++;
+      out.vocab++;
+    }
+  }catch(e){}
+  try{ out.due = (typeof dueVocabs === "function") ? (dueVocabs() || []).length : 0; }catch(e){}
+  out.coins = coinGet().n || 0;
+  /* 阅读：progress 里最近 7 天有更新的书 */
+  try{
+    const p = store.progress || {};
+    const cut = Date.now() - 7*86400000;
+    const items = Object.values(p).filter(x => x && (x.at || 0) > cut);
+    out.reads7 = items.length;
+    const last = Object.entries(p).sort((a,b)=>((b[1].at||0)-(a[1].at||0)))[0];
+    if(last) out.lastBook = last[0];
+  }catch(e){}
+  /* 游戏 / 加词：从 coins.log 里数 */
+  try{
+    const log = coinGet().log || [];
+    const cut = Date.now() - 7*86400000;
+    const recent = log.filter(x => x.at > cut);
+    out.games7 = recent.filter(x => /游戏|打怪|消消乐|拼写|翻牌|五子棋/.test(x.r||"")).length;
+    out.words7 = recent.filter(x => /加词|生词/.test(x.r||"")).length;
+  }catch(e){}
+  return out;
+}
+
+/* ---------- 今日建议（个性化学习路径） ---------- */
+function studyPath(){
+  const st = studyStats();
+  const acts = [];
+  const langName = (LANG_INFO[activeLang()] && LANG_INFO[activeLang()].native) || activeLang();
+
+  /* 1) 有到期复习 → 最优先 */
+  if(st.due > 0){
+    acts.push({ ic:"🔁", t:"先复习 " + st.due + " 个到期词", d:"这些词今天该复习了，过一遍只要 3 分钟", go:"go('sreview')", tag:"复习" });
+  }
+  /* 2) 没有生词 → 去读书点词 */
+  if(st.vocab === 0){
+    acts.push({ ic:"📖", t:"去读一本书，点几个词", d:"生词本还是空的。读书时点任意词就能加进来", go:"homeStartReading()", tag:"阅读" });
+  }
+  /* 3) 生词多但没练过 → 玩一局 */
+  if(st.vocab >= 8 && st.games7 === 0){
+    acts.push({ ic:"🫧", t:"用消消乐巩固 " + Math.min(st.vocab, 8) + " 个生词", d:"边玩边记，比干看快", go:"go('game-match')", tag:"游戏" });
+  }
+  /* 4) 最近没读书 → 继续上次 */
+  if(st.lastBook && st.reads7 === 0){
+    acts.push({ ic:"⏯", t:"继续上次那本书", d:"已经有一阵没读了，每天 10 分钟就够", go:"openFull('" + st.lastBook + "')", tag:"阅读" });
+  }
+  /* 5) 掌握度低 → 拼装练习 */
+  if(st.vocab >= 5 && st.mastered === 0){
+    acts.push({ ic:"🧩", t:"用句子拼装练 5 句", d:"把认识的词放进句子里，记得更牢", go:"go('assembly')", tag:"练习" });
+  }
+  /* 6) 兜底：永远给一个能点的 */
+  if(acts.length < 2){
+    acts.push({ ic:"🎯", t:"做一次词汇测试", d:"看看现在大概什么水平", go:"go('test')", tag:"测试" });
+  }
+  if(acts.length < 2){
+    acts.push({ ic:"🔊", t:"听写 5 句", d:"听一句写一句，练耳朵", go:"go('video')", tag:"听力" });
+  }
+  return acts.slice(0, 3);
+}
+
+function renderStudyPath(){
+  const host = document.getElementById("studyPath");
+  if(!host) return;
+  const st = studyStats();
+  const acts = studyPath();
+  host.innerHTML = `<div class="sp-card">
+    <div class="sp-head">
+      <b>今天做点什么</b>
+      <span class="sp-lang">${escHtml((LANG_INFO[activeLang()] && LANG_INFO[activeLang()].native) || activeLang())}</span>
+      <span class="sp-coins" title="学习币">🪙 <b id="coinCount">${st.coins}</b></span>
+    </div>
+    <div class="sp-list">
+      ${acts.map(a => `<button class="sp-item" onclick="${a.go}">
+        <span class="sp-ic">${a.ic}</span>
+        <span class="sp-body"><span class="sp-t">${escHtml(a.t)}</span><span class="sp-d">${escHtml(a.d)}</span></span>
+        <span class="sp-tag">${escHtml(a.tag)}</span>
+      </button>`).join("")}
+    </div>
+    <div class="sp-stat">
+      生词 ${st.vocab}（学习中 ${st.learning} · 已掌握 ${st.mastered}）· 到期复习 ${st.due} · 近 7 天读书 ${st.reads7} 本
+    </div>
+  </div>`;
+}
+
+/* ---------- 阅读闭环：读完一章 / 加词达阈值 时提示 ---------- */
+function loopHintAfterChapter(){
+  try{
+    const st = studyStats();
+    if(st.vocab < 5) return;
+    if(document.getElementById("loopHint")) return;
+    const box = document.createElement("div");
+    box.id = "loopHint";
+    box.className = "loop-hint";
+    box.innerHTML = `<div class="lh-body">
+      <b>这一章读完了 👏</b>
+      <div class="lh-sub">用 2 分钟把这 ${Math.min(st.vocab,8)} 个生词过一遍，记得更牢。</div>
+      <div class="lang-row" style="margin-top:8px">
+        <button class="btn small" onclick="this.closest('.loop-hint').remove();go('game-match')">🫧 消消乐巩固</button>
+        <button class="btn ghost small" onclick="this.closest('.loop-hint').remove();go('game-spell')">🔊 听音拼写</button>
+        <button class="btn ghost small" onclick="this.closest('.loop-hint').remove()">先不用</button>
+      </div>
+    </div>`;
+    document.body.appendChild(box);
+    setTimeout(() => { const b = document.getElementById("loopHint"); if(b) b.classList.add("in"); }, 30);
+  }catch(e){}
+}
+
 /* ================= 学习游戏（消消乐 / 翻牌 / 拼写 / 五子棋） ================= */
 /* 游戏词库：优先当前语言生词本 → 生词本为空用高频词表 */
 function gameWords(n){
@@ -7153,6 +7325,7 @@ function gmPick(i){
     a.el.classList.add("gone"); b.el.classList.add("gone");
     a.el.classList.remove("sel"); b.el.classList.remove("sel");
     GM.done++; gmHud();
+    coinAdd(1, "游戏");
     toast("✅ " + (a.c.side === "en" ? a.c.text : b.c.text));
     if(GM.done === GM.pairs.length){
       clearInterval(GM.timer);
@@ -7215,7 +7388,8 @@ function mmFlip(i){
   if(a.c.key === b.c.key && a.c.side !== b.c.side){
     a.el.classList.add("done"); b.el.classList.add("done");
     MM.pairs++; mmHud();
-    if(MM.pairs === MM.total) toast("🎉 全部配对完成！用了 " + MM.moves + " 步");
+    coinAdd(1, "游戏");
+    if(MM.pairs === MM.total){ coinAdd(10, "游戏通关"); toast("🎉 全部配对完成！用了 " + MM.moves + " 步"); }
   } else {
     MM.lock = true;
     setTimeout(() => {
@@ -7265,6 +7439,7 @@ function spSubmit(){
   const fb = document.getElementById("spFb");
   if(got === want){
     SP.right++;
+    coinAdd(1, "游戏");
     if(fb) fb.innerHTML = `✅ 拼对了：<b>${escHtml(want)}</b>`;
     gameSpeak(want);
     setTimeout(spNext, 700);
@@ -7328,8 +7503,9 @@ function gkAnswer(picked, correct){
   if(!p) return;
   if(String(picked).toLowerCase() === String(correct).toLowerCase()){
     GK.board[p.y][p.x] = 1; GK.me++;
+    coinAdd(2, "游戏");
     gkRender();
-    if(gkWin(1)){ GK.over = true; toast("🎉 你赢了！"); return; }
+    if(gkWin(1)){ GK.over = true; coinAdd(20, "游戏胜利"); toast("🎉 你赢了！"); return; }
     GK.turn = "ai";
     const turn = document.getElementById("gkTurn"); if(turn) turn.textContent = "AI 思考中…";
     setTimeout(gkAiMove, 500);
@@ -7532,6 +7708,7 @@ function go(name){
   if(name==="game-memory") mmNew();
   if(name==="game-spell") spNew();
   if(name==="game-gomoku") gkNew();
+  if(name==="library"){ try{ renderStudyPath(); }catch(e){} }
   if(name==="favorites") renderFavorites();
   if(name==="imports") renderImports();
   if(name==="browser"){
@@ -9246,6 +9423,7 @@ function openReader(id){
       ${isFull ? `<div class="rd-endnav">
         <button class="btn ghost" onclick="jumpChapter(${fullMode.chap-1})" ${fullMode.chap===0?"disabled":""}>← 上一章</button>
         <button class="btn" onclick="jumpChapter(${fullMode.chap+1})" ${fullMode.chap===fullCache[id].chapters.length-1?"disabled":""}>下一章 →</button>
+        <button class="btn ghost small" onclick="try{loopHintAfterChapter()}catch(e){}">学 2 分钟</button>
       </div>` : ""}
       ${isFull ? `<div class="rd-foot" id="rdFoot">
         <span id="rdFootLeft">—</span>
@@ -9778,6 +9956,7 @@ function wordClick(e){
   if(lc === "zh"){ renderZhSheet(low, sheetWord, ctxEn); return; }
   const stBefore = (wordStates()[stemOf(low)]||{}).st;
   const fsNow = recordLookup(low);
+  try{ if(fsNow && (fsNow.n || 0) === 1) coinAdd(1, "加词"); }catch(e){}
   if(stBefore !== undefined && fsNow.st !== stBefore) openReader(curBook.id);
   document.getElementById("shWord").textContent = sheetWord;
   /* 平时常用义：本地词典 → 缓存机翻 → 立刻机翻显示（不再显示“联网查取中”） */
@@ -12778,8 +12957,83 @@ function asmSubmit(){
 /* =====================================================
   十一·C 个性化设置
 ===================================================== */
+function saveAiBase(){
+  const v = (document.getElementById("aiBaseInput")?.value || "").trim();
+  if(!v){ toast("先粘贴后端地址"); return; }
+  if(!/^https?:\/\//i.test(v)){ toast("地址要以 http:// 或 https:// 开头"); return; }
+  if(!window.LZ_AI){ toast("AI 模块未加载"); return; }
+  window.LZ_AI.setUserBase(v);
+  toast("已保存后端地址，正在检测…");
+  setTimeout(async ()=>{
+    const m = await window.LZ_AI.mode();
+    toast(m === "server" ? "✅ 后端连接成功，AI 可用了" : "⚠️ 连不上这个地址，检查一下是否填对、以及 Worker 是否部署成功");
+    refreshAiStatus();
+  }, 400);
+}
+function saveAiKey(){
+  const v = (document.getElementById("aiKeyInput")?.value || "").trim();
+  if(!v){ toast("先粘贴 Key"); return; }
+  if(!window.LZ_AI){ toast("AI 模块未加载"); return; }
+  window.LZ_AI.setUserKey(v);
+  toast("已保存，试试 AI 解析");
+  refreshAiStatus();
+  renderSettings && renderSettings();
+  const inp = document.getElementById("aiKeyInput"); if(inp) inp.value = "";
+}
+function clearAiKey(){
+  if(window.LZ_AI) window.LZ_AI.setUserKey("");
+  toast("已清除本机 Key");
+  refreshAiStatus();
+  renderSettings && renderSettings();
+}
+/* 各 AI 页面的状态条 */
+async function refreshAiStatus(){
+  const m = window.LZ_AI ? await window.LZ_AI.mode() : false;
+  const txt = m === "server" ? "✅ AI 已连接（服务端）"
+            : m === "user"   ? "✅ AI 已连接（你的本机 Key）"
+            : "⚠️ AI 未开启：点「设置 → AI 能力」填一个 Key，或继续用本地替代方案";
+  document.querySelectorAll(".ai-status").forEach(el => {
+    el.className = "ai-status " + (m ? "ok" : "off");
+    el.textContent = txt;
+  });
+  const st = document.getElementById("aiKeyState");
+  if(st) st.textContent = txt;
+}
+setTimeout(()=>{ try{ refreshAiStatus(); }catch(e){} }, 2200);
+
 function renderSettings(){
   setTimeout(()=>{ try{
+    /* AI Key 设置卡（纯静态站也能用 AI） */
+    const host0 = document.getElementById("view-settings");
+    if(host0 && !document.getElementById("aiKeyCard")){
+      const card0 = document.createElement("div");
+      card0.id = "aiKeyCard";
+      card0.className = "settings-card";
+      const cur = (window.LZ_AI && window.LZ_AI.hasUserKey && window.LZ_AI.hasUserKey()) ? "已设置 ✓" : "未设置";
+      card0.innerHTML = `<b>🤖 AI 能力（可选）</b>
+        <div class="sub">填一个智谱 GLM-4-Flash 的 Key 就能开启 AI 解析 / 陪读 / 连载 / 批改 / 定制新闻。
+        Key 只存在你自己的浏览器里，不上传服务器；不填也不影响其他功能（会走本地替代）。</div>
+        <div class="ai-key-state">当前状态：<b>${cur}</b></div>
+
+        <div style="font:600 13px var(--font);margin:12px 0 6px">方式一（推荐）：填你自己部署的后端地址</div>
+        <div class="lang-row">
+          <input class="ai-input" id="aiBaseInput" placeholder="https://lizzread.你的子域.workers.dev" style="flex:1;min-width:220px">
+          <button class="btn small" onclick="saveAiBase()">保存地址</button>
+        </div>
+        <div class="tip" style="margin-top:4px">把 Cloudflare Workers 部署后得到的域名粘进来即可。这样 GitHub Pages 上的站点也能用 AI。</div>
+
+        <div style="font:600 13px var(--font);margin:14px 0 6px">方式二：本机填 API Key（仅部分服务商允许浏览器直连）</div>
+        <div class="lang-row">
+          <input class="ai-input" id="aiKeyInput" type="password" placeholder="粘贴 API Key" style="flex:1;min-width:200px">
+          <button class="btn small" onclick="saveAiKey()">保存 Key</button>
+          <button class="btn ghost small" onclick="clearAiKey()">清除</button>
+        </div>
+        <div class="tip" style="margin-top:4px">
+          ⚠️ 智谱等多数服务商<b>不允许浏览器直连</b>（CORS 限制），会提示「Failed to fetch」。这种情况请用方式一。
+          Key 获取：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → API Keys</a>
+        </div>`;
+      host0.appendChild(card0);
+    }
     const host = document.getElementById("view-settings");
     if(!host || document.getElementById("clipWatchCard")) return;
     const card = document.createElement("div");

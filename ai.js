@@ -2,39 +2,126 @@
    部署版走服务端 /api/ai/chat 代理（Key 只在服务端环境变量）；
    没有后端时自动退回本地生成，静态站也不会报错。 */
 (function(){
+  /* 三条路，按优先级：
+     ① 同源后端代理（Cloudflare Worker / Vercel / 本地 server.js）—— Key 在服务端
+     ② 用户自己填的 Key（存 localStorage，只在本机）—— 纯静态站也能用 AI
+     ③ 都没有 → 各功能退回本地生成，不报错 */
   const ENDPOINTS = ["api/ai/chat", "public/api/ai/chat"];
+  const ZHIPU_DIRECT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+  const KEY_STORE = "lz_ai_user_key";
+  const BASE_STORE = "lz_ai_base";   /* 用户自填后端地址，如 https://lizzread.xxx.workers.dev */
   let _probe = null;
   const _cache = new Map();
   function keyOf(msgs){ return JSON.stringify(msgs).slice(0, 4000); }
+
+  /* ---- 用户自填 Key ---- */
+  function userKey(){
+    try{ return (localStorage.getItem(KEY_STORE) || "").trim(); }catch(e){ return ""; }
+  }
+  function setUserKey(k){
+    try{
+      const v = String(k || "").trim();
+      if(v) localStorage.setItem(KEY_STORE, v);
+      else localStorage.removeItem(KEY_STORE);
+      _probe = null;                     /* 让下次探测重新判断 */
+      _cache.clear();
+      return true;
+    }catch(e){ return false; }
+  }
+  function hasUserKey(){ return !!userKey(); }
+  /* ---- 用户自填后端地址（部署在 Cloudflare / Vercel 的自己的后端） ---- */
+  function userBase(){
+    try{ return (localStorage.getItem(BASE_STORE) || "").trim().replace(/\/+$/, ""); }catch(e){ return ""; }
+  }
+  function setUserBase(u){
+    try{
+      const v = String(u || "").trim().replace(/\/+$/, "");
+      if(v) localStorage.setItem(BASE_STORE, v);
+      else localStorage.removeItem(BASE_STORE);
+      _probe = null; _cache.clear();
+      return true;
+    }catch(e){ return false; }
+  }
+  function endpoints(){
+    const b = userBase();
+    /* 用户填了后端就优先用他的 */
+    return b ? [b + "/api/ai/chat"] : ENDPOINTS;
+  }
+  /* 直接打智谱（浏览器端，Key 只在用户自己的机器上） */
+  async function askDirect(messages, opt){
+    const key = userKey();
+    if(!key) return null;
+    try{
+      const r = await fetch(ZHIPU_DIRECT, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "glm-4-flash",
+          messages,
+          temperature: opt.temperature ?? 0.7,
+          max_tokens: opt.maxTokens || 800
+        }),
+        signal: AbortSignal.timeout(opt.timeout || 45000)
+      });
+      const t = await r.text();
+      let j = null; try{ j = JSON.parse(t); }catch(e){}
+      if(!r.ok){
+        const msg = (j && j.error && j.error.message) || ("HTTP " + r.status);
+        if(/401|invalid|token|key/i.test(msg)) return { error: "Key 无效或已过期" };
+        return { error: msg };
+      }
+      const text = j && j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : "";
+      return text ? { text } : { error: "没有返回内容" };
+    }catch(e){
+      return { error: e.message || "网络错误" };
+    }
+  }
+
   async function probe(){
     if(_probe !== null) return _probe;
     _probe = false;
-    for(const ep of ENDPOINTS){
+    for(const ep of endpoints()){
       try{
         const r = await fetch(ep, { method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ messages:[{ role:"user", content:"ping" }], max_tokens: 4 }),
           signal: AbortSignal.timeout(8000) });
         if(!r.ok) continue;
         const j = await r.json();
-        if(j && j.configured){ _probe = true; break; }
+        if(j && j.configured){ _probe = "server"; return _probe; }
       }catch(e){}
     }
+    if(userKey()){ _probe = "user"; return _probe; }
     return _probe;
   }
+  /* 当前 AI 通道：server / user / false */
+  async function mode(){ return await probe(); }
+
   async function ask(messages, opt){
     opt = opt || {};
-    if(!(await probe())) return null;
+    const m = await probe();
+    if(!m) return null;
     const ck = keyOf(messages);
     if(!opt.noCache && _cache.has(ck)) return _cache.get(ck);
-    for(const ep of ENDPOINTS){
-      try{
-        const r = await fetch(ep, { method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ messages, temperature: opt.temperature ?? 0.7, max_tokens: opt.maxTokens || 800 }),
-          signal: AbortSignal.timeout(opt.timeout || 45000) });
-        if(!r.ok) continue;
-        const j = await r.json();
-        if(j && j.ok && j.text){ if(!opt.noCache) _cache.set(ck, j.text); return j.text; }
-      }catch(e){}
+
+    /* ① 后端 */
+    if(m === "server"){
+      for(const ep of endpoints()){
+        try{
+          const r = await fetch(ep, { method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ messages, temperature: opt.temperature ?? 0.7, max_tokens: opt.maxTokens || 800 }),
+            signal: AbortSignal.timeout(opt.timeout || 45000) });
+          if(!r.ok) continue;
+          const j = await r.json();
+          if(j && j.ok && j.text){ if(!opt.noCache) _cache.set(ck, j.text); return j.text; }
+        }catch(e){}
+      }
+    }
+    /* ② 用户自填 Key */
+    const d = await askDirect(messages, opt);
+    if(d && d.text){ if(!opt.noCache) _cache.set(ck, d.text); return d.text; }
+    if(d && d.error){
+      console.warn("[LZ_AI] 用户 Key 直连失败（多数服务商不允许浏览器直连，需填后端地址）：", d.error);
+      try{ window.__LZ_AI_DIRECT_ERR = d.error; }catch(e){}
     }
     _probe = null;
     return null;
@@ -80,6 +167,7 @@
     const sys = `你是英语新闻编辑。写一篇关于「${topic}」的短文，${level || "B1"} 难度，约 ${wordCount || 180} 词，客观中立，不使用真实人物姓名与可识别细节。只输出英文正文。`;
     return await ask([{ role:"system", content: sys }, { role:"user", content: "开始写" }], { maxTokens: 700, temperature: 0.7 });
   }
-  window.LZ_AI = { probe, ask, explainWord, chatAboutBook, chatTutor, writeChapter, reviewWriting, storyFromWords, makeNews,
-    get enabled(){ return _probe === true; } };
+  window.LZ_AI = {
+    setUserKey, hasUserKey, userKey, setUserBase, userBase, mode, probe, ask, explainWord, chatAboutBook, chatTutor, writeChapter, reviewWriting, storyFromWords, makeNews,
+    get enabled(){ return !!_probe; } };
 })();
