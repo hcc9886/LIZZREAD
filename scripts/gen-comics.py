@@ -59,8 +59,10 @@ SERIES = [
 ]
 
 def series_of(name):
+    """按文件名前缀识别作品；支持 prefix- / prefix_ 两种写法。"""
+    low = name.lower()
     for pre, en, zh, au in SERIES:
-        if name.startswith(pre + "-"):
+        if low.startswith(pre + "-") or low.startswith(pre + "_"):
             return en, zh, au
     return None, None, None
 
@@ -75,7 +77,12 @@ for fn in sorted(os.listdir(CD)):
         en, zh, au2 = series_of(stem)
         au = au2
     if not en:
-        en, zh = stem.replace("-", " "), stem.replace("-", " ")
+        # 未知前缀：用「其它漫画」，不要拿文件全名当标题
+        parts = re.split(r'[-_]', stem, maxsplit=1)
+        en = zh = "其它漫画"
+        sub = parts[1] if len(parts) > 1 else ""
+        if sub:
+            en = "Comic: " + sub.replace("-", " ").strip().title()[:48]
     # 日期：从文件名里抽 YYYY-MM-DD
     dm = re.search(r'(19\\d{2}|18\\d{2})-(\\d{2})-(\\d{2})', stem)
     date = dm.group(0) if dm else (re.search(r'(19\\d{2}|18\\d{2})', stem).group(0) if re.search(r'(19\\d{2}|18\\d{2})', stem) else "—")

@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 82 期。 */
+   由 scripts/gen-comics.py 自动生成，共 88 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "blondie-bumstead-family-blondie-1968",
@@ -79,6 +79,39 @@ window.LZ_COMICS_PD = [
   "src": "https://commons.wikimedia.org/wiki/File%3AThomas_Hobbes_%28portrait%29.jpg"
  },
  {
+  "id": "cartoon-deliberations-of-congress",
+  "file": "comics/cartoon-deliberations-of-congress.jpg",
+  "t": "Editorial cartoon",
+  "tzh": "政治漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ADeliberations_of_Congress.jpg"
+ },
+ {
+  "id": "cartoon-keppler-credit-mobilier-hari-kari",
+  "file": "comics/cartoon-keppler-credit-mobilier-hari-kari.jpg",
+  "t": "Editorial cartoon",
+  "tzh": "政治漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKeppler_Credit_Mobilier_Hari-Kari.png"
+ },
+ {
+  "id": "child-childsworld01tategoog-0008",
+  "file": "comics/child-childsworld01tategoog-0008.jpg",
+  "t": "Children's book illustration",
+  "tzh": "童书插画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AChildsworld01tategoog_0008.jpg"
+ },
+ {
   "id": "es-krazy-kat-1918-09-07",
   "file": "comics/es-krazy-kat-1918-09-07.jpg",
   "t": "Historieta",
@@ -88,6 +121,28 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1918-09-07.png"
+ },
+ {
+  "id": "fairy-lorenz-fr-lich-fairy-tale-illustration-interior-with-gno",
+  "file": "comics/fairy-lorenz-fr-lich-fairy-tale-illustration-interior-with-gno.jpg",
+  "t": "Comic: Lorenz Fr Lich Fairy Tale Illustration Interior ",
+  "tzh": "其它漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Comic:%20Lorenz%20Fr%20Lich%20Fairy%20Tale%20Illustration%20Interior%20"
+ },
+ {
+  "id": "fairy-page-158-illustration-in-more-english-fairy-tales",
+  "file": "comics/fairy-page-158-illustration-in-more-english-fairy-tales.jpg",
+  "t": "Comic: Page 158 Illustration In More English Fairy Tale",
+  "tzh": "其它漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Comic:%20Page%20158%20Illustration%20In%20More%20English%20Fairy%20Tale"
  },
  {
   "id": "garfield-james-abram-garfield-photo-portrait-seated",
@@ -719,13 +774,13 @@ window.LZ_COMICS_PD = [
  {
   "id": "ru-chudolesnoye",
   "file": "comics/ru-chudolesnoye.jpg",
-  "t": "ru chudolesnoye",
-  "tzh": "ru chudolesnoye",
+  "t": "Lubok",
+  "tzh": "俄语版画",
   "date": "—",
   "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=ru%20chudolesnoye"
+  "src": "https://commons.wikimedia.org/wiki/File%3AChudoLesnoye.jpg"
  },
  {
   "id": "ru-kulikovo-lubok",
@@ -763,13 +818,24 @@ window.LZ_COMICS_PD = [
  {
   "id": "ru-michaellubok",
   "file": "comics/ru-michaellubok.jpg",
-  "t": "ru michaellubok",
-  "tzh": "ru michaellubok",
+  "t": "Lubok",
+  "tzh": "俄语版画",
   "date": "—",
   "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=ru%20michaellubok"
+  "src": "https://commons.wikimedia.org/wiki/File%3AMichaelLubok.jpg"
+ },
+ {
+  "id": "ru-raskolnik",
+  "file": "comics/ru-raskolnik.jpg",
+  "t": "Lubok",
+  "tzh": "俄语版画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ARaskolnik.jpg"
  },
  {
   "id": "strip-1922-0121-krazykat-det-650",
