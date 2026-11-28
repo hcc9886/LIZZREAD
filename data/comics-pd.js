@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 62 期。 */
+   由 scripts/gen-comics.py 自动生成，共 71 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "blondie-bumstead-family-blondie-1968",
@@ -77,6 +77,28 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AThomas_Hobbes_%28portrait%29.jpg"
+ },
+ {
+  "id": "garfield-james-abram-garfield-photo-portrait-seated",
+  "file": "comics/garfield-james-abram-garfield-photo-portrait-seated.jpg",
+  "t": "Garfield",
+  "tzh": "加菲猫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AJames_Abram_Garfield%2C_photo_portrait_seated.jpg"
+ },
+ {
+  "id": "garfield-zalgo-meme-example",
+  "file": "comics/garfield-zalgo-meme-example.jpg",
+  "t": "Garfield",
+  "tzh": "加菲猫",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AZalgo_meme_example.png"
  },
  {
   "id": "hooligan-1905-04-09",
@@ -682,5 +704,82 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ADream_of_a_rarebit_fiend._%22I_always_like_to_sit_in_the_corner_of_a_car_then_I_don%27t_have_people_trampling_all_over_me%22_-_Silas._LCCN2005680624.jpg"
+ },
+ {
+  "id": "strip-1922-0121-krazykat-det-650",
+  "file": "comics/strip-1922-0121-krazykat-det-650.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3A1922_0121_krazykat_det_650.jpg"
+ },
+ {
+  "id": "strip-1930-10-28-mickey-mouse-comic",
+  "file": "comics/strip-1930-10-28-mickey-mouse-comic.jpg",
+  "t": "strip 1930 10 28 mickey mouse comic",
+  "tzh": "strip 1930 10 28 mickey mouse comic",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=strip%201930%2010%2028%20mickey%20mouse%20comic"
+ },
+ {
+  "id": "strip-clarence-the-cop-and-the-infernal-machine",
+  "file": "comics/strip-clarence-the-cop-and-the-infernal-machine.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AClarence_the_Cop_and_the_Infernal_Machine.jpg"
+ },
+ {
+  "id": "strip-happy-hooligan-1905-04-09",
+  "file": "comics/strip-happy-hooligan-1905-04-09.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AHappy_Hooligan_1905-04-09.jpg"
+ },
+ {
+  "id": "strip-krazy-kat-1916-07-09",
+  "file": "comics/strip-krazy-kat-1916-07-09.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1916-07-09.jpg"
+ },
+ {
+  "id": "strip-krazy-kat-1918-09-07",
+  "file": "comics/strip-krazy-kat-1918-09-07.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AKrazy_Kat_1918-09-07.png"
+ },
+ {
+  "id": "strip-program-for-the-dedication-of-the-confederate-monument-s",
+  "file": "comics/strip-program-for-the-dedication-of-the-confederate-monument-s.jpg",
+  "t": "Comic strip",
+  "tzh": "连环漫画",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AProgram_for_the_dedication_of_the_Confederate_Monument_Silent_Sam%2C_1913.jpg"
  }
 ];

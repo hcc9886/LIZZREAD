@@ -2539,7 +2539,18 @@ function loadBigDict(){
     const s = document.createElement("script");
     s.src = "./dict.js?v="+_DICT_V;
     s.async = true;
-    s.onload = ()=>{ _bigDictLoading = false; resolve(true); };
+    s.onload = ()=>{
+      _bigDictLoading = false;
+      /* 把现代词补充表并进大词典（大词典是从公版书语料生成的，缺现代词） */
+      try{
+        if(window.LIZ_DICT && typeof MODERN_WORDS === "object"){
+          for(const [k,v] of Object.entries(MODERN_WORDS)){
+            if(!window.LIZ_DICT[k]) window.LIZ_DICT[k] = v;
+          }
+        }
+      }catch(e){}
+      resolve(true);
+    };
     s.onerror = ()=>{ _bigDictLoading = false; _bigDictPromise = null; resolve(false); };
     document.head.appendChild(s);
   });
@@ -3676,6 +3687,43 @@ const _AFFIX = [
   ["pre","前",["pre"]],["pro","向前",["pro"]],["re","再/回",["re"]],["sub","下",["sub"]],
   ["super","超",["super"]],["trans","跨",["trans"]],["un","不",["un"]],["under","不足",["under"]]
 ];
+/* 现代常用词补充表：dict.js 由 19 世纪公版书语料生成，
+   video / view / visit 这类现代词查不到，这里补一批高频词，避免每次都要联网。 */
+const MODERN_WORDS = {
+  video:["n.","视频"], view:["n./v.","视野；看法；观看"], visit:["v./n.","参观；拜访"],
+  website:["n.","网站"], email:["n.","电子邮件"], online:["adj.","在线的"], offline:["adj.","离线的"],
+  internet:["n.","互联网"], computer:["n.","电脑"], software:["n.","软件"], hardware:["n.","硬件"],
+  phone:["n.","电话"], mobile:["adj./n.","移动的；手机"], camera:["n.","相机"],
+  photo:["n.","照片"], image:["n.","图像"], picture:["n.","图片"],
+  podcast:["n.","播客"], video2:["n.",""], stream:["n./v.","流；直播"], live:["adj./v.","现场的；生活"],
+  news:["n.","新闻"], article:["n.","文章"], report:["n./v.","报道"], interview:["n.","采访"],
+  breaking:["adj.","突发的"], headline:["n.","标题"], story:["n.","故事；报道"],
+  today:["adv./n.","今天"], yesterday:["adv.","昨天"], tomorrow:["adv.","明天"],
+  market:["n.","市场"], economy:["n.","经济"], business:["n.","商业"], company:["n.","公司"],
+  government:["n.","政府"], minister:["n.","部长"], president:["n.","总统"], election:["n.","选举"],
+  policy:["n.","政策"], crisis:["n.","危机"], climate:["n.","气候"], energy:["n.","能源"],
+  science:["n.","科学"], technology:["n.","技术"], research:["n./v.","研究"],
+  data:["n.","数据"], digital:["adj.","数字的"], robot:["n.","机器人"], AI:["n.","人工智能"],
+  health:["n.","健康"], vaccine:["n.","疫苗"], hospital:["n.","医院"], doctor:["n.","医生"],
+  travel:["v./n.","旅行"], flight:["n.","航班"], airport:["n.","机场"], ticket:["n.","票"],
+  restaurant:["n.","餐厅"], coffee:["n.","咖啡"], hotel:["n.","旅馆"],
+  opinion:["n.","意见"], comment:["n./v.","评论"], issue:["n.","议题"], update:["n./v.","更新"],
+  check:["v.","检查"], click:["v./n.","点击"], search:["v./n.","搜索"], download:["v.","下载"],
+  upload:["v.","上传"], file:["n.","文件"], link:["n.","链接"], page:["n.","页面"],
+  screen:["n.","屏幕"], device:["n.","设备"], app:["n.","应用"], sport:["n.","运动"],
+  football:["n.","足球"], basketball:["n.","篮球"], team:["n.","团队"], match:["n./v.","比赛；匹配"],
+  vote:["n./v.","投票"], support:["v./n.","支持"], supporters:["n.","支持者"],
+  rally:["n./v.","集会；聚集"], pitch:["n.","推销；球场"], final:["adj./n.","最后的；决赛"],
+  important:["adj.","重要的"], interesting:["adj.","有趣的"], difficult:["adj.","困难的"]
+};
+try{
+  if(window.LIZ_DICT){
+    for(const [k,v] of Object.entries(MODERN_WORDS)){
+      if(!window.LIZ_DICT[k] && !/[0-9]/.test(k)) window.LIZ_DICT[k] = v;
+    }
+  }
+}catch(e){}
+
 const _SUFFIX = [
   ["tion","名词：行为/状态"],["sion","名词：行为/状态"],["ment","名词：结果"],["ness","名词：性质"],
   ["ance","名词"],["ence","名词"],["ity","名词：性质"],["ship","名词：状态"],["hood","名词：时期"],
@@ -3741,10 +3789,14 @@ function _isRealWord(part){
   const G = window.LIZ_DICT || {};
   return !!(G[part] || MORPH_ZH[part]);
 }
+/* 这些碎片不能当成合成词的"一半"：est/er/st/ed/ing/ly… 只是词尾 */
+const _NOT_A_WORD = new Set(["est","er","st","ed","ing","ly","ies","ied","ier","iest","es","s","d","r","n","t","al","ic","ous","ive","ate","ize","ise","ify"]);
+
 function _splitCompound(w){
   const cands = [];
   const tryPush = (a, b, shownA, shownB) => {
     if(a.length < 2 || b.length < 3) return;
+    if(_NOT_A_WORD.has(String(a).toLowerCase()) || _NOT_A_WORD.has(String(b).toLowerCase())) return;
     const azh = _partGloss(a), bzh = _partGloss(b);
     if(!azh || !bzh) return;          /* 两半都要能讲清楚才值得拆 */
     if(!_isRealWord(a) && !_isRealWord(b)) return;
@@ -4068,7 +4120,9 @@ function renderRichWordCard(word, low){
     if(!_isEn) return null;
     try{
       const D = window.LIZ_DICT || {};
-      if(D[low]) return null;                       /* 本身就是原形 */
+      const INFLECT = /(ing|ed|ies|ied|ier|iest|est|er|ly|s)$/;
+      if(D[low] && (low.length <= 3 || !INFLECT.test(low) || /ss$/.test(low))) return null;  /* 真的是原形 */
+      if(D[low] && low.length <= 4) return null;
       const b = (typeof _baseForms === "function") ? _baseForms(low).find(x => D[x]) : null;
       return b ? { base: b, form: _formLabel(low, b) } : null;
     }catch(e){ return null; }
@@ -4094,7 +4148,10 @@ function renderRichWordCard(word, low){
           const flat = groups.flatMap(g => g.senses);
           for(const g of ownSenses){
             const add = g.senses.filter(x => !flat.includes(x));
-            if(add.length) groups = [{ pos: g.pos || "（" + _lem.form + "）", senses: add }, ...groups];
+            if(add.length){
+              const posLabel = g.pos || _lem.form.replace(/^变形（原形 ([^）]+)）$/, "原形 $1");
+              groups = [{ pos: posLabel, senses: add }, ...groups];
+            }
           }
         }
       }
@@ -4170,13 +4227,26 @@ function renderRichWordCard(word, low){
         }
       }catch(e){}
       if(_lem && _lem.form) tags.push(_lem.form);
-      if((w || "").length <= 4) tags.push("基础词");
+      if(String(low || "").length <= 4) tags.push("基础词");
       const uniq = [...new Set(tags)].slice(0, 4);
       if(!uniq.length) return "";
       return `<div class="rw-tags">${uniq.map(x => `<span class="rw-tag2">${escHtml(x)}</span>`).join("")}</div>`;
     })()}
     ${(()=>{
       let m = mnemo;
+      /* 变形词优先给「原形 + 词尾」的说明，比硬拆合成词准确 */
+      if(_lem && _isEn){
+        try{
+          const baseZh = (()=>{ const e = (window.LIZ_DICT || {})[_lem.base]; return e ? String(e[1]).split(/[,，;；]/)[0] : ""; })();
+          const tail = /est$|st$/.test(low) && _lem.form === "最高级" ? "-est（最高级：最…的）"
+                     : /er$/.test(low) && _lem.form === "比较级" ? "-er（比较级：更…的）"
+                     : /ing$/.test(low) ? "-ing（现在分词）"
+                     : /ed$/.test(low) ? "-ed（过去式/过去分词）"
+                     : _lem.form === "复数/三单" ? "-s（复数/三单）"
+                     : _lem.form === "副词" ? "-ly（副词）" : "";
+          if(tail) m = _lem.base + "（" + (baseZh || "原形") + "） + " + tail + " → " + (allSenses[0] || baseZh || "");
+        }catch(e){}
+      }
       if(!m && _lem){
         const baseZh = (()=>{ try{ const e = window.LIZ_DICT[_lem.base]; return e ? String(e[1]).split(/[,，;；]/)[0] : ""; }catch(e){ return ""; } })();
         m = word + " 是 " + _lem.base + " 的" + _lem.form + (baseZh ? "；" + _lem.base + "（" + baseZh + "）" : "");
@@ -4278,7 +4348,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.1"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.8.2"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
