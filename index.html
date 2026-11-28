@@ -428,6 +428,67 @@ header>.nav{position:relative}
   padding:1px 10px;font-size:12px;color:inherit;cursor:pointer}
 .ai-status-btn:hover{background:rgba(0,0,0,.05)}
 @keyframes tourPulse{0%{opacity:.9;transform:scale(1)}50%{opacity:.35;transform:scale(1.015)}100%{opacity:.9;transform:scale(1)}}
+.cx-fail{font-size:12.5px;line-height:1.7;color:var(--text)}
+.cx-hit-box{max-height:56vh;overflow-y:auto}
+.cx-orig{max-height:120px;overflow-y:auto}
+/* 漫画导入 */
+.comic-import{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;
+  padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.comic-import-out{padding:10px 12px;border-radius:10px;background:var(--brand-soft);
+  color:var(--brand-deep);font-size:13px;margin:8px 0}
+/* ===== 图书连排 / 论文连排：真正的整段连续正文 ===== */
+html.rl-book .reader, html.rl-thesis .reader{ column-count:1; }
+html.rl-book .reader{max-width:720px;margin:0 auto;padding:8px 4px}
+html.rl-thesis .reader{max-width:760px;margin:0 auto;padding:8px 4px}
+
+/* 拆掉每句的卡片外观，让它们流成一段 */
+html.rl-book .reader .sent,
+html.rl-thesis .reader .sent{
+  display:inline; border:none!important; background:none!important;
+  padding:0!important; margin:0!important; border-radius:0!important; box-shadow:none!important;
+  --read-pgap:0px;
+}
+html.rl-book .reader .sent .en,
+html.rl-thesis .reader .sent .en{ display:inline; }
+/* 每句之间留一个空格，不要粘在一起 */
+html.rl-book .reader .sent + .sent .en::before,
+html.rl-thesis .reader .sent + .sent .en::before{ content:" "; }
+/* 连排模式下不显示每句的工具条（要工具就切回卡片模式） */
+html.rl-book .reader .sent .tools,
+html.rl-thesis .reader .sent .tools{ display:none!important; }
+/* 译文在连排里另起一块并淡化，避免打断正文 */
+html.rl-book .reader .sent .zh,
+html.rl-thesis .reader .sent .zh{ display:none; }
+html.rl-book .reader .sent .sent-tr,
+html.rl-thesis .reader .sent .sent-tr{ display:none; }
+
+/* 图书式：衬线 + 首行缩进 + 两端对齐 + 宽行距 */
+html.rl-book .reader .body-flow{
+  font-family:var(--read-font, Georgia, "Songti SC", serif);
+  font-size:calc(var(--read-size,17px) + 1px);
+  line-height:2.0;
+  text-align:justify;
+  text-indent:2em;
+  hyphens:auto;
+  -webkit-hyphens:auto;
+}
+/* 论文式：Times + 不缩进 + 段间距 + 双倍行距 */
+html.rl-thesis .reader .body-flow{
+  font-family:"Times New Roman", "Songti SC", serif;
+  font-size:calc(var(--read-size,17px) - 2px);
+  line-height:2.1;
+  text-align:justify;
+  text-indent:0;
+}
+html.rl-thesis .reader .sent{
+  /* 论文式每段之间留白：用 sent 结束处加的一点间距体现段落感 */
+  line-height:2.1;
+}
+html.rl-book .reader .rd-head h2,
+html.rl-thesis .reader .rd-head h2{
+  text-align:center; font-weight:400; letter-spacing:.04em; margin:18px 0 22px;
+  border-bottom:none;
+}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -1368,6 +1429,14 @@ body.no-zh .sent .zh{display:none}
       <div id="comicsGrid" class="comics-grid" style="min-height:180px"></div>
     </div>
 
+    <div class="comics-sec">
+      <div class="comics-head">
+        <b>📁 我的漫画</b>
+        <span class="tip" style="margin:0">导入的整本漫画会出现在这里</span>
+      </div>
+      <div id="comicsImported" class="comics-grid" style="min-height:60px"></div>
+    </div>
+
     <div class="tip" id="mangaTip"><b>识别率提示：</b>印刷体、现代漫画、截图、课本页识别率高；<b>老漫画的手写艺术字识别率低</b>（引擎限制），这种情况请用下方「框选识别」只框一个气泡。<br>支持 15 种识别语言（英/中简体/中繁体/日/韩/德/法/意/西/荷/葡/希/芬/匈/瑞典）。第一次用某种语言会下载识别包（10–40MB），之后离线可用。</div>
     <div class="vids-help" style="margin:8px 0">
       <b>想先试试？</b> 点下面任意一页示例漫画（本站自绘，无版权），一秒看到识别 + 翻译效果：
@@ -1378,6 +1447,17 @@ body.no-zh .sent .zh{display:none}
       </div>
       <div class="tip" style="margin-top:6px">也可以直接用手机截图、拍的课本页、任何图片 —— 会自动识别里面的文字并翻译。</div>
     </div>
+    <!-- 导入整本漫画 -->
+    <div class="comic-import">
+      <b>📥 导入整本漫画</b>
+      <span class="tip" style="margin:0">支持：多张图片 · ZIP/CBZ 压缩包 · PDF</span>
+      <button class="btn small" style="margin-left:auto" onclick="document.getElementById('comicImportInput').click()">选择文件</button>
+      <input type="file" id="comicImportInput" multiple
+        accept="image/*,.zip,.cbz,.pdf,application/zip,application/pdf"
+        style="display:none" onchange="comicImportFiles(this)">
+    </div>
+    <div id="comicImportOut" class="comic-import-out" style="display:none"></div>
+
     <div class="crop-bar">
       <b>✂️ 框选识别</b>
       <span class="tip" style="margin:0">在下面的预览图上拖一个框，只识别框里那一块（对老漫画最有效）</span>
@@ -3657,7 +3737,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.7.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.8.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -4074,7 +4154,9 @@ function rdMarkRead(id, chapterIdx, totalChapters, words){
   b.perDay[day] = (b.perDay[day] || 0) + 60;   /* 每打开一章记 1 分钟起步 */
   rdStatsSave(st);
   const done = Object.keys(b.chapters).length;
-  if(totalChapters && done >= totalChapters && !b.finishedAt){
+  /* 只有「多于 1 章」的书真正读完全部章节时才弹读完卡。
+     单章文本（外刊/RSS/导入短文）一打开就算「读完」，会立刻弹窗挡住内容，之前就是这个 bug。 */
+  if(totalChapters > 1 && done >= totalChapters && !b.finishedAt){
     b.finishedAt = Date.now(); rdStatsSave(st);
     setTimeout(()=>showBookFinished(id), 600);
   }
@@ -4194,7 +4276,9 @@ const READ_LAYOUTS = {
   wide:     { name:"宽屏大字", desc:"电脑上单栏宽排版，字号更大" },
   paper:    { name:"报纸版式", desc:"多栏 + 首字下沉 + 分隔线，像在读一张英文报纸" },
   ebook:    { name:"电子书版式", desc:"单栏大留白、章节扉页，接近 Kindle" },
-  doc:      { name:"论文版式", desc:"窄栏、小字号、密行距，适合学术文献与长报告" }
+  doc:      { name:"论文版式", desc:"窄栏、小字号、密行距，适合学术文献与长报告" },
+  book:     { name:"📖 图书连排", desc:"一整段连续正文，首行缩进、两端对齐、无卡片边框，最像纸质小说" },
+  thesis:   { name:"📄 论文连排", desc:"连续正文 + 双倍行距 + 段落间距，像正式论文/报告" }
 };
 /* ---- 字体与格式（全部用户可选，按语言保存） ---- */
 const FONT_CHOICES = [
@@ -4720,6 +4804,8 @@ let CX = { id: null, mode: "v", tapOn: true, zoom: 1, page: 0, pages: [] };
 function comicShelfRender(){
   const host = document.getElementById("comicsGrid");
   if(!host) return;
+  /* 先渲染用户导入的漫画（如果有），再渲染内置公版漫画 */
+  renderImportedComics();
   const list = window.LZ_COMICS_PD || [];
   if(!list.length){ host.innerHTML = `<div class="empty-state"><div class="empty-t">漫画未加载</div></div>`; return; }
   /* 按作品分组：同一部作品的多个期合并成一张封面 */
@@ -4750,8 +4836,57 @@ function comicShelfRender(){
   }).join("");
 }
 
+/* 用户导入的漫画书架 */
+function renderImportedComics(){
+  const host = document.getElementById("comicsImported");
+  if(!host) return;
+  let idx = {};
+  try{ idx = JSON.parse(localStorage.getItem(pk("comics_imported")) || "{}"); }catch(e){}
+  const mem = window.__comicImported || {};
+  const ids = Object.keys(idx).filter(id => mem[id]).sort((a,b) => (idx[b].at||0)-(idx[a].at||0));
+  if(!ids.length){ host.innerHTML = `<div class="empty-notes">还没有导入的漫画。点上面「选择文件」可以导入整本。</div>`; return; }
+  host.innerHTML = ids.map(id => {
+    const m = mem[id], meta = idx[id];
+    return `<div class="comic-card" onclick="comicOpen('${escAttr(id)}')">
+      <div class="comic-thumb"><img loading="lazy" src="${escAttr(m.pages[0])}" alt="">
+        <span class="comic-lic-tag">我的导入</span></div>
+      <div class="comic-meta">
+        <div class="comic-t">${escHtml(meta.title)}</div>
+        <div class="comic-d">${meta.n} 页 · ${escHtml(meta.lang || "")}</div>
+        <div class="comic-acts">
+          <button class="btn small" onclick="event.stopPropagation();comicOpen('${escAttr(id)}')">阅读</button>
+          <button class="btn ghost small" onclick="event.stopPropagation();comicDeleteImported('${escAttr(id)}')">删除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+function comicDeleteImported(id){
+  try{
+    const idx = JSON.parse(localStorage.getItem(pk("comics_imported")) || "{}");
+    delete idx[id];
+    localStorage.setItem(pk("comics_imported"), JSON.stringify(idx));
+    if(window.__comicImported) delete window.__comicImported[id];
+    toast("已删除");
+    comicShelfRender();
+  }catch(e){}
+}
+
 /* 打开一部漫画：进入阅读器 */
 function comicOpen(id){
+  /* 先看是不是用户导入的 */
+  const imp = (window.__comicImported || {})[id];
+  if(imp){
+    CX.id = id; CX.page = 0; CX.zoom = 1;
+    CX.pages = imp.pages;
+    CX.issues = [];
+    const t0 = document.getElementById("cxTitle"); if(t0) t0.textContent = imp.title;
+    const m0 = document.getElementById("cxMeta");
+    if(m0) m0.textContent = "我的导入 · " + imp.pages.length + " 页";
+    go("comic");
+    setTimeout(()=>{ cxRender(); }, 60);
+    return;
+  }
   const c = (window.LZ_COMICS_PD || []).find(x => x.id === id);
   if(!c){ toast("找不到这部漫画"); return; }
   CX.id = id; CX.page = 0; CX.zoom = 1;
@@ -4858,8 +4993,19 @@ async function cxTranslateAt(img, rx, ry, screenX, screenY){
     const { data } = await T.recognize(cv, lang, tessOpts(lang, { logger: ()=>{} }));
     text = (data.text || "").replace(/\s+/g, " ").trim();
   }catch(err){}
-  if(!text || text.replace(/[^A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g,"").length < 3){
-    cxShowHit(screenX, screenY, "这块没认出字，换个位置点点看");
+  /* 判定是否是「像人话」的识别结果。老漫画手写体很容易吐出
+     "ry ¢ RITE ~~ T y ~~ NEMO =$LUM v rel" 这种乱码，宁可说没认出来也别给用户看垃圾。 */
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  const letters = (clean.match(/[A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g) || []).length;
+  const totalCh = clean.replace(/\s/g, "").length || 1;
+  const words = clean.split(/\s+/).filter(w => /^[A-Za-z][A-Za-z'’-]*$/.test(w));
+  const longWords = words.filter(w => w.length >= 3);
+  const symbolRatio = 1 - (letters / totalCh);
+  const hasRealWords = longWords.length >= 2;
+  const goodEnough = hasRealWords && symbolRatio < 0.28 && letters >= 8;
+  if(!goodEnough){
+    cxShowHit(screenX, screenY, `<div class="cx-fail">这一小块没认清楚（老漫画是手写艺术字，引擎容易认错）。<br>试试：<b>点在对话气泡正中间</b>，或者框小一点。</div>
+      <div class="cx-acts"><button class="btn ghost small" onclick="document.getElementById('cxHit').style.display='none'">知道了</button></div>`);
     return;
   }
   let zh = "";
@@ -4877,10 +5023,12 @@ function cxShowHit(x, y, html){
   if(!el) return;
   el.style.display = "block";
   el.innerHTML = `<div class="cx-hit-box">${html}</div>`;
-  const w = 340;
+  /* 原来写死 340px + 内容一多就撑满整屏，把漫画全挡住了。改成窄一点、限高、可滚动。 */
+  const w = Math.min(300, window.innerWidth - 24);
   let left = Math.min(window.innerWidth - w - 12, Math.max(12, x - w / 2));
   let top = y + 16;
-  if(top + 200 > window.innerHeight) top = Math.max(12, y - 200);
+  const boxH = Math.min(260, 120 + (String(html).length > 160 ? 80 : 0));
+  if(top + boxH > window.innerHeight) top = Math.max(12, y - boxH - 16);
   el.style.left = left + "px";
   el.style.top = top + "px";
   el.style.width = w + "px";
@@ -5023,6 +5171,115 @@ function comicRead(id){
     </div>
   </div>`;
 }
+/* ===== 导入整本漫画：图片多选 / ZIP-CBZ / PDF ===== */
+function comicImportSort(files){
+  return files.slice().sort((a, b) =>
+    String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: "base" }));
+}
+async function comicImportFiles(input){
+  const files = [...(input.files || [])];
+  if(!files.length) return;
+  const out = document.getElementById("comicImportOut");
+  const say = t => { if(out){ out.style.display = "block"; out.innerHTML = t; } };
+  const images = [];
+
+  for(const f of files){
+    const name = f.name.toLowerCase();
+    if(/\.(zip|cbz)$/.test(name)){
+      say("正在解压 " + escHtml(f.name) + "…");
+      try{
+        if(typeof JSZip === "undefined") await loadScript("vendor/jszip.min.js");
+        const zip = await JSZip.loadAsync(f);
+        const entries = [];
+        zip.forEach((path, entry) => {
+          if(entry.dir) return;
+          if(/\.(png|jpe?g|webp|gif|bmp)$/i.test(path)) entries.push({ path, entry });
+        });
+        entries.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: "base" }));
+        for(const e of entries){
+          const blob = await e.entry.async("blob");
+          const nm = e.path.split("/").pop();
+          images.push(new File([blob], nm, { type: "image/" + (nm.split(".").pop() || "png") }));
+        }
+      }catch(err){ say("解压失败：" + escHtml(err.message || String(err))); }
+    } else if(/\.pdf$/.test(name)){
+      say("正在把 PDF 转成图片…（大文件会慢一点）");
+      try{
+        images.push(...await comicPdfToImages(f));
+      }catch(err){ say("PDF 转图失败：" + escHtml(err.message || String(err))); }
+    } else if(f.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp)$/i.test(name)){
+      images.push(f);
+    }
+  }
+
+  if(!images.length){ say("没找到可用的图片。支持 jpg/png/webp/gif/bmp、ZIP/CBZ、PDF。"); return; }
+
+  const sorted = comicImportSort(images);
+  say("已导入 " + sorted.length + " 页，正在生成阅读器…");
+
+  /* 存进 IndexedDB（带 lang），再从书架上直接打开 */
+  const id = "comic-up-" + Date.now();
+  const title = (files.length === 1 ? files[0].name.replace(/\.[^.]+$/, "") : "我的漫画 " + new Date().toLocaleDateString());
+  try{
+    await comicSaveImported(id, title, sorted);
+    say(`✅ 已导入《${escHtml(title)}》共 ${sorted.length} 页。<button class="btn small" style="margin-left:8px" onclick="comicOpen('${escAttr(id)}')">立即阅读</button>`);
+  }catch(err){
+    say("保存失败：" + escHtml(err.message || String(err)));
+  }
+  input.value = "";
+}
+
+/* PDF → 图片（用 pdf.js） */
+async function comicPdfToImages(file){
+  if(!window.pdfjsLib){
+    await loadScript("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js");
+    if(window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  }
+  if(!window.pdfjsLib) throw new Error("PDF 引擎没加载上");
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  const pages = [];
+  const maxPages = Math.min(pdf.numPages, 300);
+  for(let i = 1; i <= maxPages; i++){
+    const page = await pdf.getPage(i);
+    const vp = page.getViewport({ scale: 1.6 });
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+    const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.86));
+    pages.push(new File([blob], "p" + String(i).padStart(3, "0") + ".jpg", { type: "image/jpeg" }));
+  }
+  return pages;
+}
+
+/* 导入漫画存 IndexedDB（键：comic:<id>，带 lang 字段做语言隔离） */
+async function comicSaveImported(id, title, files){
+  const metas = [];
+  const db = await idb();
+  for(let i = 0; i < files.length; i++){
+    const f = files[i];
+    const key = "comic:" + id + ":" + i;
+    const buf = await f.arrayBuffer();
+    await new Promise((res, rej) => {
+      const tx = db.transaction("kv", "readwrite");
+      tx.objectStore("kv").put({ k: key, blob: new Blob([buf], { type: f.type || "image/jpeg" }), lang: curLangCode(), at: Date.now() });
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+    /* 生成 objectURL 供阅读器使用 */
+    metas.push({ url: URL.createObjectURL(new Blob([buf], { type: f.type || "image/jpeg" })), name: f.name });
+  }
+  window.__comicImported = window.__comicImported || {};
+  window.__comicImported[id] = { title, pages: metas.map(m => m.url), lang: curLangCode(), at: Date.now() };
+  /* 存一份索引，刷新后还能看到 */
+  try{
+    const idx = JSON.parse(localStorage.getItem(pk("comics_imported")) || "{}");
+    idx[id] = { title, n: files.length, lang: curLangCode(), at: Date.now() };
+    localStorage.setItem(pk("comics_imported"), JSON.stringify(idx));
+  }catch(e){}
+  return id;
+}
+
 /* 把内置漫画送进翻译流程 */
 async function comicTranslate(id){
   const c = (window.LZ_COMICS_PD || []).find(x => x.id === id);
@@ -5108,6 +5365,20 @@ function mangaProgress(txt){
   el.textContent = txt;
 }
 /** 懒加载 tesseract.js（CDN，首次 ~2MB，之后浏览器缓存） */
+/* 通用脚本加载（带缓存，重复调用复用同一个 Promise） */
+const _scriptCache = {};
+function loadScript(src){
+  if(_scriptCache[src]) return _scriptCache[src];
+  _scriptCache[src] = new Promise((res, rej) => {
+    const el = document.createElement("script");
+    el.src = src;
+    el.onload = () => res(true);
+    el.onerror = () => { delete _scriptCache[src]; rej(new Error("脚本加载失败：" + src)); };
+    document.head.appendChild(el);
+  });
+  return _scriptCache[src];
+}
+
 /* 识别引擎：本地包优先（vendor/tesseract），CDN 只做兜底。
    这样国内网络也能用，不依赖 jsdelivr。 */
 const TESS_PATHS = [
@@ -6806,11 +7077,17 @@ function mdToPlain(t){
   x = x.replace(/\[([^\]]{1,8})\]\([^)]*\)/g, "");               /* 残留空链接 */
   x = x.replace(/\(\s*https?:\/\/[^)]*\)/g, "");                  /* 裸括号链接 */
   x = x.replace(/https?:\/\/\S+/g, "");                           /* 裸 URL */
+  x = x.replace(/\s*\|\s*/g, " ");                                  /* 青空文库等表格竖线 */
+  x = x.replace(/[\u2500-\u257f]/g, "");                            /* 制表符 */
+  x = x.replace(/\[www\.[^\]]*\]/gi, "");                          /* [www.xxx.jp 内を検索] */
   /* 丢掉"导航噪音"短行 */
   const lines = x.split(/\n+/)
     .map(l => l.trim())
     .filter(l => l.length > 12)
     .filter(l => !/^(Home|Menu|Search|Subscribe|Sign in|Log in|Share|Tweet|Advertisement)\b/i.test(l))
+    /* 导航/索引类噪音：大量「・」「|」「/」分隔的短条目，读了也没用 */
+    .filter(l => !/^[^。.！？!?]{0,40}(・|\/|、){3,}/.test(l))
+    .filter(l => !/(トップ|ホーム|サイトマップ|ログイン|新規登録|お問い合わせ|プライバシー)/.test(l))
     .filter(l => (l.match(/[A-Za-z\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/g) || []).length / l.length > 0.45);
   return lines.join("\n\n").trim();
 }
@@ -9846,6 +10123,10 @@ function openReader(id){
         </div>
       </div>`;
     }).join("");
+    /* 连排模式：把整章正文包进一个连续段落容器，才像纸质书 */
+    if(readLayout() === "book" || readLayout() === "thesis"){
+      html = `<div class="body-flow">${html}</div>`;
+    }
   }
   const title = escHtml(dispTitle(curBook)) + (curBook.t && curBook.t!==curBook.zh ? ` <span style="font:400 13px var(--font);color:var(--muted)">${escHtml(curBook.t)}</span>` : "");
   /* 把已缓存的译文填进正文（数据里有 zh、但模板只渲染了「翻译这句」按钮时） */
@@ -12814,6 +13095,18 @@ document.addEventListener("mouseup", e=>{
   const sel = (window.getSelection().toString()||"").trim();
   if(!sel || sel.length<2 || !e.target.closest("#view-reader .en")){
     pop.style.display="none"; return;
+  }
+  /* 只选中「一个词」时，用户想要的是词卡，不是划选工具条。
+     之前双击单词会弹这个只有「查首词/整段翻译/朗读」的小条，把词卡挡住了。 */
+  const isOneWord = !/\s/.test(sel) && /^[\p{L}][\p{L}'’\-]*$/u.test(sel);
+  if(isOneWord){
+    pop.style.display = "none";
+    const want = sel.toLowerCase().replace(/[’]/g, "'");
+    const hit = [...document.querySelectorAll("#view-reader .en span.w")]
+      .find(x => (x.dataset.w || "").toLowerCase().replace(/[’]/g, "'") === want);
+    if(hit){ try{ hit.click(); return; }catch(err){} }
+    /* 没找到 span 就直接开独立词卡 */
+    try{ openWordCard(sel); return; }catch(err){}
   }
   const r = window.getSelection().getRangeAt(0).getBoundingClientRect();
   pop.dataset.sel = sel.slice(0,300);
