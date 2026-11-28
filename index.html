@@ -436,59 +436,88 @@ header>.nav{position:relative}
   padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
 .comic-import-out{padding:10px 12px;border-radius:10px;background:var(--brand-soft);
   color:var(--brand-deep);font-size:13px;margin:8px 0}
-/* ===== 图书连排 / 论文连排：真正的整段连续正文 ===== */
-html.rl-book .reader, html.rl-thesis .reader{ column-count:1; }
-html.rl-book .reader{max-width:720px;margin:0 auto;padding:8px 4px}
-html.rl-thesis .reader{max-width:760px;margin:0 auto;padding:8px 4px}
 
-/* 拆掉每句的卡片外观，让它们流成一段 */
-html.rl-book .reader .sent,
-html.rl-thesis .reader .sent{
-  display:inline; border:none!important; background:none!important;
-  padding:0!important; margin:0!important; border-radius:0!important; box-shadow:none!important;
-  --read-pgap:0px;
-}
-html.rl-book .reader .sent .en,
-html.rl-thesis .reader .sent .en{ display:inline; }
-/* 每句之间留一个空格，不要粘在一起 */
-html.rl-book .reader .sent + .sent .en::before,
-html.rl-thesis .reader .sent + .sent .en::before{ content:" "; }
-/* 连排模式下不显示每句的工具条（要工具就切回卡片模式） */
-html.rl-book .reader .sent .tools,
-html.rl-thesis .reader .sent .tools{ display:none!important; }
-/* 译文在连排里另起一块并淡化，避免打断正文 */
-html.rl-book .reader .sent .zh,
-html.rl-thesis .reader .sent .zh{ display:none; }
-html.rl-book .reader .sent .sent-tr,
-html.rl-thesis .reader .sent .sent-tr{ display:none; }
-
-/* 图书式：衬线 + 首行缩进 + 两端对齐 + 宽行距 */
-html.rl-book .reader .body-flow{
-  font-family:var(--read-font, Georgia, "Songti SC", serif);
-  font-size:calc(var(--read-size,17px) + 1px);
-  line-height:2.0;
-  text-align:justify;
-  text-indent:2em;
-  hyphens:auto;
-  -webkit-hyphens:auto;
-}
-/* 论文式：Times + 不缩进 + 段间距 + 双倍行距 */
-html.rl-thesis .reader .body-flow{
-  font-family:"Times New Roman", "Songti SC", serif;
-  font-size:calc(var(--read-size,17px) - 2px);
-  line-height:2.1;
-  text-align:justify;
-  text-indent:0;
-}
-html.rl-thesis .reader .sent{
-  /* 论文式每段之间留白：用 sent 结束处加的一点间距体现段落感 */
-  line-height:2.1;
-}
-html.rl-book .reader .rd-head h2,
-html.rl-thesis .reader .rd-head h2{
   text-align:center; font-weight:400; letter-spacing:.04em; margin:18px 0 22px;
   border-bottom:none;
 }
+/* ===== 📖 图书 / 📱 电子书：整段连续正文（参考普通电子书排版） ===== */
+html.rl-book .reader,
+html.rl-ebook .reader{ column-count:1; max-width:34em; margin:0 auto; padding:16px 10px 40px; }
+
+/* 拆掉每句的卡片外观，让句子流成一段 */
+html.rl-book .reader .sent,
+html.rl-ebook .reader .sent{
+  display:inline; border:none!important; background:none!important;
+  padding:0!important; margin:0!important; border-radius:0!important; box-shadow:none!important;
+}
+html.rl-book .reader .sent .en,
+html.rl-ebook .reader .sent .en{ display:inline; }
+html.rl-book .reader .sent + .sent .en::before,
+html.rl-ebook .reader .sent + .sent .en::before{ content:" "; }
+html.rl-book .reader .sent .tools,
+html.rl-ebook .reader .sent .tools,
+html.rl-book .reader .sent .zh,
+html.rl-ebook .reader .sent .zh,
+html.rl-book .reader .sent .sent-tr,
+html.rl-ebook .reader .sent .sent-tr{ display:none!important; }
+
+/* 正文容器：这才是"像一本书"的关键 */
+html.rl-book .reader .body-flow{
+  font-family:var(--read-font, Georgia, "Songti SC", serif);
+  font-size:calc(var(--read-size,17px) + 0.5px);
+  line-height:1.95;
+  text-align:justify;
+  hyphens:auto;
+  -webkit-hyphens:auto;
+  counter-reset:para;
+}
+html.rl-ebook .reader .body-flow{
+  font-family:var(--read-font, Georgia, "Songti SC", serif);
+  font-size:calc(var(--read-size,17px) + 1px);
+  line-height:2.05;
+  text-align:justify;
+}
+
+/* 段落：渲染时每 N 句插一个块级 break，自然形成段落；段首缩进 + 段间留白 */
+html.rl-book .reader .body-flow{ text-indent:1.8em; }
+html.rl-ebook .reader .body-flow{ text-indent:0; }
+html.rl-book .reader .body-flow .para-break{ display:block; height:1.15em; }
+html.rl-ebook .reader .body-flow .para-break{ display:block; height:1.6em; }
+/* 连排里的 span.en 需要能换行、不断词 */
+html.rl-book .reader .body-flow .sent,
+html.rl-ebook .reader .body-flow .sent{ white-space:normal; }
+html.rl-book .reader .body-flow .sent .en,
+html.rl-ebook .reader .body-flow .sent .en{ white-space:normal; }
+
+/* 章节标题 */
+html.rl-book .reader .rd-head h2,
+html.rl-ebook .reader .rd-head h2{
+  text-align:center; font-weight:400; letter-spacing:.05em;
+  margin:20px 0 26px; border-bottom:none; font-size:1.28em;
+}
+/* 首段不缩进（西文书习惯） */
+html.rl-book .reader .body-flow .sent:first-child .en::first-letter{ }
+/* 阅读器「更多」折叠区 */
+.rd-more{margin:2px 0 12px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--surface2)}
+.rd-more-grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 0}
+.rd-more-grp b{font:600 11.5px var(--font);color:var(--muted);min-width:34px;letter-spacing:.08em}
+.rd-more-grp .btn{font-size:12px;min-height:30px}
+/* 读过的书 */
+.rl-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.rl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.rl-card{display:flex;gap:12px;padding:10px;border:1px solid var(--border);border-radius:12px;
+  background:var(--surface);cursor:pointer;transition:.15s}
+.rl-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+.rl-cover{flex:0 0 62px;height:90px;border-radius:8px;overflow:hidden;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center}
+.rl-cover img{width:100%;height:100%;object-fit:cover}
+.rl-ph{font:700 26px var(--serif);color:var(--muted)}
+.rl-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.rl-t{font:600 13.5px var(--font);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rl-a{font-size:11.5px;color:var(--muted)}
+.rl-bar{height:4px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:3px}
+.rl-bar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.rl-meta{font-size:11px;color:var(--muted)}
 </style>
 <script>try{ if(/miniProgram/i.test(navigator.userAgent)||/[?&]wx=1/.test(location.search)) document.documentElement.className+=" lz-mini"; }catch(e){}</script>
 <!-- 句子拼装模块 -->
@@ -669,27 +698,24 @@ html.dv-phone .view, html.dv-mini .view{padding-bottom:env(safe-area-inset-botto
 @media (min-width:720px){ .reader{padding-left:calc(var(--read-margin,16px) + 8px);padding-right:calc(var(--read-margin,16px) + 8px)} }
 .fd-val{float:right;color:var(--brand-deep);font-weight:600}
 /* 报纸版式 */
-html.rl-paper .reader{max-width:1080px;margin:0 auto;column-count:2;column-gap:32px;column-rule:1px solid var(--border)}
-html.rl-paper .reader .sent{break-inside:avoid}
-html.rl-paper .rd-head h2{font-family:var(--read-font,Georgia);border-bottom:3px double var(--border);padding-bottom:8px}
-html.rl-paper .sent:first-of-type .en::first-letter{font-size:2.6em;float:left;line-height:.9;padding-right:6px;font-weight:700}
+/* 📰 报纸版式：两栏 + 栏间细线 + 首字下沉 + 每句紧凑（与图书版差别明显） */
+html.rl-paper .reader{max-width:1120px;margin:0 auto;column-count:2;column-gap:30px;column-rule:1px solid var(--border);padding:6px 2px}
+html.rl-paper .reader .sent{break-inside:avoid;display:block;margin:0 0 6px;padding:0;border:none;background:none;box-shadow:none}
+html.rl-paper .reader .sent .en{font-size:calc(var(--read-size,17px) - 1px);line-height:1.6;text-align:justify}
+html.rl-paper .reader .sent .tools{display:none!important}
+html.rl-paper .reader .sent .zh{font-size:calc(var(--read-size,17px) - 4px);color:var(--muted);margin-top:2px}
+html.rl-paper .rd-head h2{font-family:var(--read-font,Georgia);border-bottom:3px double var(--border);padding-bottom:8px;text-align:left}
+html.rl-paper .reader .sent:first-child .en::first-letter{
+  font-size:3em;float:left;line-height:.82;padding:4px 8px 0 0;font-weight:700;color:var(--brand-deep)}
 @media (max-width:820px){ html.rl-paper .reader{column-count:1} }
 /* 电子书版式 */
 html.rl-ebook .reader{max-width:680px;margin:0 auto;padding:28px 26px}
 html.rl-ebook .sent{margin-bottom:calc(var(--read-pgap,12px) + 6px)}
 html.rl-ebook .rd-head h2{text-align:center;margin:18px 0 26px;font-weight:400}
 /* 论文版式 */
-html.rl-doc .reader{max-width:900px;margin:0 auto}
-html.rl-doc .sent .en{font-size:calc(var(--read-size,17px) - 3px);line-height:1.55;text-align:justify}
-html.rl-doc .sent .zh{font-size:calc(var(--read-size,17px) - 4px)}
 /* 阅读排版 */
 .rd-layout{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
 .rd-layout .chip{min-height:30px;font-size:12.5px;padding:0 12px}
-html.rl-simple .rd-head h2{display:none}
-html.rl-simple .chap-title{display:none}
-html.rl-compact .sent .en{font-size:14px;line-height:1.55}
-html.rl-compact .sent .zh{font-size:12.5px}
-html.rl-compact .reader{padding:10px 12px}
 html.rl-wide .sent .en{font-size:19px;line-height:1.85}
 html.rl-wide .reader{max-width:860px;margin:0 auto}
 /* 句子精讲 */
@@ -1497,6 +1523,20 @@ body.no-zh .sent .zh{display:none}
   </section>
 
   <!-- ============ 收藏（独立页面） ============ -->
+  <section class="view" id="view-read-list">
+    <div class="page-head">
+      <h2 class="sec">📚 读过的书</h2>
+      <div class="sub">按最近读的排在前面。点卡片继续读，进度会接着上次。</div>
+    </div>
+    <div class="rl-toolbar">
+      <button class="chip on" data-rlf="all" onclick="rlFilter('all')">全部</button>
+      <button class="chip" data-rlf="reading" onclick="rlFilter('reading')">在读</button>
+      <button class="chip" data-rlf="done" onclick="rlFilter('done')">已读完</button>
+      <span class="tip" style="margin-left:auto" id="rlCount"></span>
+    </div>
+    <div id="rlGrid" class="rl-grid"></div>
+  </section>
+
   <section class="view" id="view-favorites">
     <div class="page-head">
       <button class="back" onclick="go('library')">← 返回主页</button>
@@ -1929,7 +1969,7 @@ body.no-zh .sent .zh{display:none}
 </main>
 
 <!-- 新手引导（首次打开自动弹出） -->
-<div id="onboardWrap"></div>
+<div id="onboardWrap" style="display:none"></div>
 
 <!-- 生词弹层 -->
 <div class="mask" id="mask" onclick="closeSheet()"></div>
@@ -3737,7 +3777,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.8.0"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "2.9.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -3958,6 +3998,78 @@ function favResolve(rec){
 
 /* ================= 收藏独立页面 ================= */
 let _favTab = "all", _favKw = "";
+/* ================= 读过的书（专门收纳） ================= */
+let _rlF = "all";
+function rlFilter(f){
+  _rlF = f;
+  document.querySelectorAll("[data-rlf]").forEach(b => b.classList.toggle("on", b.dataset.rlf === f));
+  renderReadList();
+}
+function readListData(){
+  let st = {};
+  try{ st = JSON.parse(localStorage.getItem(pk("rdstats")) || "{}"); }catch(e){}
+  let prog = {};
+  try{ prog = store.progress || {}; }catch(e){}
+  const rows = [];
+  for(const [id, v] of Object.entries(st)){
+    const b = (typeof BOOKS !== "undefined" ? BOOKS.find(x => x.id === id) : null)
+           || ((store.imports || []).find(x => x.id === id))
+           || null;
+    const ch = Object.keys(v.chapters || {}).length;
+    const total = (fullCache[id] && fullCache[id].chapters.length) || ch || 1;
+    const pr = prog[id] || {};
+    rows.push({
+      id,
+      title: b ? (b.t || b.title || id) : (pr.t || id),
+      author: b ? (b.a || b.author || "") : "",
+      cover: b ? (b.c || b.cover) : null,
+      chapters: ch, total,
+      last: v.last || 0,
+      finished: !!v.finishedAt || (total > 1 && ch >= total),
+      pct: total ? Math.min(100, Math.round(ch / total * 100)) : 0
+    });
+  }
+  /* 也把只有阅读进度、没有 rdstats 的书补进来 */
+  for(const [id, pr] of Object.entries(prog)){
+    if(rows.some(r => r.id === id)) continue;
+    if(!pr || !pr.at) continue;
+    const b = (typeof BOOKS !== "undefined" ? BOOKS.find(x => x.id === id) : null);
+    rows.push({ id, title: b ? b.t : (pr.t || id), author: b ? b.a : "", cover: b ? b.c : null,
+      chapters: 0, total: 1, last: pr.at || 0, finished: false, pct: 0 });
+  }
+  return rows.sort((a, b) => (b.last || 0) - (a.last || 0));
+}
+function renderReadList(){
+  const host = document.getElementById("rlGrid");
+  if(!host) return;
+  let rows = readListData();
+  if(_rlF === "reading") rows = rows.filter(r => !r.finished);
+  if(_rlF === "done") rows = rows.filter(r => r.finished);
+  const cnt = document.getElementById("rlCount");
+  if(cnt) cnt.textContent = rows.length ? ("共 " + rows.length + " 本") : "";
+  if(!rows.length){
+    host.innerHTML = `<div class="empty-state"><div class="empty-t">还没有读过书的记录</div>
+      <div class="sub">去书城打开一本，读到哪儿都会记在这里。</div>
+      <button class="btn" onclick="go('library')">去书城</button></div>`;
+    return;
+  }
+  host.innerHTML = rows.map(r => {
+    const coverHtml = r.cover
+      ? `<img loading="lazy" src="${escAttr(r.cover)}" alt="" onerror="this.style.display='none'">`
+      : `<div class="rl-ph">${escHtml(String(r.title || "?").slice(0, 1))}</div>`;
+    const when = r.last ? new Date(r.last).toLocaleDateString() : "";
+    return `<div class="rl-card" onclick="openFull('${escAttr(r.id)}')">
+      <div class="rl-cover">${coverHtml}</div>
+      <div class="rl-info">
+        <div class="rl-t">${escHtml(r.title)}</div>
+        <div class="rl-a">${escHtml(r.author || "")}</div>
+        <div class="rl-bar"><i style="width:${r.pct}%"></i></div>
+        <div class="rl-meta">${r.finished ? "✓ 已读完" : ("读 " + r.chapters + " / " + r.total + " 章")}${when ? " · " + when : ""}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
 function renderFavorites(){
   const host = document.getElementById("favBody");
   if(!host) return;
@@ -4270,15 +4382,10 @@ function rdStatsSummary(){
 
 /* ================= 阅读排版：原书排版 / 简洁 / 双栏 ================= */
 const READ_LAYOUTS = {
-  original: { name:"原书排版", desc:"保留章节标题、分隔线与对白缩进，最接近纸质书" },
-  simple:   { name:"简洁模式", desc:"去掉标题与分隔线，只留正文与译文" },
-  compact:  { name:"紧凑双栏", desc:"段落压缩、字号偏小，适合长文速读" },
-  wide:     { name:"宽屏大字", desc:"电脑上单栏宽排版，字号更大" },
-  paper:    { name:"报纸版式", desc:"多栏 + 首字下沉 + 分隔线，像在读一张英文报纸" },
-  ebook:    { name:"电子书版式", desc:"单栏大留白、章节扉页，接近 Kindle" },
-  doc:      { name:"论文版式", desc:"窄栏、小字号、密行距，适合学术文献与长报告" },
-  book:     { name:"📖 图书连排", desc:"一整段连续正文，首行缩进、两端对齐、无卡片边框，最像纸质小说" },
-  thesis:   { name:"📄 论文连排", desc:"连续正文 + 双倍行距 + 段落间距，像正式论文/报告" }
+  book:     { name:"📖 图书", desc:"连续正文：首行缩进、两端对齐、段落留白，和纸质小说一样" },
+  ebook:    { name:"📱 电子书", desc:"单栏窄版心、大留白、居中章节页，接近 Kindle" },
+  wide:     { name:"🖥 宽屏", desc:"单栏宽排版、字号更大，适合在电脑上快速扫读" },
+  paper:    { name:"📰 报纸", desc:"双语对照式两栏 + 首字下沉 + 细线分隔，像读一份英文报纸" }
 };
 /* ---- 字体与格式（全部用户可选，按语言保存） ---- */
 const FONT_CHOICES = [
@@ -4365,10 +4472,14 @@ function setReadLayout(v){
   }catch(e){}
   toast("排版：" + ((READ_LAYOUTS[v] || {}).name || v));
 }
+/* 旧版排版名 → 新版（用户本地可能存着已删除的旧值） */
+const LAYOUT_ALIAS = { original:"book", simple:"book", compact:"wide", doc:"ebook", thesis:"book" };
 function applyReadLayout(){
-  const v = readLayout();
+  let v = readLayout();
+  if(LAYOUT_ALIAS[v]) v = LAYOUT_ALIAS[v];
+  if(!READ_LAYOUTS[v]) v = "book";
   const root = document.documentElement;
-  /* 先清掉所有可能的 rl-* 类，避免 rl-paper rl-ebook rl-doc 叠加 */
+  /* 先清掉所有可能的 rl-* 类，避免多种排版叠加 */
   [...root.classList].forEach(c => { if(/^rl-/.test(c)) root.classList.remove(c); });
   root.classList.add("rl-" + v);
   root.setAttribute("data-layout", v);
@@ -4445,22 +4556,51 @@ function openGrammarSheet(){
 }
 /* 阅读器工具栏加入排版与精讲入口 */
 function readerToolExtras(){
-  return `${viewSwitcherHTML()}<div class="rd-layout">
+  /* 精简版：常用的放一排（视图 + 排版），其余全部收进「⋯ 更多」，用户可折叠 */
+  const moreOpen = readerMoreOpen();
+  return `${viewSwitcherHTML()}
+  <div class="rd-layout">
     <span class="tip" style="margin:0">排版</span>
     ${Object.entries(READ_LAYOUTS).map(([k,v]) =>
       `<button class="chip ${readLayout()===k?'on':''}" onclick="setReadLayout('${k}')" title="${escAttr(v.desc)}">${escHtml(v.name)}</button>`).join("")}
-    <button class="btn ghost small" data-favbtn="${(curBook&&curBook.id)||''}" onclick="toggleFav()">${(curBook&&isFav(curBook.id))?"★ 已收藏":"☆ 收藏"}</button>
-    <button class="btn ghost small" onclick="noteFromSentence()">📝 记笔记</button>
-    <button class="btn ghost small" onclick="startReadingAloud()">🔊 连读本章</button>
-    <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
-    <button class="btn ghost small" onclick="toggleInlineGloss()">${inlineGlossOn()?'📖 行间释义：开':'📖 行间释义：关'}</button>
-    ${(()=>{ try{ const b = curBook && fullCache[curBook.id]; return b && (b.imported || (store.imports||[]).some(x=>x.id===curBook.id)); }catch(e){ return false; } })() ? `<button class="btn ghost small" onclick="toggleRawFormat()">${rawFormatOn()?'📄 原格式：开':'📄 原格式：关'}</button>` : ""}
-    <button class="btn ghost small" onclick="setMixMode(mixMode()==='off'?'gloss':(mixMode()==='gloss'?'fill':'off'))">${mixMode()==='off'?'🔀 中英夹杂':(mixMode()==='gloss'?'🔀 渐进注释':'🔀 生词填空')}</button>
-    <button class="btn ghost small" onclick="toggleGrammarTag()">${grammarTagOn()?'🎨 语法高亮：开':'🎨 语法高亮：关'}</button>
-    <button class="btn ghost small" onclick="webSearch(prompt('搜索什么？')||'')">🔍 网页搜索</button>
-    <button class="btn ghost small" onclick="webSearch(sheetWord||'')">🔍 搜索</button>
-    <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
+    <button class="btn ghost small" data-favbtn="${(curBook&&curBook.id)||''}" onclick="toggleFav()">${(curBook&&isFav(curBook.id))?"★":"☆"}</button>
+    <button class="btn ghost small" onclick="toggleReaderMore()">${moreOpen ? "⋯ 收起" : "⋯ 更多"}</button>
+  </div>
+  <div id="rdMore" class="rd-more" style="display:${moreOpen ? 'block' : 'none'}">
+    ${readerMoreItems()}
   </div>`;
+}
+function readerMoreOpen(){ return getPref("reader_more") === "1"; }
+function toggleReaderMore(){
+  const v = readerMoreOpen() ? "0" : "1";
+  setPref("reader_more", v);
+  const box = document.getElementById("rdMore");
+  const btn = document.querySelector('#view-reader .rd-layout button:last-child');
+  if(box) box.style.display = v === "1" ? "block" : "none";
+  if(btn) btn.textContent = v === "1" ? "⋯ 收起" : "⋯ 更多";
+}
+/* 「更多」里的次级功能：分组呈现，不再一坨堆在首屏 */
+function readerMoreItems(){
+  const isImported = (()=>{ try{ const b = curBook && fullCache[curBook.id]; return b && (b.imported || (store.imports||[]).some(x=>x.id===curBook.id)); }catch(e){ return false; } })();
+  return `
+  <div class="rd-more-grp"><b>显示</b>
+    <button class="btn ghost small" onclick="openFormatPanel()">🔤 字体格式</button>
+    <button class="btn ghost small" onclick="toggleInlineGloss()">${inlineGlossOn()?'📖 行间释义 开':'📖 行间释义 关'}</button>
+    <button class="btn ghost small" onclick="setMixMode(mixMode()==='off'?'gloss':(mixMode()==='gloss'?'fill':'off'))">${mixMode()==='off'?'🔀 中英夹杂':(mixMode()==='gloss'?'🔀 渐进注释':'🔀 生词填空')}</button>
+    <button class="btn ghost small" onclick="toggleGrammarTag()">${grammarTagOn()?'🎨 语法高亮 开':'🎨 语法高亮 关'}</button>
+    ${isImported ? `<button class="btn ghost small" onclick="toggleRawFormat()">${rawFormatOn()?'📄 原格式 开':'📄 原格式 关'}</button>` : ""}
+  </div>
+  <div class="rd-more-grp"><b>工具</b>
+    <button class="btn ghost small" onclick="startReadingAloud()">🔊 连读本章</button>
+    <button class="btn ghost small" onclick="noteFromSentence()">📝 记笔记</button>
+    <button class="btn ghost small" onclick="openGrammarSheet()">🧠 句子精讲</button>
+    <button class="btn ghost small" onclick="readerSearchPrompt()">🔍 搜索</button>
+    <button class="btn ghost small" onclick="webSearch(sheetWord||'')">🌐 网页搜索</button>
+  </div>`;
+}
+function readerSearchPrompt(){
+  const w = prompt("搜索什么？");
+  if(w) webSearch(w);
 }
 
 /* ================= 阅读器三视图：沉浸 / 双语对照 / Word Wise ================= */
@@ -4936,6 +5076,22 @@ function cxRender(){
   }
   cxApplyZoom();
   cxPos();
+}
+/* 点字翻译开关 */
+function cxTap(mode){
+  if(mode === "toggle"){
+    CX.tapOn = !CX.tapOn;
+  }else{
+    CX.tapOn = !!mode;
+  }
+  const btn = document.getElementById("cxTapBtn");
+  if(btn) btn.textContent = CX.tapOn ? "👆 点字翻译：开" : "👆 点字翻译：关";
+  if(CX.tapOn){
+    toast("已开启：点漫画上的字就会翻译");
+  }else{
+    toast("已关闭点字翻译（防止误触）");
+    const hit = document.getElementById("cxHit"); if(hit) hit.style.display = "none";
+  }
 }
 function cxPage(d){
   CX.page = Math.max(0, Math.min(CX.pages.length - 1, CX.page + d));
@@ -6668,6 +6824,26 @@ const BR_SEARCH = {
   baidu:  "https://www.baidu.com/s?wd=",
   bing:   "https://www.bing.com/search?q="
 };
+/* 兼容层：外刊/RSS 等页面用的是 pressReadMode / pressPasteImport，
+   真正的实现在 brReadMode / brPasteImport。之前这两个名字没定义，点了会报错。 */
+function pressReadMode(url, title){
+  go("browser");
+  const inp = document.getElementById("brUrl");
+  if(inp && url) inp.value = url;
+  try{ brPathPick("read"); }catch(e){}
+  setTimeout(()=>{ try{ brReadMode(); }catch(e){ toast("抓取失败，可改用「粘贴正文」"); } }, 300);
+}
+function pressPasteImport(title){
+  go("browser");
+  setTimeout(()=>{
+    try{ brPathPick("paste"); }catch(e){}
+    const box = document.getElementById("brPasteBox");
+    if(box) box.style.display = "block";
+    const tip = document.getElementById("brPasteTip");
+    if(tip && title) tip.textContent = "把「" + title + "」的正文粘贴到下面";
+  }, 260);
+}
+
 function brNormalize(input){
   const t = String(input || "").trim();
   if(!t) return "";
@@ -8342,8 +8518,8 @@ function gkWin(who){
 /* ================= 四组导航（16 项平铺 → 4 组下拉） ================= */
 const NAV_GROUPS = {
   read: { name: "阅读", items: [
-    ["📖","书城","library"], ["📥","我的导入","imports"], ["⭐","我的收藏","favorites"],
-    ["📚","书单","collections"], ["📰","外刊","press"], ["📡","RSS 外刊","rss"]
+    ["📖","书城","library"], ["📚","我读过的","read-list"], ["⭐","我的收藏","favorites"],
+    ["📥","我的导入","imports"], ["📰","外刊","press"], ["📡","RSS 外刊","rss"], ["📑","书单","collections"]
   ]},
   learn: { name: "学习", items: [
     ["🧩","句子拼装","assembly"], ["📚","考试词书","vocabbooks"], ["📝","生词本","vocab"],
@@ -8491,6 +8667,7 @@ function go(name){
   if(name==="game-spell") spNew();
   if(name==="game-gomoku") gkNew();
   if(name==="library"){ try{ renderStudyPath(); }catch(e){} }
+  if(name==="read-list") renderReadList();
   if(name==="favorites") renderFavorites();
   if(name==="imports") renderImports();
   if(name==="browser"){
@@ -9904,25 +10081,6 @@ async function downloadBook(id){
   }
 }
 /* 滚动到指定句序号（sentIdx 是全书全局序号） */
-function scrollToSent(sentIdx){
-  const rng = fullCache[curBook.id].chapters[fullMode.chap];
-  if(sentIdx < rng.start || sentIdx >= rng.end){
-    /* 目标句子不在当前章，跳过去 */
-    for(let i=0; i<fullCache[curBook.id].chapters.length; i++){
-      const c = fullCache[curBook.id].chapters[i];
-      if(sentIdx >= c.start && sentIdx < c.end){
-        jumpChapter(i);
-        setTimeout(()=>scrollToSent(sentIdx), 120);
-        return;
-      }
-    }
-    return;
-  }
-  /* 逐句模式下找 dataset.si === sentIdx 的元素 */
-  const node = document.querySelector(`#view-reader .sent[data-si="${sentIdx}"]`);
-  if(node){ node.scrollIntoView({block:"center", behavior:"smooth"}); }
-}
-/* 章节目录弹层 */
 function openChapPicker(){
   if(!curBook || !fullCache[curBook.id]) return;
   const chs = fullCache[curBook.id].chapters;
@@ -10099,6 +10257,17 @@ function openReader(id){
         </div>
       </div>`;
     }
+  }else if(readLayout() === "book" || readLayout() === "ebook"){
+    /* ===== 连排渲染：整章流成连续正文，不带每句卡片和工具条 =====
+       每 4 句分一段（用块级 break 制造段落），段首缩进由 .body-flow 的 text-indent 控制 */
+    const PER = readLayout() === "ebook" ? 3 : 4;
+    const parts = [];
+    for(let i = rng[0]; i < rng[1]; i++){
+      const sm = bm.s[i] ? (" sm" + bm.s[i]) : "";
+      parts.push(`<span class="sent${sm}" data-si="${i}" id="sent-${i}"><span class="en" onclick="wordClick(event)">${wordSpans(sents[i], i)}</span></span>`);
+      if((i - rng[0] + 1) % PER === 0) parts.push(`<div class="para-break"></div>`);
+    }
+    html = `<div class="body-flow">${parts.join("")}</div>`;
   }else{
     html = sents.slice(rng[0], rng[1]).map((s,k)=>{
       const i = rng[0]+k;
@@ -10123,10 +10292,6 @@ function openReader(id){
         </div>
       </div>`;
     }).join("");
-    /* 连排模式：把整章正文包进一个连续段落容器，才像纸质书 */
-    if(readLayout() === "book" || readLayout() === "thesis"){
-      html = `<div class="body-flow">${html}</div>`;
-    }
   }
   const title = escHtml(dispTitle(curBook)) + (curBook.t && curBook.t!==curBook.zh ? ` <span style="font:400 13px var(--font);color:var(--muted)">${escHtml(curBook.t)}</span>` : "");
   /* 把已缓存的译文填进正文（数据里有 zh、但模板只渲染了「翻译这句」按钮时） */
@@ -14232,6 +14397,7 @@ function showOnboarding(manual){
 }
 function renderOnboarding(manual){
   const wrap = document.getElementById("onboardWrap");
+  if(wrap) wrap.style.display = "block";
   const s = GUIDE_STEPS[_onboardStep];
   const total = GUIDE_STEPS.length;
   wrap.innerHTML = `<div class="modal-mask" onclick="if(event.target===this)hideOnboarding(false)">
@@ -14257,8 +14423,10 @@ function hideOnboarding(seen){
   if(seen) localStorage.setItem(ONBOARD_KEY, "1");
 }
 function maybeShowOnboarding(){
+  /* 旧的分步引导已废弃：它和新的 TOUR 会同时弹出，两层遮罩叠在一起画面就卡住了。
+     GUIDE_STEPS 内容仍然保留在「更多 → 教程」页面里当图文说明。 */
   if(localStorage.getItem(ONBOARD_KEY)) return;
-  setTimeout(()=>showOnboarding(false), 1200);
+  localStorage.setItem(ONBOARD_KEY, "1");   /* 直接标记已看过，不再自动弹 */
 }
 
 
@@ -14676,16 +14844,6 @@ function normalizeCode(c){ return String(c||"").trim().toLowerCase(); }
     }
   }catch(e){}
 })();
-function deviceId(){
-  try{
-    let id = localStorage.getItem("lz_device_id");
-    if(!id){
-      id = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,10);
-      localStorage.setItem("lz_device_id", id);
-    }
-    return id;
-  }catch(e){ return "dev_unknown"; }
-}
 function localRedeemed(){
   try{ return JSON.parse(localStorage.getItem("lz_redeemed_codes") || "{}") || {}; }catch(e){ return {}; }
 }
@@ -15075,25 +15233,6 @@ async function checkReturnedPayment(){
 function miniIosVoucher(){
   try{ return localStorage.getItem("lz_voucher") || ""; }catch(e){ return ""; }
 }
-function deviceVoucherCode(){
-  /* 每台设备一个稳定短码，方便客服补券时核对 */
-  const d = deviceId();
-  let h = 0;
-  for(let i = 0; i < d.length; i++){ h = (h * 31 + d.charCodeAt(i)) >>> 0; }
-  return h.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
-}
-/* 按版本号生成兑换券（后端签发更严谨；这里给本地兜底，保证没后端也能发） */
-/* ===== iOS 小程序：官方购买链接（已实现，合规） =====
-   微信不允许 iOS 小程序内调起支付，但允许用 <web-view> 打开外链。
-   所以做法是：iOS 小程序里放一个「打开官方订阅页」按钮 → 在 web-view 里
-   打开网页版价格页 → 微信/支付宝付款 → 付款后服务器发券 → 回到小程序自动到账。
-   全程没有引导语（不写"去外部购买"），只是打开自己的官方页面。 */
-const MINI_IOS_PAY_URL = "https://hcc9886.github.io/LIZZREAD/index.html?iosmini=1&pay=1";
-
-/* iOS 小程序：三条路都保留
-   ① 打开官方订阅页（web-view 内可直接用微信/支付宝付款）
-   ② 输入兑换码（你/客服在微信里发的码）
-   ③ 填邮箱或手机号，把兑换码发到你手上 */
 function openMiniIosCheckout(plan){
   window.__lzPendingPlan = plan;
   const mine = deviceVoucherCode();

@@ -43,3 +43,4 @@ store/huawei/assets/
 secrets/
 dist-pages/
 dist-web/
+.wrangler-auth/

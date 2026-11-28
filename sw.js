@@ -5,7 +5,7 @@
    - 字体/词典 → cache-first，首次出现时缓存
    - 外部翻译/词典 API → 不缓存（译文由 IndexedDB 持久化，离线读本地译文）
 */
-const CACHE = "lizzread_v38";
+const CACHE = "lizzread_v39";
 const BUILD = "2026-11-27";
 const PRECACHE = [
   "./",
