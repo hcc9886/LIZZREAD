@@ -1,5 +1,5 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 50 期。 */
+   由 scripts/gen-comics.py 自动生成，共 51 期。 */
 window.LZ_COMICS_PD = [
  {
   "id": "busterbrown-1908",
@@ -51,10 +51,10 @@ window.LZ_COMICS_PD = [
   "t": "The Katzenjammer Kids",
   "tzh": "捣蛋鬼",
   "date": "—",
-  "author": "Rudolph Dirks",
+  "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=The%20Katzenjammer%20Kids"
+  "src": "https://commons.wikimedia.org/wiki/File%3AKatzenjammer_Kids_%281897-12-12%29.jpg"
  },
  {
   "id": "katzenjammer-motion-picture-cocktails-advertisement",
@@ -62,10 +62,10 @@ window.LZ_COMICS_PD = [
   "t": "The Katzenjammer Kids",
   "tzh": "捣蛋鬼",
   "date": "—",
-  "author": "Rudolph Dirks",
+  "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=The%20Katzenjammer%20Kids"
+  "src": "https://commons.wikimedia.org/wiki/File%3AMotion_Picture_Cocktails_%28advertisement%29.jpg"
  },
  {
   "id": "krazykat-1916-07-09",
@@ -528,6 +528,17 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3ALittle_Nemo_postcard.jpg"
+ },
+ {
+  "id": "orphanannie-little-orphan-annie",
+  "file": "comics/orphanannie-little-orphan-annie.jpg",
+  "t": "Little Orphan Annie",
+  "tzh": "小孤儿安妮",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALittle_Orphan_Annie.jpg"
  },
  {
   "id": "rarebit-1904-12-10",

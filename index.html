@@ -4120,7 +4120,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.7.1"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.7.2"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -5410,6 +5410,7 @@ function comicShelfRender(){
   if(!host) return;
   /* 先渲染用户导入的漫画（如果有），再渲染内置公版漫画 */
   renderImportedComics();
+  if(!window.__comicRestored){ window.__comicRestored = 1; comicRestoreImported().then(()=>{ try{ renderImportedComics(); }catch(e){} }); }
   const list = window.LZ_COMICS_PD || [];
   if(!list.length){ host.innerHTML = `<div class="empty-state"><div class="empty-t">漫画未加载</div></div>`; return; }
   /* 按作品分组：同一部作品的多个期合并成一张封面 */
@@ -5441,6 +5442,45 @@ function comicShelfRender(){
 }
 
 /* 用户导入的漫画书架 */
+/* 刷新后恢复导入的漫画：IndexedDB 里存着 blob，重建 objectURL */
+let _comicRestoreTried = false;
+async function comicRestoreImported(){
+  if(_comicRestoreTried) return;
+  _comicRestoreTried = true;
+  let idx = {};
+  try{ idx = JSON.parse(localStorage.getItem(pk("comics_imported")) || "{}"); }catch(e){ return; }
+  const ids = Object.keys(idx);
+  if(!ids.length) return;
+  try{
+    const db = await openIDB();
+    window.__comicImported = window.__comicImported || {};
+    for(const id of ids){
+      if(window.__comicImported[id]) continue;
+      const pages = [];
+      for(let i = 0; ; i++){
+        const key = "comic:" + id + ":" + i;
+        const rec = await new Promise((res) => {
+          try{
+            const tx = db.transaction("kv", "readonly");
+            const rq = tx.objectStore("kv").get(key);
+            rq.onsuccess = () => res(rq.result || null);
+            rq.onerror = () => res(null);
+          }catch(e){ res(null); }
+        });
+        if(!rec || !rec.blob) break;
+        pages.push(URL.createObjectURL(rec.blob));
+        if(pages.length > 500) break;
+      }
+      if(pages.length){
+        window.__comicImported[id] = {
+          title: idx[id].title || id, pages,
+          lang: idx[id].lang || "", at: idx[id].at || 0
+        };
+      }
+    }
+  }catch(e){ console.warn("恢复漫画失败", e); }
+}
+
 function renderImportedComics(){
   const host = document.getElementById("comicsImported");
   if(!host) return;
