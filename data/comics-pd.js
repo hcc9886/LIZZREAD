@@ -1,6 +1,17 @@
 /* 内置公有领域漫画（来源 Wikimedia Commons，均已校验 LicenseShortName 为 Public Domain）
-   由 scripts/gen-comics.py 自动生成，共 88 期。 */
+   由 scripts/gen-comics.py 自动生成，共 91 期。 */
 window.LZ_COMICS_PD = [
+ {
+  "id": "allysloper-marie-duval-ally-sloper-an-affair-of-honour-judy-june-24",
+  "file": "comics/allysloper-marie-duval-ally-sloper-an-affair-of-honour-judy-june-24.jpg",
+  "t": "Ally Sloper",
+  "tzh": "艾利斯洛珀",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AMarie_Duval%2C_Ally_Sloper%2C_An_Affair_of_Honour_%28Judy%2C_June_24%2C_1874%29.jpg"
+ },
  {
   "id": "blondie-bumstead-family-blondie-1968",
   "file": "comics/blondie-bumstead-family-blondie-1968.jpg",
@@ -125,24 +136,24 @@ window.LZ_COMICS_PD = [
  {
   "id": "fairy-lorenz-fr-lich-fairy-tale-illustration-interior-with-gno",
   "file": "comics/fairy-lorenz-fr-lich-fairy-tale-illustration-interior-with-gno.jpg",
-  "t": "Comic: Lorenz Fr Lich Fairy Tale Illustration Interior ",
-  "tzh": "其它漫画",
+  "t": "Fairy tale illustration",
+  "tzh": "童话插画",
   "date": "—",
   "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Comic:%20Lorenz%20Fr%20Lich%20Fairy%20Tale%20Illustration%20Interior%20"
+  "src": "https://commons.wikimedia.org/wiki/File%3ALorenz_Fr%C3%B8lich_-_Fairy-Tale_Illustration%2C_Interior_with_Gnomes_and_Other_Figures_-_NMH_40-1949_-_Nationalmuseum.jpg"
  },
  {
   "id": "fairy-page-158-illustration-in-more-english-fairy-tales",
   "file": "comics/fairy-page-158-illustration-in-more-english-fairy-tales.jpg",
-  "t": "Comic: Page 158 Illustration In More English Fairy Tale",
-  "tzh": "其它漫画",
+  "t": "Fairy tale illustration",
+  "tzh": "童话插画",
   "date": "—",
   "author": "Various",
   "lang": "en",
   "license": "Public Domain",
-  "src": "https://commons.wikimedia.org/wiki/Special:Search?search=Comic:%20Page%20158%20Illustration%20In%20More%20English%20Fairy%20Tale"
+  "src": "https://commons.wikimedia.org/wiki/File%3APage_158_illustration_in_More_English_Fairy_Tales.png"
  },
  {
   "id": "garfield-james-abram-garfield-photo-portrait-seated",
@@ -968,5 +979,27 @@ window.LZ_COMICS_PD = [
   "lang": "en",
   "license": "Public Domain",
   "src": "https://commons.wikimedia.org/wiki/File%3AWalt_Disney_Mickey_Mouse%2C_Building_a_Building%2C_1.jpg"
+ },
+ {
+  "id": "tintin-herge-italie-1965-linus",
+  "file": "comics/tintin-herge-italie-1965-linus.jpg",
+  "t": "Tintin",
+  "tzh": "丁丁历险记",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3AHerge-Italie-1965-Linus.png"
+ },
+ {
+  "id": "tintin-les-cigares-du-pharaon",
+  "file": "comics/tintin-les-cigares-du-pharaon.jpg",
+  "t": "Tintin",
+  "tzh": "丁丁历险记",
+  "date": "—",
+  "author": "Various",
+  "lang": "en",
+  "license": "Public Domain",
+  "src": "https://commons.wikimedia.org/wiki/File%3ALes_Cigares_du_Pharaon.png"
  }
 ];

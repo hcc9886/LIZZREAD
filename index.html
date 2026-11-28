@@ -4369,7 +4369,7 @@ const CHANGELOG = [
   ]}
 ];
 function currentVersion(){
-  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "3.9.1"); }catch(e){ return "2.1.0"; }
+  try{ return (window.LZ_BUILD && window.LZ_BUILD.version) || (typeof APP_VERSION !== "undefined" ? APP_VERSION : "4.0.0"); }catch(e){ return "2.1.0"; }
 }
 function renderChangelog(){
   const host = document.getElementById("changelogBody");
@@ -6243,7 +6243,7 @@ async function comicPdfToImages(file){
 /* 导入漫画存 IndexedDB（键：comic:<id>，带 lang 字段做语言隔离） */
 async function comicSaveImported(id, title, files){
   const metas = [];
-  const db = await idb();
+  const db = await openIDB();
   for(let i = 0; i < files.length; i++){
     const f = files[i];
     const key = "comic:" + id + ":" + i;
@@ -8015,6 +8015,18 @@ function brFillBookmarklet(){
   row.innerHTML = `<a class="bm-link" href="${escAttr(code)}" onclick="event.preventDefault();toast('请把这个按钮拖到书签栏')">📖 查词 LIZZREAD</a>`;
   row.dataset.done = "1";
 }
+/* 粘贴字数统计（之前定义被误删，调用处会 ReferenceError） */
+function brPasteStat(){
+  const area = document.getElementById("brPasteArea");
+  const el = document.getElementById("brPasteStat");
+  if(!area || !el) return;
+  const n = (area.value || "").length;
+  el.textContent = n ? (n + " 字 · 约 " + Math.round(n / 5) + " 词") : "";
+}
+document.addEventListener("input", e=>{
+  if(e.target && e.target.id === "brPasteArea") { try{ brPasteStat(); }catch(err){} }
+});
+
 function brPasteImport(){
   const t = (document.getElementById("brPasteText")?.value || "").trim();
   if(t.length < 20){ toast("先粘贴一段正文"); return; }
@@ -15103,7 +15115,7 @@ function asmSubmitTyped(){
   if(!got){ if(box) box.textContent = "先输入一句再提交"; return; }
   if(got === want){
     if(box) box.innerHTML = `<b style="color:var(--brand-deep)">✅ 完全正确！</b><div class="tip">${escHtml(asmState.sentence.zh || "")}</div>`;
-    try{ asmLogResult && asmLogResult(true, true); }catch(e){}
+    try{ if(typeof asmLogResult === "function") asmLogResult(true, true); }catch(e){}
   } else {
     const gw = got.split(" "), ww = want.split(" ");
     let same = 0;
@@ -15613,7 +15625,8 @@ function endTour(completed){
   _tourCompleted = (completed !== false);
   /* 不管「完成」还是「跳过」都记下来，绝不再自动打扰；教程页永远能重看 */
   tourSave({ done: true, at: tourIdx, skipped: completed === false, at2: Date.now() });
-  try{ renderOnboardCard(); }catch(e){}
+  try{ if(typeof renderOnboardCard === "function") renderOnboardCard(); }catch(e){}
+  /* renderOnboardCard 未实现：教程完成后不需要额外卡片，这里静默跳过即可 */
 }
 function langGuideIntro(){
   const code = activeLang();
@@ -17800,7 +17813,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="k"){ window.scrollBy(0,-400); return; }
   if(e.key==="b"){ window.scrollTo(0,0); return; }
   if(e.key==="e"){ window.scrollTo(0, document.body.scrollHeight); return; }
-  if(e.key==="Escape"){ hideSheet(); return; }
+  if(e.key==="Escape"){ try{ closeSheet(); }catch(err){} return; }
 });
 
 /* 划词整段翻译：用户在阅读器里选中文本时 → 右下角出现小图标 → 点了弹层 */
